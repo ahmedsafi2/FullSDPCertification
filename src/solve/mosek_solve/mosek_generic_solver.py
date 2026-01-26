@@ -57,8 +57,9 @@ class MosekSolver(Solver):
         super().__init__(LAST_LAYER=LAST_LAYER, **kwargs)
 
         self.MATRIX_BY_LAYERS = MATRIX_BY_LAYERS
-        self.keep_penultimate_actives = kwargs.get("keep_penultimate_actives", None)
         assert self.keep_penultimate_actives is not None
+
+        print("STUDY : penultimate actives in MosekSolver : ", self.keep_penultimate_actives)
         print("use fusion in MosekGenericSolver: ", use_fusion)
         self.cuts = kwargs.get("cuts")
         self.all_combinations_cuts = kwargs.get("all_combinations_cuts", False)

@@ -100,7 +100,7 @@ def ReLU_constraint_Lan(
             ):
                 # print(f"Skipping stable active neuron ({k}, {j})")
                 continue
-            # print(f"Adding ReLU constraint for layer {k}, neuron {j}")
+            print(f"STUDY : Adding ReLU constraint for layer {k}, neuron {j} : z_{k,j}>=0")
             # zk >= 0
             if self.handler.Constraints.new_constraint(f"ReLU - z_{k,j}>=0", label = "same_for_data"):
                 continue
@@ -109,7 +109,6 @@ def ReLU_constraint_Lan(
                 value=1,
                 layer=k,
                 neuron=j,
-                front_of_matrix=False,
             )
             self.handler.Constraints.add_bound(
                 bound_type=mosek.boundkey.lo,
@@ -117,6 +116,7 @@ def ReLU_constraint_Lan(
             )
 
             # zk >= Wk zk-1 + bk
+            print(f"STUDY : Adding ReLU constraint for layer {k}, neuron {j} : z_{k,j}>= Wk zk-1 + bk")
             if self.handler.Constraints.new_constraint(
                 f"ReLU - z_{k,j} >= W_{k,j} z_{k-1} + b{k,j}", label = "same_for_data"
             ):

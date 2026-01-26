@@ -39,6 +39,7 @@ def objective_Lan(self):
 def objective_Md(self):
     if not self.use_active_neurons:
         assert self.keep_penultimate_actives , "keep_penultimate_actives must be True for Md objective function"
+    print("Making objective ...")
     if self.LAST_LAYER:
         self.handler.Objective.add_linear_variable(
             "z",
@@ -85,17 +86,17 @@ def objective_Md(self):
             for i in range(self.n[self.K - 1]):
                 if (self.K - 1, i) in self.stable_inactives_neurons:
                     continue
-                # elif (self.K - 1, i) in self.stable_actives_neurons:
-
-                #     self.handler.Objective.add_quad_variable_bounding(
-                #         value=self.network.W[self.K - 1][j][i],
-                #         layer=self.K - 1,
-                #         neuron=i,
-                #         class_label=j,
-                #         alpha_1=self.alpha_1,
-                #         alpha_2=self.alpha_2,
-                #         type="lower",
-                #     )
+                elif (self.K - 1, i) in self.stable_actives_neurons:
+                    print(f"ERROR : stable active neuron at layer K-1 = {self.K-1} in objective")
+                    # self.handler.Objective.add_quad_variable_bounding(
+                    #     value=self.network.W[self.K - 1][j][i],
+                    #     layer=self.K - 1,
+                    #     neuron=i,
+                    #     class_label=j,
+                    #     alpha_1=self.alpha_1,
+                    #     alpha_2=self.alpha_2,
+                    #     type="lower",
+                    # )
                 else:
                     self.handler.Objective.add_quad_variable(
                         var1="beta",

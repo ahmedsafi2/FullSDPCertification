@@ -222,6 +222,7 @@ def check_stability_neurons(
     self.stable_actives_neurons = []
     # Check if the neurons are stable
     for k in range(1, self.K):
+        
         for j in range(self.n[k]):
             # print(
             #     "STUDY : Layer ",
@@ -236,7 +237,10 @@ def check_stability_neurons(
             if self.L[k][j] <= 0 and self.U[k][j] <= 0 and not use_inactive_neurons:
                 self.stable_inactives_neurons.append((k, j))
             elif self.L[k][j] >= 0 and self.U[k][j] > 0 and not use_active_neurons:
-                self.stable_actives_neurons.append((k, j))
+                if k==self.K - 1 and self.keep_penultimate_actives : 
+                    continue
+                else : 
+                    self.stable_actives_neurons.append((k, j))
     self.stable_active_neurons = set(self.stable_actives_neurons)
     self.stable_inactive_neurons = set(self.stable_inactives_neurons)
     print(

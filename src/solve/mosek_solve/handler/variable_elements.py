@@ -179,7 +179,7 @@ class Equivalent_Neurons_Index:
     def get_index(self, layer: int, neuron: int):
         return _get_key_from_layer_neuron_(layer=layer, neuron=neuron, M=self.M)
 
-    def create_dict(self, layer: int, neuron: int, K : int, LAST_LAYER : bool):
+    def create_dict(self, layer: int, neuron: int, K : int, LAST_LAYER : bool, decomposed_in_front_and_back_matrix : bool):
         """
         Create a dictionary for the equivalent neurons.
         """
@@ -189,28 +189,22 @@ class Equivalent_Neurons_Index:
         assert key not in self.equivalent_neurons, f"Index {key} already exists."
 
         self.equivalent_neurons[key] = {"constant" : 0.0}
-        if layer > 0:
-            self.equivalent_neurons[key]["weights_back"] = Dict.empty(
-                    key_type=numba.types.int64, value_type=numba.types.float64
-                )
-        if (layer <= K - 1 and not LAST_LAYER) or (layer <= K) : 
-            self.equivalent_neurons[key]["weights_front"] = Dict.empty(
-                    key_type=numba.types.int64, value_type=numba.types.float64
-                )
-
+        if decomposed_in_front_and_back_matrix :
+            if layer > 0:
+                self.equivalent_neurons[key]["weights_back"] = Dict.empty(
+                        key_type=numba.types.int64, value_type=numba.types.float64
+                    )
+            if (layer <= K - 1 and not LAST_LAYER) or (layer <= K) : 
+                self.equivalent_neurons[key]["weights_front"] = Dict.empty(
+                        key_type=numba.types.int64, value_type=numba.types.float64
+                    )
+        else :
+            self.equivalent_neurons[key]["weights"] = Dict.empty(
+                        key_type=numba.types.int64, value_type=numba.types.float64
+                    )
     
-    def add(
-        self,
-        layer: int,
-        neuron: int,
-        i: int,
-        num_matrix: int,
-        value: float,
-        front_of_matrix: bool = True,
-    ):
-        key = _get_key_from_layer_neuron_(layer=layer, neuron=neuron, M=self.M)
-        assert key in self.equivalent_neurons, f"Index {key} does not exist."
-        #print(f"layer = {layer}, neuron = {neuron}, i = {i}, num_matrix = {num_matrix}, value = {value}, front_of_matrix = {front_of_matrix}, key = {key}")
+    def add_unstable_neuron(self, front_of_matrix : bool, i : int, num_matrix : int, value : float, key : int):
+        print("add_unstable_neuron")
         weight_str = "weights_front" if front_of_matrix else "weights_back"
         _add_ni(
             i,
@@ -219,6 +213,35 @@ class Equivalent_Neurons_Index:
             equivalent_neurons_substract=self.equivalent_neurons[key][weight_str],
             M=self.M,
         )
+    
+    def add_stable_active_neuron(self, i : int, num_matrix : int, value : float, key : int):
+        _add_ni(
+            i,
+            num_matrix,
+            value,
+            equivalent_neurons_substract=self.equivalent_neurons[key]["weights"],
+            M=self.M,
+        )
+
+    def add(
+        self,
+        layer: int,
+        neuron: int,
+        i: int,
+        num_matrix: int,
+        value: float,
+        **kwargs,
+    ):
+        key = _get_key_from_layer_neuron_(layer=layer, neuron=neuron, M=self.M)
+        assert key in self.equivalent_neurons, f"Index {key} does not exist."
+        #print(f"layer = {layer}, neuron = {neuron}, i = {i}, num_matrix = {num_matrix}, value = {value}, front_of_matrix = {front_of_matrix}, key = {key}")
+        front_of_matrix = kwargs.get("front_of_matrix", None)
+        if front_of_matrix is not None : 
+            self.add_unstable_neuron(front_of_matrix,i,num_matrix,value,key)
+        else:
+            self.add_stable_active_neuron(i,num_matrix,value,key)
+
+        
 
     def add_constant(self, layer: int, neuron: int, value: float):
         """
@@ -236,14 +259,17 @@ class Equivalent_Neurons_Index:
         assert index in self.equivalent_neurons, f"Index {index} does not exist."
         return self.equivalent_neurons[index]["constant"]
 
-    def get_equivalent(self, layer: int, neuron: int, front_of_matrix: bool):
+    def get_equivalent(self, layer: int, neuron: int, front_of_matrix: bool = None):
         """
         Get the equivalent neurons for a given key.
         """
-        if not ( (not front_of_matrix and layer > 0) or (front_of_matrix and layer < self.K - 1) ):
-            print(f"ERROR : layer = {layer}, neuron = {neuron}; K = {self.K}, front_of_matrix = {front_of_matrix}" )
+       
         index = self.get_index(layer, neuron)
         assert index in self.equivalent_neurons, f"Index {index} does not exist."
+        if front_of_matrix is None : 
+            return self.equivalent_neurons[index]["weights"]
+        if not ( (not front_of_matrix and layer > 0) or (front_of_matrix and layer < self.K - 1) ):
+            print(f"ERROR : layer = {layer}, neuron = {neuron}; K = {self.K}, front_of_matrix = {front_of_matrix}" )
         weights_str = "weights_front" if front_of_matrix else "weights_back"
         return self.equivalent_neurons[index][weights_str]
 

@@ -76,29 +76,29 @@ class LayersValues:
                 self.add_equivalent_values(k, j)
 
     def add_equivalent_values(self, layer: int, neuron: int):
-        print(f"LAYER = {layer}, neuron = {neuron}")
-        print(f"Active ? ", (layer, neuron) in self.stable_actives_neurons)
-        print(f"Penultimate or before ? ", (not self.keep_actives_penultimate or layer < self.K - 1))
+        # print(f"LAYER = {layer}, neuron = {neuron}")
+        # print(f"Active ? ", (layer, neuron) in self.stable_actives_neurons)
+        # print(f"Penultimate or before ? ", (not self.keep_actives_penultimate or layer < self.K - 1))
         if ( ((layer, neuron) in self.stable_actives_neurons
             and (not self.keep_actives_penultimate or layer < self.K - 1)) or (layer == self.K and not self.LAST_LAYER)):
-            print("Decomposing...")
+            # print("Decomposing...")
             self.equivalent_values_layers[(layer, neuron)]["constant"] += self.b[
                 layer - 1
             ][neuron]
-            print("Getting constant, ok")
+            # print("Getting constant, ok")
             for i in range(self.n[layer - 1]):
-                print(f"decomposing into neuron {i} of layer {layer-1}")
-                print(f"    Decomposing into i = {i}, layer - 1 = {layer - 1}")
-                print(f"    Current dictionnary ", self.equivalent_values_layers[(layer, neuron)])
-                print("     Adding : ", {
-                            (layer2, neuron2): (value * self.W[layer - 1][neuron][i])
-                            for (
-                                layer2,
-                                neuron2,
-                            ), value in self.equivalent_values_layers[(layer - 1, i)][
-                                "neurons_weight"
-                            ].items()
-                        })
+                # print(f"decomposing into neuron {i} of layer {layer-1}")
+                # print(f"    Decomposing into i = {i}, layer - 1 = {layer - 1}")
+                # print(f"    Current dictionnary ", self.equivalent_values_layers[(layer, neuron)])
+                # print("     Adding : ", {
+                #             (layer2, neuron2): (value * self.W[layer - 1][neuron][i])
+                #             for (
+                #                 layer2,
+                #                 neuron2,
+                #             ), value in self.equivalent_values_layers[(layer - 1, i)][
+                #                 "neurons_weight"
+                #             ].items()
+                #         })
                 self.equivalent_values_layers[(layer, neuron)]["neurons_weight"] = (
                     summing_values_two_dicts(
                         self.equivalent_values_layers[(layer, neuron)][
@@ -119,8 +119,8 @@ class LayersValues:
                     self.equivalent_values_layers[(layer - 1, i)]["constant"]
                     * self.W[layer - 1][neuron][i]
                 )
-                print("     Dictionnary after add : ", self.equivalent_values_layers[(layer, neuron)])
-                print()
+                # print("     Dictionnary after add : ", self.equivalent_values_layers[(layer, neuron)])
+                # print()
 
            
 
@@ -344,8 +344,8 @@ class VariablesCall:
        
         self.create_equivalent_indexes_matrices()
         print("CREATE EQUIVALENT OK")
-
-        self._print_equivalent_indexes_()
+       
+        #self._print_equivalent_indexes_()
         print("PRINT EQUIVALENT OK")
         
         self.study_indexes_equivalent_neurons() # Check errors
@@ -360,45 +360,91 @@ class VariablesCall:
                 equivalent_values_neurons, constant = (
                     self.layers_values.get_equivalent_values(layer, neuron)
                 )
-                self.equivalent_neurons.create_dict(layer=layer, neuron=neuron, K = self.K, LAST_LAYER=self.LAST_LAYER)
 
-                for (k, j), val in equivalent_values_neurons.items():
+                decomposed_in_front_and_back_matrix = (not ((layer,neuron) in self.stable_actives_neurons)) and (layer < self.K or self.LAST_LAYER)
+                
+                self.equivalent_neurons.create_dict(layer=layer, neuron=neuron, K = self.K, 
+                                                    LAST_LAYER=self.LAST_LAYER, 
+                                                    decomposed_in_front_and_back_matrix=decomposed_in_front_and_back_matrix)
 
-                    if (k < self.K - 1 and not self.LAST_LAYER) or (
-                        k < self.K and self.LAST_LAYER
-                    ):
-                        print(f"        Decomposing with k = {k}, j = {j}, val = {val} - FRONT OF MATRIX")
-                        ind_i_front = self.indexes_variables._get_variable_index(
-                            "z", layer=k, neuron=j, front_of_matrix=True
-                        )
-                        ind_num_matrix_front = self.indexes_matrices._get_matrix_index(
-                            "z", layer=k, neuron=j, front_of_matrix=True
-                        )
-                        self.equivalent_neurons.add(
-                            layer=layer,
-                            neuron=neuron,
-                            i=ind_i_front,
-                            num_matrix=ind_num_matrix_front,
-                            value=val,
-                            front_of_matrix=True,
-                        )
-                    if k > 0:
-                        print(f"        Decomposing with k = {k}, j = {j}, val = {val} - BACK OF MATRIX")
-                        ind_i_back = self.indexes_variables._get_variable_index(
-                            "z", layer=k, neuron=j, front_of_matrix=False
-                        )
-                        ind_num_matrix_back = self.indexes_matrices._get_matrix_index(
-                            "z", layer=k, neuron=j, front_of_matrix=False
-                        )
-                        self.equivalent_neurons.add(
-                            layer=layer,
-                            neuron=neuron,
-                            i=ind_i_back,
-                            num_matrix=ind_num_matrix_back,
-                            value=val,
-                            front_of_matrix=False,
-                        )
-                print()
+                if decomposed_in_front_and_back_matrix:
+                    print(f"Layer {layer} : decomposed is true")
+                    for (k, j), val in equivalent_values_neurons.items():
+                        print(f"k = {k}, j = {j}, val = {val}, LAST_LAYER = {self.LAST_LAYER}")
+
+                        if (k < self.K - 1 and not self.LAST_LAYER) or (
+                                k < self.K and self.LAST_LAYER
+                            ):
+                                print(f"        Decomposing with layer = {layer}, neuron = {neuron}, val = {1} - FRONT OF MATRIX")
+                                ind_i_front = self.indexes_variables._get_variable_index(
+                                    "z", layer=k, neuron=j, front_of_matrix=True
+                                )
+                                ind_num_matrix_front = self.indexes_matrices._get_matrix_index(
+                                    "z", layer=k, neuron=j, front_of_matrix=True
+                                )
+                                self.equivalent_neurons.add(
+                                    layer=layer,
+                                    neuron=neuron,
+                                    i=ind_i_front,
+                                    num_matrix=ind_num_matrix_front,
+                                    value=1,
+                                    front_of_matrix=True,
+                                )
+                        if k > 0:
+                            print(f"        Decomposing with layer = {layer}, neuron = {neuron}, val = {1} - BACK OF MATRIX")
+                            ind_i_back = self.indexes_variables._get_variable_index(
+                                "z", layer=k, neuron=j, front_of_matrix=False
+                            )
+                            ind_num_matrix_back = self.indexes_matrices._get_matrix_index(
+                                "z", layer=k, neuron=j, front_of_matrix=False
+                            )
+                            self.equivalent_neurons.add(
+                                layer=layer,
+                                neuron=neuron,
+                                i=ind_i_back,
+                                num_matrix=ind_num_matrix_back,
+                                value=1,
+                                front_of_matrix=False,
+                            )
+
+                else : 
+                    print(f"Layer {layer} : decomposed is false")
+                    for (k, j), val in equivalent_values_neurons.items():
+                        print(f"k = {k}, j = {j}, val = {val}, LAST_LAYER = {self.LAST_LAYER}")
+
+                        if (k < self.K - 1 and not self.LAST_LAYER) or (
+                            k < self.K and self.LAST_LAYER
+                        ):
+                            print(f"        Decomposing with k = {k}, j = {j}, val = {val} - FRONT OF MATRIX")
+                            ind_i_front = self.indexes_variables._get_variable_index(
+                                "z", layer=k, neuron=j, front_of_matrix=True
+                            )
+                            ind_num_matrix_front = self.indexes_matrices._get_matrix_index(
+                                "z", layer=k, neuron=j, front_of_matrix=True
+                            )
+                            self.equivalent_neurons.add(
+                                layer=layer,
+                                neuron=neuron,
+                                i=ind_i_front,
+                                num_matrix=ind_num_matrix_front,
+                                value=val,
+                            )
+                        else:
+                            print(f"        Decomposing with k = {k}, j = {j}, val = {val} - BACK OF MATRIX")
+                            ind_i_back = self.indexes_variables._get_variable_index(
+                                "z", layer=k, neuron=j, front_of_matrix=False
+                            )
+                            ind_num_matrix_back = self.indexes_matrices._get_matrix_index(
+                                "z", layer=k, neuron=j, front_of_matrix=False
+                            )
+                            self.equivalent_neurons.add(
+                                layer=layer,
+                                neuron=neuron,
+                                i=ind_i_back,
+                                num_matrix=ind_num_matrix_back,
+                                value=val,
+                            )
+                    print()
                     
 
                 self.equivalent_neurons.add_constant(
@@ -424,7 +470,7 @@ class VariablesCall:
                     i=i,
                     num_matrix=num_matrix,
                 )
-            print(self.equivalent_indexes_betas.equivalent_indexes_betas)
+            #print(self.equivalent_indexes_betas.equivalent_indexes_betas)
 
     def study_indexes_equivalent_neurons(self):
         for k in range(self.K + 1):
@@ -433,8 +479,9 @@ class VariablesCall:
                 layer, neuron = _get_layer_neuron_from_key_(key=key)
                 assert (
                     layer == k and neuron == j
-                ), f"Error in STUDY1: layer = {layer}, neuron = {neuron}, k = {k}, j = {j}"
+                ), f"ERROR in STUDY1: layer = {layer}, neuron = {neuron}, k = {k}, j = {j}"
         for num_matrix in range(self.indexes_matrices.nb_matrices):
+            print(f"STUDY in study_indexes_equivalent_neurons: num_matrix = {num_matrix}")
             try:
                 for i in range(self.indexes_variables.max_index):
 
@@ -444,7 +491,7 @@ class VariablesCall:
 
                     assert (
                         i == i2 and num_matrix == num_matrix2
-                    ), f"Error in STUDY2: i = {i}, num_matrix = {num_matrix}, i2 = {i2}, num_matrix2 = {num_matrix2}"
+                    ), f"ERROR in STUDY2: i = {i}, num_matrix = {num_matrix}, i2 = {i2}, num_matrix2 = {num_matrix2}"
 
             except ValueError as e:
                 print("Error : ", e)
@@ -457,13 +504,16 @@ class VariablesCall:
             line += f"Layer {layer}:\n"
             for neuron in range(self.n[layer]):
                 
+                decomposed_in_front_and_back_matrix = (not ((layer,neuron) in self.stable_actives_neurons)) and (layer < self.K or self.LAST_LAYER)
+
                 constant = self.equivalent_neurons.get_constant(
                     layer=layer, neuron=neuron
                 )
                 line += f"\n  Layer {layer} Neuron {neuron}: \n"
-                if (layer <= self.K - 1 and not self.LAST_LAYER) or (
+
+                if ((layer <= self.K - 1 and not self.LAST_LAYER) or (
                       self.LAST_LAYER
-                    ):
+                    )) and decomposed_in_front_and_back_matrix:
                     front = self.equivalent_neurons.get_equivalent(
                         layer=layer, neuron=neuron, front_of_matrix=True
                     )
@@ -471,12 +521,19 @@ class VariablesCall:
                     for key, value in front.items():
                         i, num_matrix = _get_linear_indices_from_key(key, 13)
                         line += f"  {(num_matrix,i)} : {value};   "
-                if layer > 0 : 
+                if layer > 0 and decomposed_in_front_and_back_matrix: 
                     line += f"\n    BACK_OF_MATRIX \n"
                     back = self.equivalent_neurons.get_equivalent(
                         layer=layer, neuron=neuron, front_of_matrix=False
                     )
                     for key, value in back.items():
+                        i, num_matrix = _get_linear_indices_from_key(key, 13)
+                        line += f"{(num_matrix,i)} : {value};   "
+                elif not decomposed_in_front_and_back_matrix:
+                    eq = self.equivalent_neurons.get_equivalent(
+                        layer=layer, neuron=neuron, 
+                    )
+                    for key, value in eq.items():
                         i, num_matrix = _get_linear_indices_from_key(key, 13)
                         line += f"{(num_matrix,i)} : {value};   "
                 line += f"\n    constant : {constant}\n"
@@ -538,16 +595,24 @@ class VariablesCall:
         if var == "z":
             layer = kwargs.get("layer", None)
             neuron = kwargs.get("neuron", None)
-            front_of_matrix = kwargs.get("front_of_matrix", None)
             assert layer is not None, "Layer must be specified for z variable."
             assert neuron is not None, "Neuron must be specified for z variable."
+
+            if (layer,neuron) not in self.stable_actives_neurons and layer != self.K :
+                if (layer < self.K-1) or self.LAST_LAYER :
+                    front_of_matrix = True
+                else : 
+                    front_of_matrix = False
+            else :
+                front_of_matrix = None
+            
             assert (
-                front_of_matrix is not None
+                (front_of_matrix is not None) or ((layer,neuron) in self.stable_actives_neurons) or (layer == self.K and not self.LAST_LAYER)
             ), "Front of matrix must be specified for z variable."
 
             assert (front_of_matrix or layer>0, "Layer 0 cannot be a the back of matrix")
             assert (not front_of_matrix or not(layer == self.K or (layer == self.K-1 and self.LAST_LAYER)), f"Layer {layer} cannot be at the front of matrix")
-        
+            print(f"In add_linear_variable : Layer = {layer}, neuron = {neuron}, front_of_matrix = {front_of_matrix}")
             dict1 = self.equivalent_neurons.get_equivalent(
                     layer=layer, neuron=neuron, front_of_matrix=front_of_matrix
                 )
@@ -564,7 +629,7 @@ class VariablesCall:
             assert (
                 class_label is not None
             ), "Class label must be specified for beta variable."
-
+            print(f"In add_linear_variable : beta_class = {class_label}")
             self.add_var(
                 dict1=self.equivalent_indexes_betas.get_equivalent(
                     class_label=class_label
@@ -606,6 +671,8 @@ class VariablesCall:
             assert (
                 class_label is not None
             ), "Class label must be specified for beta variable."
+
+            print(f"In add_quad_variable : Layer = {layer1}, neuron = {neuron1}, front_of_matrix = {front_of_matrix1}")
             dict2 = self.equivalent_indexes_betas.get_equivalent(
                 class_label=class_label
             )
@@ -630,6 +697,7 @@ class VariablesCall:
                 class_label is not None
             ), "Class label must be specified for beta variable."
             assert (layer2,neuron2) not in self.stable_actives_neurons, "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
+            print(f"In add_quad_variable : Layer = {layer2}, neuron = {neuron2}, front_of_matrix = {front_of_matrix2}")
             dict1 = self.equivalent_indexes_betas.get_equivalent(
                 class_label=class_label
             )
@@ -649,6 +717,7 @@ class VariablesCall:
             assert (
                 class_label2 is not None
             ), "Class label2 must be specified for beta variable."
+            print(f"In add_quad_variable : class_label1 = {class_label1}, class_label2 = {class_label2}")
             dict1 = self.equivalent_indexes_betas.get_equivalent(
                 class_label=class_label1
             )
@@ -677,6 +746,7 @@ class VariablesCall:
             ), "Front of matrix must be specified for z variable."
             assert (layer1,neuron1) not in self.stable_actives_neurons, "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
             assert (layer2,neuron2) not in self.stable_actives_neurons, "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
+            print(f"In add_quad_variable : Layer = {layer2}, neuron = {neuron2}, front_of_matrix = {front_of_matrix2}")
             constant1 = self.equivalent_neurons.get_constant(layer1, neuron1)
             constant2 = self.equivalent_neurons.get_constant(layer2, neuron2)
             dict1 = self.equivalent_neurons.get_equivalent(
@@ -826,7 +896,6 @@ class VariablesCall:
             var="z",
             layer=layer_next,
             neuron=neuron_next,
-            front_of_matrix=front_of_matrix_next,
             value=-weight * constant,
         )
 
@@ -854,7 +923,6 @@ class VariablesCall:
             var="z",
             layer=layer2,
             neuron=neuron2,
-            front_of_matrix=front_of_matrix2,
             value=-value * self.L[layer1][neuron1],
         )
         
@@ -879,7 +947,6 @@ class VariablesCall:
             var="z",
             layer=layer2,
             neuron=neuron2,
-            front_of_matrix=front_of_matrix2,
             value=-value * self.U[layer1][neuron1],
         )
         
@@ -903,7 +970,6 @@ class VariablesCall:
             var="z",
             layer=layer2,
             neuron=neuron2,
-            front_of_matrix=front_of_matrix2,
             value=-value * self.U[layer1][neuron1],
         )
         # print(
@@ -914,7 +980,6 @@ class VariablesCall:
             var="z",
             layer=layer1,
             neuron=neuron1,
-            front_of_matrix=front_of_matrix1,
             value=-value * self.U[layer2][neuron2],
         )
         
@@ -940,7 +1005,6 @@ class VariablesCall:
             var="z",
             layer=layer1,
             neuron=neuron1,
-            front_of_matrix=front_of_matrix1,
             value=-value * self.U[layer2][neuron2],
         )
         if layer1 > 0:
@@ -954,7 +1018,6 @@ class VariablesCall:
             var="z",
             layer=layer2,
             neuron=neuron2,
-            front_of_matrix=front_of_matrix2,
             value=-value * self.L[layer1][neuron1],
         )
         self.add_constant(value * self.L[layer1][neuron1] * self.U[layer2][neuron2])

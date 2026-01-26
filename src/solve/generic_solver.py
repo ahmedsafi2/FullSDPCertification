@@ -78,6 +78,8 @@ class Solver:
 
         print("ytargets : ", self.ytargets)
         self.bounds_method = kwargs.get("bounds_method")
+        self.keep_penultimate_actives = kwargs.get("keep_penultimate_actives", None)
+
         self.L = L
         self.U = U
 

@@ -253,6 +253,7 @@ class CommonConstraints(VariablesCall):
             f"Got {label} instead."
         )
 
+        print("Creating new constraint : ", name)
         logger_mosek.info("Creating new constraint")
         if name in self.cstr_names:
             logger_mosek.warning(

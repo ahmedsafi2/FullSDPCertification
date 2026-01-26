@@ -115,7 +115,6 @@ def McCormick_beta_z(self, layer: int):
                 layer=layer,
                 neuron=i,
                 value=-1,
-                front_of_matrix=front_of_matrix,
             )
             self.handler.Constraints.add_bound(bound_type=mosek.boundkey.up, bound=0)
 
@@ -139,7 +138,6 @@ def McCormick_beta_z(self, layer: int):
                 layer=layer,
                 neuron=i,
                 value=-1,
-                front_of_matrix=front_of_matrix,
             )
             self.handler.Constraints.add_linear_variable(
                 var="beta",
@@ -258,7 +256,6 @@ def McCormick_beta_z_with_penultimate_layer(self):
                 layer=self.K - 1,
                 neuron=i,
                 value=-self.W[self.K - 1][j][i],
-                front_of_matrix=False,
             )
         self.handler.Constraints.add_linear_variable(
             var="beta",
@@ -298,7 +295,6 @@ def McCormick_beta_z_with_penultimate_layer(self):
                 layer=self.K - 1,
                 neuron=i,
                 value=-self.W[self.K - 1][j][i],
-                front_of_matrix=False,
             )
         self.handler.Constraints.add_linear_variable(
             var="beta",
@@ -485,7 +481,6 @@ def z_j2_beta_j2_greater_than_zj(self):
                     layer=self.K - 1,
                     neuron=i,
                     value=-self.W[self.K - 1][j1][i],
-                    front_of_matrix=False,
                 )
             # beta_j2 * z_j2 - b part
             self.handler.Constraints.add_linear_variable(
@@ -600,7 +595,6 @@ def z_j2_beta_j2_less_than_zj(self):
                     layer=self.K - 1,
                     neuron=i,
                     value=-self.W[self.K - 1][j1][i],
-                    front_of_matrix=False,
                 )
 
             # beta_j2 * z_j2 - b part
