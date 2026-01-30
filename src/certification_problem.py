@@ -20,8 +20,8 @@ from solve.mosek_solve import concat_dataframes_with_missing_columns
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import networks
-import data
+from networks import ReLUNN
+from data import load_dataset
 
 from tools import get_project_path
 
@@ -31,7 +31,7 @@ device_ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class Certification_Problem:
     def __init__(
         self,
-        network: networks.ReLUNN,
+        network: ReLUNN,
         epsilon: float,
         norm: str,
         dataset: TensorDataset,
@@ -76,7 +76,7 @@ class Certification_Problem:
         print(f"Loading certification problem from {yaml_file} ...")
        
         print("Loading dataset ...")
-        dataset = data.load_dataset(get_project_path(f"config/{yaml_file}"))
+        dataset = load_dataset(get_project_path(f"config/{yaml_file}"))
         if dataset is not None:
             print("Dataset loaded successfully.")
         else:
@@ -92,7 +92,7 @@ class Certification_Problem:
 
         path_network = config["network"]["path"]
         print("STUDY : path network : ", path_network)
-        network = networks.ReLUNN.from_pth(get_project_path(path_network))
+        network = ReLUNN.from_pth(get_project_path(path_network))
         if network is not None:
             print("Network loaded successfully.")
         else:
@@ -156,12 +156,12 @@ class Certification_Problem:
             # assert ytrue == y, "ytrue should match the label y"
 
             # SHARE
-            # if i>=1:
-            #     # print(
-            #     #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
-            #     # )
-            #     #print("Skipping data sample ", i + 1, "for testing purposes.")
-            #     continue
+            if i!=7:
+                # print(
+                #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
+                # )
+                #print("Skipping data sample ", i + 1, "for testing purposes.")
+                continue
 
         
 
@@ -174,7 +174,7 @@ class Certification_Problem:
             )
             dict_infos = dict(solver_config)
             dict_infos.pop("certification_model_name")
-            print("dict_infos:", dict_infos)
+            print("STUDY dict_infos:", dict_infos)
 
             # print("Network device : ", self.network.device)
             print("x device : ", x.device)

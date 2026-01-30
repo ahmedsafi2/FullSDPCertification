@@ -1,3 +1,6 @@
+from tools import get_m_indexes_of_higher_values_in_list
+import numpy as np
+
 def print_index_variables_matrices(self):
     """
     String representation of the class.
@@ -71,3 +74,5 @@ def print_num_variables(self):
         num_variables += (dim+1) * (dim+1)
     print(f"CALLBACK num variables : {num_variables}")
     return num_variables
+
+

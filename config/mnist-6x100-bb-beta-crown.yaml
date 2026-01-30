@@ -9,8 +9,8 @@ input_ball :
   epsilon : 0.026  # 0.026
 
 network :
-  name : "6x100"
-  path : "data/models/mnist_adv_6x100.pt"
+  name : "6x100-beta-crown"
+  path : "data/models/bb-beta-CROWN/mnist_6_100_bb_beta_crown.pth"
   K : 7
   n : 
     - 784

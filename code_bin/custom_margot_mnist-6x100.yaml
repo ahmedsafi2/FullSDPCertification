@@ -29,10 +29,8 @@ model:
 data:
   # Use the mnist_filtered() loader in "custom_model_data.py".
   dataset: Customized("custom_model_data", "mnist_filtered")
-  start: 0
-  end: 10
 specification:
-  epsilon: 0.175  # 2./255.
+  # epsilon: 0.175  # 2./255.
   norm: .inf
   robustness_type: verified-acc  # Type de robustesse à vérifier
 attack:

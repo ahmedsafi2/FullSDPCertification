@@ -5,8 +5,6 @@ import os
 import yaml
 from tools import get_project_path
 
-import data
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 

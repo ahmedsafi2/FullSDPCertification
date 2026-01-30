@@ -5,8 +5,8 @@ data :
   num_samples : 1000
 
 input_ball:
-  norm : "L2"
-  epsilon : 0.1
+  norm : "Linf"
+  epsilon : 3.
 
 network :
   name : "blob_nn_4x10"
@@ -25,7 +25,8 @@ models :
     cuts : 
     - "RLT"
     - "triangularization"
-    RLT_prop : 1
+    RLT_props : 
+    - 1.
     all_combinations_cuts : false
     MATRIX_BY_LAYERS: true
     LAST_LAYER: false

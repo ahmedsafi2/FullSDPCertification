@@ -4,7 +4,6 @@ from auto_LiRPA import BoundedModule, BoundedTensor
 from auto_LiRPA.perturbations import PerturbationLpNorm
 import time
 
-from networks import network
 from tools import round_list_depth_2, change_to_zero_negative_values
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -64,8 +63,8 @@ def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : s
         )
         print("created BoundedModule")
     except Exception as e:
-        print("Error creating BoundedModule:", e)
-        return
+        raise Exception("Error creating BoundedModule:", e)
+ 
 
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # print("Using device:", device)

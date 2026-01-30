@@ -26,7 +26,11 @@ from tools import (
 from ..generic_solver import Solver
 from .handler.mosek_fusion import MosekFusionHandler
 from .handler.mosek_classic.handler_classic import MosekClassicHandler
-from .run_benchmark import create_all_cuts_to_test
+from .run_benchmark import (
+    create_all_cuts_to_test,
+    adapt_number_RLT,
+    compute_number_RLT
+)
 from .get_variables import get_results, get_results_width_model
 
 
@@ -37,7 +41,7 @@ logger_mosek = logging.getLogger("Mosek_logger")
 
 
 @add_functions_to_class(
-    create_all_cuts_to_test, get_results, get_results_width_model
+    create_all_cuts_to_test, get_results, get_results_width_model, adapt_number_RLT, compute_number_RLT
 )
 class MosekSolver(Solver):
     """
@@ -206,6 +210,7 @@ class MosekSolver(Solver):
                 print("STUDY : Variables initialized.")
                 print("Adding constraints to the task...")
             time_1 = time.time()
+            self.adapt_number_RLT()
             self.add_constraints(cuts)  # Constraints must be added after variables
             if verbose: 
                 print("STUDY : Constraints added.")

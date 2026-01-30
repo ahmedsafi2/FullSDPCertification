@@ -25,7 +25,8 @@ models :
     cuts : 
     - "RLT"
     - "triangularization"
-    RLT_prop : 1
+    RLT_props : 
+    -1
     all_combinations_cuts : false
     MATRIX_BY_LAYERS: true
     LAST_LAYER: false
