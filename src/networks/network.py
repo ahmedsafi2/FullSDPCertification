@@ -182,6 +182,30 @@ class ReLUNN(nn.Module):
 
         return x
 
+    def return_values_each_layer(self, x):
+        """
+        Forward pass through the network and return the output of each layer.
+        Args:
+            x (torch.Tensor): Input tensor.
+        """
+        if (
+            x.dim() >= 4
+        ):  # Si les données sont des images (batch_size, channels, height, width)
+            x = x.view(x.size(0), -1)  # Aplatir les images (batch_size, 784)
+
+        n_couche = 1
+        values_layer = []
+        for layer_name, layer in self.layers.items():
+
+            x = layer(x)
+            print("layer name : ", layer_name)
+            #print("x : ", x)
+            print("x shape : ", x.shape)
+            if "Linear" in layer_name : 
+                values_layer.append(x.flatten().detach().cpu().tolist())
+            n_couche += 1
+        return values_layer
+
     def label(self, x):
         res = self.forward(x)
         label = torch.argmax(res)

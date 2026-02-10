@@ -57,8 +57,8 @@ class MdQuad(GurobiSolver):
         self.ReLU_constraint_Lan()
 
         # BOUNDS
-        # self.quad_bounds()
-        self.ball_constraint()
+        self.quad_bounds()
+        #self.ball_constraint()
 
         # BETAS
         self.sum_beta_equals_1()

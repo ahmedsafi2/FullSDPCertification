@@ -55,6 +55,19 @@ class GurobiSolver(Solver):
         self.constant = 0
         print("STUDY : GurobiSolver initialized.")
 
+
+        self.layer_obj = kwargs.get("layer_obj", None)
+        self.neuron_obj = kwargs.get("neuron_obj", None)
+        self.bound_obj = kwargs.get("bound_obj", None)
+        
+        if self.layer_obj is not None :
+            self.max_layer_z = self.K + 1 if self.LAST_LAYER else self.K
+        else : 
+            self.max_layer_z = self.layer_obj + 1
+
+        print("STUDY : self.max_layer_z = ", self.max_layer_z)
+
+
         for layer in range(len(self.n)):
             
             # self.L[layer + 1] = self.L[layer + 1] - 10
@@ -64,6 +77,7 @@ class GurobiSolver(Solver):
             print(
                 f"STUDY Layer {layer} L: {self.L[layer]}, U: {self.U[layer]}"
             )
+
         
 
     @classmethod

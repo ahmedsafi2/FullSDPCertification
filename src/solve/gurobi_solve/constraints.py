@@ -25,7 +25,7 @@ def ball_constraint(self):
 
 def quad_bounds(self):
     """Add quadratic bounds on all layers."""
-    for k in range((self.K + 1 if self.LAST_LAYER else self.K)):
+    for k in range((self.max_layer_z)):
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons:
                 continue
@@ -40,7 +40,7 @@ def quad_bounds(self):
 
 def ReLU_constraint_Lan(self):
     """ReLU quadratic exact constraint on continuous variables"""
-    for k in range(1, self.K):
+    for k in range(1, min(self.K, self.max_layer_z)):
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons :
                 continue
@@ -73,7 +73,7 @@ def ReLU_constraint_Lan(self):
 
 def RELU_triangular_constraint(self):
     """ReLU quadratic exact constraint on continuous variables"""
-    for k in range(1, self.K):
+    for k in range(1, min(self.K, self.max_layer_z)):
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons :
                 continue

@@ -93,7 +93,7 @@ class Certification_Problem:
 
         path_network = config["network"]["path"]
         print("STUDY : path network : ", path_network)
-        network = ReLUNN.from_pth(get_project_path(path_network), bb_beta_crown=True)
+        network = ReLUNN.from_pth(get_project_path(path_network), bb_beta_crown=False)
         print("STUDY : network loaded from path : ", network)
 
         if network is not None:
@@ -165,19 +165,6 @@ class Certification_Problem:
                 # )
                 #print("Skipping data sample ", i + 1, "for testing purposes.")
                 continue
-            # pgd_attack = PGDAttack(self.network, eps=self.epsilon, norm="inf")
-            # with torch.enable_grad():
-            #     x = x.to(device_)
-            #     ytrue = ytrue.to(device_)
-            #     adv_inputs = pgd_attack.forward(x, ytrue)
-            #     print("STUDY : adv_inputs:", adv_inputs)
-            #     print("STUDY:  network prediction on adv_inputs:", self.network(adv_inputs))
-            #     y_pred_adv = torch.argmax(self.network(adv_inputs), dim=0)
-            #     print("STUDY : y_pred_adv:", y_pred_adv)
-            #     diff = x - adv_inputs
-            #     print("STUDY : diff between x and adv_inputs:", diff.max(), diff.min())
-            #     exit()
-        
 
             print("i : ", i)
 

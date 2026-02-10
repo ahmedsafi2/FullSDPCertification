@@ -107,3 +107,18 @@ def add_objective_zbar(self):
             GRB.MINIMIZE,
         )
         self.constant = self.b[self.K - 1][self.ytrue]
+
+
+
+def add_objective_bound_layer(self):
+    obj_sense = GRB.MINIMIZE if self.bound_obj == "lower" else GRB.MAXIMIZE
+    self.m.setObjective(
+            (
+                gp.quicksum(
+                    self.W[self.layer_obj - 1][self.neuron_obj][i] * self.z[self.layer_obj - 1, i]
+                    for i in range(self.n[self.layer_obj - 1])
+                )
+            ),
+            obj_sense,
+        )
+    self.constant = self.b[self.layer_obj - 1][self.neuron_obj]

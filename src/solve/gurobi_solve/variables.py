@@ -35,9 +35,8 @@ def add_variable_z(
     Add the variable z to the model.
     """
     self.z = gp.tupledict()
-    max_layer_z = self.K + 1 if self.LAST_LAYER else self.K
 
-    for layer in range(max_layer_z):
+    for layer in range(self.max_layer_z):
         lb_ = self.L[layer]
         ub_ = self.U[layer]
         if impose_positive and (layer > 0) and (layer < self.K):

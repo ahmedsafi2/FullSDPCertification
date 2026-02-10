@@ -63,8 +63,8 @@ class PGDAttack:
         for step in range(self.steps):
             # Forward pass
             adv_images = images + delta
-            print("images shape:", adv_images.shape)
-            print("model :", self.model)
+            # print("images shape:", adv_images.shape)
+            # print("model :", self.model)
             outputs = self.model(adv_images)
 
             # Calcul de la loss
