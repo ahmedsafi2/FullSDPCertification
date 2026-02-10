@@ -118,16 +118,18 @@ class ReLUNN(nn.Module):
         return cls(K, n, W, b)
     
     @classmethod
-    def from_pth(cls, pth_path, dropout_prob=0):
+    def from_pth(cls, pth_path, dropout_prob=0, bb_beta_crown:bool = False):
         "Robust to different architectures"
         parametres = torch.load(pth_path, map_location="cpu")
+        if bb_beta_crown and 'state_dict' in parametres:
+            parametres = parametres['state_dict'][0]
 
         print("parametres loaded in from pth : ", parametres)
 
         W, b, n = [], [], []
 
         k = 1
-        for key in parametres:
+        for key in parametres.keys():
             if key.endswith(".weight"):
                 weight = parametres[key]
                 bias = parametres[key.replace(".weight", ".bias")]
@@ -198,6 +200,8 @@ class ReLUNN(nn.Module):
                 description += f"    Bias : {layer.bias}\n"
             description += "\n"
         return description
+
+
 
 
 if __name__ == "__main__":

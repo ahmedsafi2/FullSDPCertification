@@ -23,7 +23,13 @@ from .results_fusion import (
 from ..common_handler_functions import (
     print_index_variables_matrices,
     num_matrices_variables,
-    print_num_variables
+    print_num_variables,
+    initialize_variables,
+    save_matrix_csv,
+    save_matrix_png,
+    Matrices_Solutions,
+    get_matrices_variables,
+    compute_solutions,
 )
 from solve.mosek_solve.run_benchmark import compute_cuts_str
 from tools import get_project_path
@@ -31,14 +37,7 @@ from tools import get_project_path
 
 from mosek.fusion import Model, Domain
 
-from solve.mosek_solve.get_variables import (
-    compute_solutions,
-    initialize_variables,
-    save_matrix_csv,
-    save_matrix_png,
-    Matrices_Solutions,
-    get_matrices_variables,
-)
+
 from tools.utils import count_calls, add_functions_to_class
 
 logger_mosek = logging.getLogger("Mosek_logger")
@@ -66,7 +65,7 @@ class LoggerWriter:
     compute_solutions,
     print_index_variables_matrices,
     num_matrices_variables,
-    print_num_variables
+    print_num_variables,
 )
 class MosekFusionHandler:
     """

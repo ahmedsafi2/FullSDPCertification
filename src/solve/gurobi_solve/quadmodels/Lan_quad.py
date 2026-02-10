@@ -3,7 +3,7 @@ import numpy as np
 
 from ..gurobi_generic_solver import GurobiSolver
 from ..objective import add_objective_Lan
-from ..constraints import ReLU_constraint_Lan, quad_bounds
+from ..constraints import ReLU_constraint_Lan, quad_bounds, ball_constraint
 from ..variables import add_variable_z, _add_variable_z
 from tools.utils import add_functions_to_class
 from ..callback import NonConvexQuadraticProgramCallback
@@ -12,7 +12,7 @@ logger_gurobi = logging.getLogger("Gurobi_logger")
 
 
 @add_functions_to_class(
-    add_objective_Lan, ReLU_constraint_Lan, quad_bounds, add_variable_z, _add_variable_z
+    add_objective_Lan, ReLU_constraint_Lan, quad_bounds, add_variable_z, _add_variable_z, ball_constraint
 )
 class LanQuad(GurobiSolver):
     """
@@ -51,4 +51,5 @@ class LanQuad(GurobiSolver):
         self.ReLU_constraint_Lan()
 
         # BOUNDS
-        # self.quad_bounds()
+        self.quad_bounds()
+        # self.ball_constraint()

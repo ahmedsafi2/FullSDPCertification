@@ -14,6 +14,7 @@ import datetime
 import shutil
 import argparse
 import multiprocessing as mp
+from adversarial_attacks import PGDAttack
  
 from tools import create_folder_benchmark, get_project_path
 from solve.mosek_solve import concat_dataframes_with_missing_columns
@@ -92,7 +93,9 @@ class Certification_Problem:
 
         path_network = config["network"]["path"]
         print("STUDY : path network : ", path_network)
-        network = ReLUNN.from_pth(get_project_path(path_network))
+        network = ReLUNN.from_pth(get_project_path(path_network), bb_beta_crown=True)
+        print("STUDY : network loaded from path : ", network)
+
         if network is not None:
             print("Network loaded successfully.")
         else:
@@ -155,14 +158,25 @@ class Certification_Problem:
             #     continue
             # assert ytrue == y, "ytrue should match the label y"
 
-            # SHARE
-            if i!=7:
+            # # SHARE
+            if i not in [97]:
                 # print(
                 #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
                 # )
                 #print("Skipping data sample ", i + 1, "for testing purposes.")
                 continue
-
+            # pgd_attack = PGDAttack(self.network, eps=self.epsilon, norm="inf")
+            # with torch.enable_grad():
+            #     x = x.to(device_)
+            #     ytrue = ytrue.to(device_)
+            #     adv_inputs = pgd_attack.forward(x, ytrue)
+            #     print("STUDY : adv_inputs:", adv_inputs)
+            #     print("STUDY:  network prediction on adv_inputs:", self.network(adv_inputs))
+            #     y_pred_adv = torch.argmax(self.network(adv_inputs), dim=0)
+            #     print("STUDY : y_pred_adv:", y_pred_adv)
+            #     diff = x - adv_inputs
+            #     print("STUDY : diff between x and adv_inputs:", diff.max(), diff.min())
+            #     exit()
         
 
             print("i : ", i)
@@ -179,9 +193,12 @@ class Certification_Problem:
             # print("Network device : ", self.network.device)
             print("x device : ", x.device)
             x = x.to(device_)
+            torch.save(x, f"tensor_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pt")
             print("x device : ", x.device)
-            y_pred = self.network(x)
-            print("y_pred:", y_pred)
+            y_pred = torch.argmax(self.network(x), dim=0)
+            print("STUDY : y_pred:", y_pred)
+            print("STUDY : ytrue:", ytrue)
+            
 
             try:
                 model_instance = model_class(
@@ -189,7 +206,7 @@ class Certification_Problem:
                     epsilon=self.epsilon,
                     norm=self.norm,
                     x=x,
-                    ytrue=ytrue.item(),
+                    ytrue=y_pred.item(),
                     data_index=i,
                     dataset_name=self.dataset_name,
                     network_name=self.network_name,
@@ -215,6 +232,8 @@ class Certification_Problem:
             print("STUDY : output_bounds_L:", output_bounds_L)
 
             model_instance.solve(verbose=True, only_bounds=False)
+            print("STUDY : Model instance solved")
+            print("STUDY : model_instance.benchmark_dataframe :", model_instance.benchmark_dataframe)
 
             self.benchmark = concat_dataframes_with_missing_columns(
                 self.benchmark, model_instance.benchmark_dataframe

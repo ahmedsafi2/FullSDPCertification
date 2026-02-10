@@ -7,6 +7,7 @@ import time
 import os
 import logging
 import sys
+import json
 import gurobipy as gp
 from gurobipy import GRB
 import pandas as pd
@@ -54,6 +55,17 @@ class GurobiSolver(Solver):
         self.constant = 0
         print("STUDY : GurobiSolver initialized.")
 
+        for layer in range(len(self.n)):
+            
+            # self.L[layer + 1] = self.L[layer + 1] - 10
+            # self.U[layer + 1] = self.U[layer + 1] + 10
+            # max_abs_L = np.max(np.abs(self.L[layer + 1]))
+            # max_abs_U = np.max(np.abs(self.U[layer + 1]))
+            print(
+                f"STUDY Layer {layer} L: {self.L[layer]}, U: {self.U[layer]}"
+            )
+        
+
     @classmethod
     def from_yaml(cls, yaml_file, **kwargs):
         params = Solver.parse_yaml(yaml_file)
@@ -61,8 +73,6 @@ class GurobiSolver(Solver):
 
     def run_optimization(self, verbose: bool = False):
         print("STUDY : Running optimization...")
-        self.compute_bounds(self.bounds_method)
-        print("STUDY : Bounds computed.")
         self.initiate_solver()
         print("STUDY : Solver initiated.")
         self.add_variables()
@@ -71,6 +81,11 @@ class GurobiSolver(Solver):
         print("STUDY : Objective added.")
         self.add_constraints()
         print("STUDY : Constraints added.")
+        # Ensure the model is updated so NumConstrs and NumVars reflect added elements
+        self.m.update()
+        print(f"Nombre de contraints avant optimisation : {self.m.NumConstrs}")
+        print(f"Nombre de variables avant optimisation : {self.m.NumVars}")
+        self.write_model()
         self.print_solver_info(verbose)
         print("STUDY : Starting optimization...")
         callback_data = CallbackData(self.m.getVars())
@@ -78,11 +93,12 @@ class GurobiSolver(Solver):
             mycallback, cbdata=callback_data, logfile=f"gurobi_{self.name}.log"
         )
         print("STUDY : Callback function prepared.")
+      
         self.m.optimize()  # self.callback
 
         results = self.get_results(verbose)
         logger_gurobi.info("STUDY :Time taken to solve: %s seconds", self.time_solving)
-        self.write_model()
+        
         return results
 
     def retrieve_z(self):
@@ -132,6 +148,9 @@ class GurobiSolver(Solver):
             )
             print("STUDY : Optimal objective value (with added constant): ", self.opt)
             z_values = self.retrieve_z()
+            dict_json = {layer : {neuron : float(z_values[(layer, neuron)]) for neuron in range(self.n[layer]) if (layer, neuron) not in self.stable_inactives_neurons} for layer in range(self.K + 1 if self.LAST_LAYER else self.K)}
+            with open(f"{self.folder_name}/solutions.json", "w") as f :
+                json.dump(dict_json, f)
             logger_gurobi.debug(f"z values: {z_values}")
             if self.BETAS:
                 beta_values = self.retrieve_beta()
@@ -176,7 +195,7 @@ class GurobiSolver(Solver):
         Write the model to a file.
         """
         if self.folder_name is not None:
-
+            print("STUDY : Writing model to file...")
             self.m.write(
                 get_project_path(f"{self.folder_name}/{self.name}/{self.name}.lp")
             )
@@ -188,6 +207,8 @@ class GurobiSolver(Solver):
                 "LogFile",
                 get_project_path(f"{self.folder_name}/{self.name}/{self.name}.log"),
             )
+        else :
+            print("STUDY : Folder name not specified, model not written to file.")
 
     def initiate_solver(self, **parameters):
         """

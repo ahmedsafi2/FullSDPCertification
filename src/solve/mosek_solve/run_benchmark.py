@@ -100,7 +100,7 @@ def compute_number_RLT(self) -> int:
             nb_RLT += len(neurons_with_great_weights)
     return nb_RLT
 
-def adapt_number_RLT(self, max_nb_RLT : int = 2e2):
+def adapt_number_RLT(self, max_nb_RLT : int = 4e6):
     
     if "RLT" not in self.cuts:
         print('STUDY RLT : RLT not activated, skipping adaptation of number of RLT constraints.')

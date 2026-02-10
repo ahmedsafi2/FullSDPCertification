@@ -61,11 +61,12 @@ def add_objective_Md(self):
     if self.LAST_LAYER:
         raise NotImplementedError("Objective Md is not implemented for the last layer.")
     else:
+        print("Stable inactive neurons in objective:", self.stable_inactives_neurons)
         self.m.setObjective(
             (
                 gp.quicksum(
                     self.W[self.K - 1][self.ytrue][i] * self.z[self.K - 1, i]
-                    for i in range(self.n[self.K - 1])
+                    for i in range(self.n[self.K - 1]) if (self.K - 1, i) not in self.stable_inactives_neurons 
                 )
                 - gp.quicksum(
                     (
@@ -74,6 +75,7 @@ def add_objective_Md(self):
                             * self.z[self.K - 1, i]
                             * self.beta[j]
                             for i in range(self.n[self.K - 1])
+                            if (self.K - 1, i) not in self.stable_inactives_neurons
                         )
                         + self.b[self.K - 1][j] * self.beta[j]
                     )

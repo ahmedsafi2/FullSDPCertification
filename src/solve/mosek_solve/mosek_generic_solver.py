@@ -328,6 +328,7 @@ class MosekSolver(Solver):
 
             results = self.get_results(cuts, verbose)
             time_results_end = time.time()
+            print("STUDY : Results obtained.")
             if verbose :
                 print(
                     "Time taken to get results: %s seconds",

@@ -9,9 +9,12 @@ import datetime
 
 from .getting_results import get_results_trivially_solved
 from bounds import (
-    compute_bounds,
+    compute_bounds_,
     check_stability_neurons,
     prune_adversarial_targets,
+)
+from bounds_crown_claude import (
+    compute_bounds_data_crown
 )
 from tools import (
     add_functions_to_class,
@@ -27,10 +30,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 @add_functions_to_class(
-    compute_bounds,
+    compute_bounds_,
     check_stability_neurons,
     prune_adversarial_targets,
     get_results_trivially_solved,
+    compute_bounds_data_crown
 )
 class Solver:
     def __init__(
@@ -49,8 +53,10 @@ class Solver:
         self.network = network.to(device)
         self.K = network.K
         self.n = network.n
-        self.W = round_list_depth_3(network.W, decimal = 6)  ### remettre à 6 par defaut
-        self.b = round_list_depth_2(network.b, decimal = 6)   ### remettre à 6 par defaut
+        # self.W = round_list_depth_3(network.W, decimal = 12)  ### remettre à 6 par defaut
+        # self.b = round_list_depth_2(network.b, decimal = 12)   ### remettre à 6 par defaut
+        self.W = network.W
+        self.b = network.b
 
         self.n = np.array(self.n)
         self.W = [np.array(self.W[k - 1]) for k in range(1, self.K + 1)]
@@ -76,19 +82,28 @@ class Solver:
         else:
             self.ytargets = [j for j in range(self.n[self.K]) if j != self.ytrue]
 
-        print("ytargets : ", self.ytargets)
+        print("STUDY ytargets : ", self.ytargets)
+        
         self.bounds_method = kwargs.get("bounds_method")
         self.keep_penultimate_actives = kwargs.get("keep_penultimate_actives", None)
 
         self.L = L
         self.U = U
-
+        
         print("Getting to compute bounds...")
+     
         
         if self.L is None or self.U is None:
-            self.compute_bounds(
-                method=self.bounds_method,
+            self.compute_bounds_data_crown(
+                method="alpha-beta-CROWN",
+                crown_iters=30,
+                crown_lr=0.05
             )
+
+
+            # self.compute_bounds(
+            #     method=self.bounds_method,
+            # )
         ### BORNES (A COMMENTER APRES TEST)
         # self.U = round_list_depth_2(self.U, decimal = 3)
         # self.L = round_list_depth_2(self.L, decimal = 3)
@@ -103,6 +118,7 @@ class Solver:
 
         self.L = [np.array(self.L[k]) for k in range(self.K + 1)]
         self.U = [np.array(self.U[k]) for k in range(self.K + 1)]
+    
 
         self.use_inactive_neurons = use_inactive_neurons
         self.use_active_neurons = use_active_neurons
@@ -110,6 +126,10 @@ class Solver:
             use_active_neurons=use_active_neurons,
             use_inactive_neurons=use_inactive_neurons,
         )
+
+        # print("STUDY after checking stable active neurons:", self.stable_actives_neurons)
+        # print("STUDY after checking stable inactive neurons:", self.stable_inactives_neurons)
+
 
         # print('STUDY in generic solver: stable inactive neurons: ', self.stable_inactives_neurons)
         # print('STUDY in generic solver: stable active neurons: ', self.stable_actives_neurons)

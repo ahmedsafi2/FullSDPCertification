@@ -28,16 +28,14 @@ from ..common_handler_functions import (
     print_index_variables_matrices,
     num_matrices_variables,
     print_num_variables,
-)
-from solve.mosek_solve.get_variables import (
     initialize_variables,
-    get_results,
     save_matrix_csv,
     save_matrix_png,
     Matrices_Solutions,
     get_matrices_variables,
     compute_solutions,
 )
+
 from tools.utils import count_calls, add_functions_to_class, get_project_path
 
 logger_mosek = logging.getLogger("Mosek_logger")
@@ -45,7 +43,6 @@ logger_mosek = logging.getLogger("Mosek_logger")
 
 @add_functions_to_class(
     initialize_variables,
-    get_results,
     reconstruct_matrix,
     save_matrix_csv,
     save_matrix_png,

@@ -3,7 +3,7 @@ import numpy as np
 
 from ..gurobi_generic_solver import GurobiSolver
 from ..objective import add_objective_Md
-from ..constraints import ReLU_constraint_Lan, quad_bounds, sum_beta_equals_1
+from ..constraints import ReLU_constraint_Lan, quad_bounds, sum_beta_equals_1, ball_constraint
 from ..variables import (
     add_variable_z,
     _add_variable_z,
@@ -20,6 +20,7 @@ logger_gurobi = logging.getLogger("Gurobi_logger")
     add_objective_Md,
     ReLU_constraint_Lan,
     quad_bounds,
+    ball_constraint,
     sum_beta_equals_1,
     add_variable_z,
     _add_variable_z,
@@ -57,6 +58,7 @@ class MdQuad(GurobiSolver):
 
         # BOUNDS
         # self.quad_bounds()
+        self.ball_constraint()
 
         # BETAS
         self.sum_beta_equals_1()

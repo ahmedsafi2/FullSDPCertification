@@ -9,6 +9,128 @@ from tools import round_list_depth_2, change_to_zero_negative_values
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+
+def compute_bounds_data_new(network, x, epsilon, n, K, method: str = "IBP", norm : str = "Linf"):
+    """
+    Compute the  L and U
+
+    Args:
+        method (str): The method to compute the bounds (CROWN, IBP, Linear, etc.).
+    """
+    print(f"STUDY : Computing bounds with method: {method} ...")
+    print("epsilon : ", epsilon)
+    L = [[-np.inf] * n[k] for k in range(K + 1)]
+    U = [[np.inf] * n[k] for k in range(K + 1)]
+
+    if method == "GREAT_BOUNDS":
+        L[0] = [max(L[0][j], 0) for j in range(len(L[0]))]
+        return
+
+    if not torch.is_tensor(x):
+        x = torch.Tensor(x)
+
+    x = x.type(torch.float).view(-1).unsqueeze(0).to(device)
+    print("x device : ", x.device)
+    print("x shape : ", x.shape)
+
+    network = network.to(device)
+    print("network device : ", next(network.parameters()).device)
+    network.eval()
+    print("network is none : ", network is None)
+
+    zeros = torch.zeros_like(x).to(device)
+    print("zeros device : ", zeros.device)
+
+    print("STUDY : creating BoundedModule ...")
+    try:
+
+        print("About to create BoundedModule on device:", device)
+        print("network device before BoundedModule:", next(network.parameters()).device)
+        print("zeros device before BoundedModule:", zeros.device)
+        bounded_model = BoundedModule(
+            network,
+            zeros,
+            bound_opts={"conv_mode": "patches"},
+        )
+        print("created BoundedModule")
+    except Exception as e:
+        raise Exception("Error creating BoundedModule:", e)
+
+
+    bounded_model.eval()
+    print("STUDY : bounded_model device : ", next(bounded_model.parameters()).device)
+
+    if norm == "Linf":
+        print("STUDY : Using Linf norm for perturbation.")
+        ptb = PerturbationLpNorm(norm=np.inf, eps=epsilon)
+    elif norm == "L2":
+        print("STUDY : pertubation L2 used")
+        ptb = PerturbationLpNorm(norm=2, eps=epsilon)
+        #ptb = PerturbationLpNorm(norm=np.inf, eps=epsilon**2)  # comparer les deux versions
+    else:
+        raise NotImplementedError(f"Norm {norm} not implemented.")
+    bounded_image = BoundedTensor(x, ptb)
+    
+    use_grad = method.lower() in ["alpha-crown", "beta-crown", "CROWN-Optimized"]
+    if use_grad:
+        lb, ub, aux = bounded_model.compute_bounds(x=(bounded_image,), method=method, return_A = True)
+        intermediate_bounds = aux["intermediate_bounds"]
+    else:
+        with torch.no_grad():
+            lb, ub = bounded_model.compute_bounds(x=(bounded_image,), method=method)
+            intermediate_bounds = bounded_model.save_intermediate()   # Version save_intermediate depreciee
+    print("Intermediate bounds : ", intermediate_bounds)
+
+    for name, (lb, ub) in intermediate_bounds.items():
+        print(name)
+
+
+    intermediate_bounds_list = list(intermediate_bounds.keys())
+
+    print("STUDY : Intermediate bounds list : ", intermediate_bounds_list)
+
+    layers_name = {}
+    layers_name[intermediate_bounds_list[0]] = 0
+
+    print("STUDY : Preparing to create bounds...")
+    print('Intermediate_bounds_list : ', intermediate_bounds_list )
+    for k in range(1, K + 1):
+        print(f"Adding layer for k = {k}, num_layer = {1 + (k - 1) * 2}")
+        layers_name[intermediate_bounds_list[1 + (k - 1) * 2]] = k    ### !!!!  Before *3 because of the dropout layer  !!!!
+    print("STUDY : Layers name mapping : ", layers_name)
+
+    print("STUDY : Intermediate bounds list final values : ", intermediate_bounds_list[-1])
+    layers_name[intermediate_bounds_list[-1]] = K
+
+    for layer_name, (min_tensor, max_tensor) in intermediate_bounds.items():
+
+        if layer_name not in layers_name:
+            print(f"Layer {layer_name} not found in layers_name mapping.")
+            print(f"  Min: {min_tensor.squeeze().shape}")
+            print(f"  Max: {max_tensor.squeeze().shape} \n")
+            continue
+        print(f"{layer_name}:")
+        print(f"  Min: {min_tensor.squeeze().shape}")
+        print(f"  Max: {max_tensor.squeeze().shape} \n")
+        if layers_name[layer_name] == 0:
+            # For the first layer, we set the lower bound to 0
+            min_tensor = torch.clamp(min_tensor, min=0).view(-1)
+            max_tensor = max_tensor.view(-1)
+
+
+        L[layers_name[layer_name]] = (
+            min_tensor.squeeze().detach().cpu().numpy().tolist()
+        )
+        U[layers_name[layer_name]] = (
+            max_tensor.squeeze().detach().cpu().numpy().tolist()
+        )
+
+    L = round_list_depth_2(L)
+    U = round_list_depth_2(U)
+
+
+    return L, U
+
 def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : str = "Linf"):
     """
     Compute the  L and U
@@ -107,8 +229,10 @@ def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : s
         with torch.no_grad():
             lb, ub = bounded_model.compute_bounds(x=(bounded_image,), method=method)
     intermediate_bounds = bounded_model.save_intermediate()
+    print("Intermediate bounds : ", intermediate_bounds)
 
     intermediate_bounds_list = list(intermediate_bounds.keys())
+
     print("STUDY : Intermediate bounds list : ", intermediate_bounds_list)
 
     for layer_name, (min_tensor, max_tensor) in intermediate_bounds.items():
@@ -192,7 +316,7 @@ def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : s
     return L, U
 
 
-def compute_bounds(self, method: str = "IBP"):
+def compute_bounds_(self, method: str = "IBP"):
     """
     Compute the  L and U
 
@@ -217,6 +341,8 @@ def check_stability_neurons(
     Check the stability of neurons in the network.
     """
     print("STUDY : Checking stability of neurons ...")
+    print("STUDY : stable use_active_neurons: ", use_active_neurons)
+    print("STUDY : stable use_inactive_neurons: ", use_inactive_neurons)
     self.stable_inactives_neurons = []
     self.stable_actives_neurons = []
     # Check if the neurons are stable

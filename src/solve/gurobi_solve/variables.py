@@ -11,7 +11,7 @@ def _add_variable_z(
     neuron: int,
     lb: float,
     ub: float,
-    delta: float = 0.0000001,
+    delta: float = 0.001,
 ):
     """
     Add the variable z to the model.
@@ -29,7 +29,7 @@ def _add_variable_z(
 def add_variable_z(
     self,
     impose_positive: bool = True,
-    delta: float = 0.000001,
+    delta: float = 0,
 ):
     """
     Add the variable z to the model.
@@ -43,9 +43,11 @@ def add_variable_z(
         if impose_positive and (layer > 0) and (layer < self.K):
             lb_ = [0] * self.n[layer]
         for neuron in range(self.n[layer]):
+            
             if (layer, neuron) in self.stable_inactives_neurons:
+                print(f"Skipping variable z[{layer},{neuron}] as it is a stable inactive neuron")
                 continue
-            #print(f"Adding variable z[{layer},{neuron}] with bounds [{lb_[neuron]}, {ub_[neuron]}]")
+            print(f"Adding variable z[{layer},{neuron}] with bounds [{lb_[neuron]}, {ub_[neuron]}]")
             self._add_variable_z(
                 layer,
                 neuron,
