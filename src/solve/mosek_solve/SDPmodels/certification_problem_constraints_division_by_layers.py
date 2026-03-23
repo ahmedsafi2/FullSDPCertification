@@ -13,9 +13,7 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons:
                 continue
-            elif (k, j) in self.stable_actives_neurons and (
-                not self.keep_penultimate_actives or k != self.K - 1
-            ):
+            elif (k, j) in self.stable_actives_neurons :
                 continue
             # P_{k-1}[z_{k,j}] == P_{k}[z_{k,j}]
             if self.handler.Constraints.new_constraint(
@@ -47,16 +45,12 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
             for j in range(self.n[k]):
                 if (k, j) in self.stable_inactives_neurons:
                     continue
-                elif (k, j) in self.stable_actives_neurons and (
-                    not self.keep_penultimate_actives or k != self.K - 1
-                ):
+                elif (k, j) in self.stable_actives_neurons:
                     continue
                 for j2 in range(j + 1):
                     if (k, j2) in self.stable_inactives_neurons:
                         continue
-                    elif (k, j2) in self.stable_actives_neurons and (
-                        not self.keep_penultimate_actives or k != self.K - 1
-                    ):
+                    elif (k, j2) in self.stable_actives_neurons :
                         continue
                     # P_{k-1}[z_{k,j} * z_{k,j2}] == P_{k}[z_{k,j} * z_{k,j2}]
                     if self.handler.Constraints.new_constraint(

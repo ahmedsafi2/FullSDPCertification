@@ -2,9 +2,11 @@ from ast import Set
 from tools import exists_two_similar_pairs_in_three_lists, deduct_two_lists
 import logging
 import numpy as np
+import matplotlib.pyplot as plt
 import mosek
 from numba.typed import Dict
 import numba
+import decimal
 from tools import infinity, deduplicate_and_sum, get_project_path
 
 from .indexes_matrices import Indexes_Matrixes_for_Mosek_Solver
@@ -207,9 +209,18 @@ class CommonConstraints(VariablesCall):
         self.list_cstr[self.current_num_constraint]["num_matrix"] = num_matrix
         self.list_cstr[self.current_num_constraint]["value"] = val
 
-        # if self.verbose:
-        #     print(f"Formatted constraint {self.current_num_constraint} ")
+        name = self.list_cstr[self.current_num_constraint]["name"]
 
+        if self.verbose:
+            pass
+
+        print(f"Formatted constraint {name} ")
+        print("i : ", i)
+        print("j : ", j)
+        print("num matrix : ", num_matrix)
+        print("value : ", val)
+      
+            
         # i_ = np.array(self.list_cstr[self.current_num_constraint]["i"])
         # j_ = np.array(self.list_cstr[self.current_num_constraint]["j"])
         # num_matrix = np.array(self.list_cstr[self.current_num_constraint]["num_matrix"])
@@ -400,6 +411,41 @@ class CommonConstraints(VariablesCall):
             close_to_zero_total_bound,
             comparaison_by_constraints,
         )
+
+
+    def get_histogram_of_coefficients_name_constraint(self, name_constraint : str = "ReLU Relaxed"):
+        print("Getting histogram of coefficients...")
+        self.coefficient_values = {k : [] for k in range(self.K+1)}
+        coeff_max_decimals = 0
+        decimals_list = []
+        nb_moins_de_10_decimals = 0
+        nb_plus_de_10_decimals = 0
+        for cstr in self.list_cstr:
+            if "Rec" in cstr["name"]:
+                print("STUDY COEFF : constraint selected : ", cstr["name"], 'with values : ', cstr)
+             
+             
+                for k in range(self.K+1):
+                    if f"Layer {k}" in cstr["name"]:
+                        self.coefficient_values[k].extend([float(val) for val in cstr["value"]])
+                        for val in cstr["value"]:
+                            d = decimal.Decimal(val)
+                            decimals_list.append(-d.as_tuple().exponent)
+                            if -d.as_tuple().exponent > coeff_max_decimals:
+                               coeff_max_decimals = -d.as_tuple().exponent
+                            if -d.as_tuple().exponent <= 10:
+                               nb_moins_de_10_decimals += 1
+                            else :  
+                                 nb_plus_de_10_decimals += 1
+                        break
+        print("STUDY COEFF median decimals : ", np.median(decimals_list))
+        print("STUDY COEFF mean decimals : ", np.mean(decimals_list))
+        print("STUDY COEFF : coeff_max_decimals : ", coeff_max_decimals)
+        print("STUDY COEFF : nb_moins_de_10_decimals : ", nb_moins_de_10_decimals)
+        print("STUDY COEFF : nb_plus_de_10_decimals : ", nb_plus_de_10_decimals)
+  
+        print("STUDY COEFF at the end of function hist: coefficient values for each layer: {}".format(self.coefficient_values))
+        
 
     def reinitialize(self, verbose: bool):
         """

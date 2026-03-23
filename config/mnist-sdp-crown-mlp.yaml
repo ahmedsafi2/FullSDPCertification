@@ -5,8 +5,8 @@ data :
   num_samples : 100
 
 input_ball : 
-  norm : "Linf"
-  epsilon : 0.026   # 0.026
+  norm : "L2"
+  epsilon : 1  # 0.026
 
 network :
   name : "2x100"

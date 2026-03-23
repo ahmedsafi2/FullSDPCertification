@@ -42,11 +42,6 @@ class GurobiSolver(Solver):
         self.LAST_LAYER = LAST_LAYER
         self.BETAS = BETAS
 
-        self.env = gp.Env(empty=True)
-        self.env.start()
-        print("self name : ", self.name)
-        self.m = gp.Model(self.name, env=self.env)
-
         self.K = self.network.K
         self.n = self.network.n
         self.W = self.network.W
@@ -56,16 +51,10 @@ class GurobiSolver(Solver):
         print("STUDY : GurobiSolver initialized.")
 
 
-        self.layer_obj = kwargs.get("layer_obj", None)
-        self.neuron_obj = kwargs.get("neuron_obj", None)
-        self.bound_obj = kwargs.get("bound_obj", None)
-        
-        if self.layer_obj is not None :
+        if self.__class__.__name__ != "LPBoundLayer":
             self.max_layer_z = self.K + 1 if self.LAST_LAYER else self.K
-        else : 
-            self.max_layer_z = self.layer_obj + 1
-
-        print("STUDY : self.max_layer_z = ", self.max_layer_z)
+        else :
+            self.max_layer_z = None
 
 
         for layer in range(len(self.n)):
@@ -86,6 +75,7 @@ class GurobiSolver(Solver):
         return cls(**params, **kwargs)
 
     def run_optimization(self, verbose: bool = False):
+        assert self.max_layer_z is not None, "max_layer_z must be specified to run optimization"
         print("STUDY : Running optimization...")
         self.initiate_solver()
         print("STUDY : Solver initiated.")
@@ -118,7 +108,7 @@ class GurobiSolver(Solver):
     def retrieve_z(self):
         z_values = {}
 
-        for layer in range(self.K + 1 if self.LAST_LAYER else self.K):
+        for layer in range(self.max_layer_z):
             for neuron in range(self.n[layer]):
                 if (layer, neuron) in self.stable_inactives_neurons:
                     continue
@@ -151,6 +141,7 @@ class GurobiSolver(Solver):
         logger_gurobi.info("Number of constraints: %s", self.m.NumConstrs)
         logger_gurobi.info("Number of non-zero coefficients: %s", self.m.NumNZs)
         logger_gurobi.debug("Status: %s", self.m.Status)
+        self.opt = None
         if self.m.Status == GRB.OPTIMAL:
             opt = self.m.ObjVal
             print("STUDY : Optimal objective value: ", opt)
@@ -162,7 +153,7 @@ class GurobiSolver(Solver):
             )
             print("STUDY : Optimal objective value (with added constant): ", self.opt)
             z_values = self.retrieve_z()
-            dict_json = {layer : {neuron : float(z_values[(layer, neuron)]) for neuron in range(self.n[layer]) if (layer, neuron) not in self.stable_inactives_neurons} for layer in range(self.K + 1 if self.LAST_LAYER else self.K)}
+            dict_json = {layer : {neuron : float(z_values[(layer, neuron)]) for neuron in range(self.n[layer]) if (layer, neuron) not in self.stable_inactives_neurons} for layer in range(self.max_layer_z)}
             with open(f"{self.folder_name}/solutions.json", "w") as f :
                 json.dump(dict_json, f)
             logger_gurobi.debug(f"z values: {z_values}")
@@ -177,6 +168,8 @@ class GurobiSolver(Solver):
         else:
             opt = self.m.ObjVal
             print("STUDY : UNKNOWN STATUS : Optimal objective value: ", opt)
+        print("compute bound time in get result de : ", self.__class__.__name__)
+        print("compute bounds : ", self.compute_bounds_time)
         dic_benchmark = {
             "network": self.network_name,
             "model": self.name,
@@ -197,6 +190,10 @@ class GurobiSolver(Solver):
             "Nb_stable_inactives": len(self.stable_inactives_neurons),
             "Nb_stable_actives": len(self.stable_actives_neurons),
         }
+        if self.__class__.__name__ == "LPBoundLayer":
+            dic_benchmark["layer_obj"] = self.layer_obj
+            dic_benchmark["neuron_obj"] = self.neuron_obj
+            dic_benchmark["bound_obj"] = self.bound_obj
         if self.benchmark_dataframe is None:
             self.benchmark_dataframe = pd.DataFrame(dic_benchmark, index=[0])
         else:
@@ -228,6 +225,11 @@ class GurobiSolver(Solver):
         """
         Initialize the solver with the given parameters.
         """
+        self.env = gp.Env(empty=True)
+        self.env.start()
+        print("self name : ", self.name)
+        self.m = gp.Model(self.name, env=self.env)
+
         self.m.Params.NonConvex = 2
         for key, value in parameters.items():
             if key in ["DualReductions"]:

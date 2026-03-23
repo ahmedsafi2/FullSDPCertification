@@ -170,45 +170,31 @@ class MosekClassicHandler:
             The parameters to adjust.
         """
         print("Adjusting MOSEK solver parameters")
-        self.task.putdouparam(mosek.dparam.intpnt_tol_rel_gap, 1e-3)
-        self.task.putdouparam(mosek.dparam.intpnt_tol_pfeas, 1e-3)
-        self.task.putdouparam(mosek.dparam.intpnt_tol_dfeas, 1e-3)
-        # Limiter le temps et les itérations
-        # self.task.putdouparam(mosek.dparam.optimizer_max_time, 7200)
-         #self.task.putintparam(mosek.iparam.intpnt_max_iterations, 200)
-        # Désactiver le présolve
-        # self.task.putintparam(mosek.iparam.presolve_use, 0)
-        # Utiliser le simplexe dual
-        ##task.putintparam(mosek.iparam.optimizer, mosek.optimizertype.dual_simplex)
+        
+        # ===== TOLÉRANCES STRICTES pour réduire le gap primal-dual =====
+        # Réduire le gap relatif entre primal et dual
+        self.task.putdouparam(mosek.dparam.intpnt_tol_rel_gap, 1e-8)  # 1e-6 → 1e-8 : plus strict
+        
+        # Faisabilité primale et duale plus stricte
+        self.task.putdouparam(mosek.dparam.intpnt_tol_pfeas, 1e-8)    # Gap primal plus petit
+        self.task.putdouparam(mosek.dparam.intpnt_tol_dfeas, 1e-8)    # Gap dual plus petit
+        
+        # ===== AUGMENTER LES ITÉRATIONS =====
+        # Par défaut ~300, vous pouvez l'augmenter pour forcer la convergence
+        self.task.putintparam(mosek.iparam.intpnt_max_iterations, 300)
+        
+        # ===== SCALING (pour les problèmes mal conditionnés) =====
+        # Aide à réduire les problèmes numériques
+        self.task.putintparam(mosek.iparam.intpnt_scaling, mosek.scalingtype.free)
+        
+        # ===== THREADS =====
         print("STUDY : 4 threads used for MOSEK solver")
         self.task.putintparam(mosek.iparam.num_threads, 4)
-        # self.task.putdouparam(mosek.dparam.intpnt_co_tol_rel_gap, 1e-3)  # Gap relatif (défaut: 1e-8)
-        # self.task.putdouparam(mosek.dparam.intpnt_co_tol_pfeas, 1e-3)    # Faisabilité primale
-        # self.task.putdouparam(mosek.dparam.intpnt_co_tol_dfeas, 1e-3)    # Faisabilité duale
-        # self.task.putdouparam(mosek.dparam.intpnt_co_tol_infeas, 1e-4)   # Tolérance d'infaisabilité
-        # self.task.putdouparam(mosek.dparam.intpnt_co_tol_mu_red, 1e-8)   # Réduction de mu
-
-
-        # Suggestion CLAUDE IO
-        # self.task.putintparam(mosek.iparam.presolve_use, mosek.presolvemode.off) # voir si le presolve repere des problèmes
-
-        # # Tolérances plus strictes pour forcer la convergence
-        # self.task.putdouparam(mosek.dparam.intpnt_tol_rel_gap, 1e-6)  # ou 1e-5
-        # self.task.putdouparam(mosek.dparam.intpnt_tol_pfeas, 1e-6)
-        # self.task.putdouparam(mosek.dparam.intpnt_tol_dfeas, 1e-6)
-
-        # # Augmenter les itérations max (vous êtes à 13, c'est peut-être trop court)
-        # self.task.putintparam(mosek.iparam.intpnt_max_iterations, 200)
-
-        # # Scaling agressif pour les problèmes mal conditionnés
-        # self.task.putintparam(mosek.iparam.intpnt_scaling, mosek.scalingtype.free)
-
-        # # Log détaillé pour diagnostiquer
-        # self.task.putintparam(mosek.iparam.log, 10)
-        # self.task.putintparam(mosek.iparam.log_intpnt, 1)
-
-        # # Threads
-        # self.task.putintparam(mosek.iparam.num_threads, 4)
+        
+        # ===== OPTIONS OPTIONNELLES COMMENTÉES =====
+        # Décommenter si vous avez des problèmes numériques :
+        self.task.putintparam(mosek.iparam.presolve_use, mosek.presolvemode.off)
+        # self.task.putdouparam(mosek.dparam.optimizer_max_time, 3600)  # Limite temps à 3600s
 
     @count_calls(
         "init_variables"

@@ -6,7 +6,7 @@ data :
 
 input_ball:
   norm : "Linf"
-  epsilon : 3.
+  epsilon : 0.5
 
 network :
   name : "blob_nn_4x10"
@@ -21,24 +21,24 @@ network :
   - 3
 
 models :
-  # - certification_model_name : "MdSDP"
-  #   cuts : 
-  #   - "RLT"
-  #   - "triangularization"
-  #   RLT_props : 
-  #   - 1.
-  #   all_combinations_cuts : false
-  #   MATRIX_BY_LAYERS: true
-  #   LAST_LAYER: false
-  #   use_fusion: false  # Whether to use the fusion API for MOSEK
-  #   use_callback : false # Whether to use the callback for MOSEK
-  #   use_active_neurons: false # Whether to use active neurons in the certification problem as variables
-  #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
-  #   keep_penultimate_actives : true
-  #   write_model : true
-
-  - certification_model_name : "MdQuad"
+  - certification_model_name : "MdSDP"
+    cuts : 
+    - "RLT"
+    - "triangularization"
+    RLT_props : 
+    - 1.
+    all_combinations_cuts : false
+    MATRIX_BY_LAYERS: true
     LAST_LAYER: false
-    use_active_neurons: true # Whether to use active neurons in the certification problem as variables
+    use_fusion: false  # Whether to use the fusion API for MOSEK
+    use_callback : false # Whether to use the callback for MOSEK
+    use_active_neurons: false # Whether to use active neurons in the certification problem as variables
     use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
-    bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
+    keep_penultimate_actives : true
+    write_model : true
+
+  # - certification_model_name : "MdQuad"
+  #   LAST_LAYER: false
+  #   use_active_neurons: true # Whether to use active neurons in the certification problem as variables
+  #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
+  #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"

@@ -2,6 +2,7 @@ README.md
 pyproject.toml
 src/bounds.py
 src/bounds_crown.py
+src/bounds_crown_claude.py
 src/certification_problem.py
 src/FastSDPCertification.egg-info/PKG-INFO
 src/FastSDPCertification.egg-info/SOURCES.txt
@@ -60,6 +61,7 @@ src/solve/gurobi_solve/gurobi_generic_solver.py
 src/solve/gurobi_solve/objective.py
 src/solve/gurobi_solve/variables.py
 src/solve/gurobi_solve/lpmodels/LP_attack.py
+src/solve/gurobi_solve/lpmodels/LP_layer_bound.py
 src/solve/gurobi_solve/quadmodels/Lan_quad.py
 src/solve/gurobi_solve/quadmodels/Md_quad.py
 src/solve/gurobi_solve/quadmodels/Mzbar_quad.py

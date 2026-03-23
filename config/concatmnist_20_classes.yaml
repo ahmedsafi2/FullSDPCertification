@@ -57,13 +57,14 @@ models :
   #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
   #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
 
+
   # # SDPt
   # - certification_model_name : "LanSDP"
   #   cuts : 
   #   - "RLT"
   #   - "triangularization"
   #   RLT_props : 
-  #   - 0.2
+  #   - 0.1
   #   # - 0.2
   #   # - 0.3
   #   # - 0.5

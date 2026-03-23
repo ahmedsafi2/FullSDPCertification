@@ -170,6 +170,7 @@ class MosekSolverConfig(BaseModel):
     use_active_neurons: Optional[bool] = (
         False  # Whether to use active neurons in the certification problem as variables
     )
+    ultimate_layer_use_active_neurons: Optional[int] = 1e5 # Whether to use active neurons in the ultimate layer in the certification problem as variables, if use_active_neurons is True. 0 = no ultimate layer active neurons, 1 = only ultimate layer active neurons, 2 = all active neurons
     use_inactive_neurons: Optional[bool] = (
         False  # Whether to use inactive neurons in the certification problem as variables
     )
@@ -211,9 +212,9 @@ class GurobiSolverConfig(BaseModel):
 
     @validator("certification_model_name")
     def validate_sdp_model_name(cls, v, values):
-        if v not in ["LanQuad", "MdQuad", "MzbarQuad", "ClassicLP"]:
+        if v not in ["LanQuad", "MdQuad", "MzbarQuad", "ClassicLP", "LPBoundLayer"]:
             raise ValueError(
-                f"Model name {v} must be one of 'LanQuad', 'MdQuad', 'MzbarQuad','ClassicLP'."
+                f"Model name {v} must be one of 'LanQuad', 'MdQuad', 'MzbarQuad','ClassicLP', 'LPBoundLayer."
             )
         return v
 

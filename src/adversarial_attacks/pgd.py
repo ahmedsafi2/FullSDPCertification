@@ -17,6 +17,8 @@ class PGDAttack:
         random_start: if True, starts with a random perturbation, else starts with zero perturbationœ
         targeted: if True, performs a targeted attack (attacks a specific class), else performs an untargeted attack
         norm: Types of norm ('inf', '2', '1')
+        use_predicted_label: if False (default), the attack tries to find a class different from the input `labels` (true labels).
+                             if True, the attack tries to find a class different from the model's initial prediction.
     """
 
     def __init__(
@@ -28,6 +30,7 @@ class PGDAttack:
         random_start=True,
         targeted=False,
         norm="inf",
+        use_predicted_label=False,
     ):
         self.model = model
         self.eps = eps
@@ -36,6 +39,7 @@ class PGDAttack:
         self.random_start = random_start
         self.targeted = targeted
         self.norm = norm
+        self.use_predicted_label = use_predicted_label
 
     def forward(self, images, labels, target_labels=None):
         """
@@ -51,6 +55,14 @@ class PGDAttack:
         """
         images = images.clone().detach()
         labels = labels.clone().detach()
+
+        # If use_predicted_label is True, use the model's prediction instead of the true label
+        if self.use_predicted_label and not self.targeted:
+            with torch.no_grad():
+                outputs = self.model(images)
+                predicted_labels = torch.argmax(outputs, dim=-1)
+        else:
+            predicted_labels = labels
 
         # Initialisation aléatoire si demandée
         if self.random_start:
@@ -73,9 +85,13 @@ class PGDAttack:
                 loss = F.cross_entropy(outputs, target_labels)
                 loss = -loss  # On veut minimiser, donc on prend l'opposé
             else:
-                print("NOT TARGETED ATTACK")
-                # Attaque non-ciblée : maximiser la loss pour la vraie classe
-                loss = F.cross_entropy(outputs, labels)
+                if self.use_predicted_label:
+                    print("PGD: Attacking class different from PREDICTED label")
+                    loss = F.cross_entropy(outputs, predicted_labels)
+                else:
+                    print("PGD: Attacking class different from TRUE label")
+                    # Attaque non-ciblée : maximiser la loss pour la vraie classe
+                    loss = F.cross_entropy(outputs, labels)
 
             # Backward pass
             loss.backward()

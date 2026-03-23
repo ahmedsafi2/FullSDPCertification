@@ -2,6 +2,7 @@ import numpy as np
 import yaml
 import sys
 import os
+import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from solve.generic_solver import Solver
@@ -94,7 +95,6 @@ class Certification_Problem:
         path_network = config["network"]["path"]
         print("STUDY : path network : ", path_network)
         network = ReLUNN.from_pth(get_project_path(path_network), bb_beta_crown=False)
-        print("STUDY : network loaded from path : ", network)
 
         if network is not None:
             print("Network loaded successfully.")
@@ -130,6 +130,8 @@ class Certification_Problem:
         )
 
         print("SOLVER CONFIG:", solver_config)
+      
+      
         dataloader = DataLoader(self.dataset, batch_size=1, shuffle=False)
 
         stable_actives_study = pd.DataFrame(
@@ -142,7 +144,7 @@ class Certification_Problem:
             ]
         )
         width_model_study = pd.DataFrame()
-
+        coefficient_values = {k : [] for k in range(1, self.network.K + 1)}
         for i, (x, ytrue) in enumerate(dataloader):
 
             # print("x  :", x)
@@ -159,12 +161,11 @@ class Certification_Problem:
             # assert ytrue == y, "ytrue should match the label y"
 
             # # SHARE
-            if i not in [97]:
-                # print(
-                #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
-                # )
-                #print("Skipping data sample ", i + 1, "for testing purposes.")
-                continue
+            # if i <= 71:
+            #     #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
+            #     # )
+            #     #print("Skipping data sample ", i + 1, "for testing purposes.")
+            #     continue
 
             print("i : ", i)
 
@@ -180,20 +181,47 @@ class Certification_Problem:
             # print("Network device : ", self.network.device)
             print("x device : ", x.device)
             x = x.to(device_)
-            torch.save(x, f"tensor_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pt")
+            #torch.save(x, f"tensor_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pt")
             print("x device : ", x.device)
-            y_pred = torch.argmax(self.network(x), dim=0)
-            print("STUDY : y_pred:", y_pred)
+            y_pred =self.network.label(x)
             print("STUDY : ytrue:", ytrue)
-            
 
+            if y_pred != ytrue.item() :
+                print(
+                    f"Skipping sample {i + 1} with label {ytrue.item()} as it is misclassified by the network."
+                )
+                continue
+   
+            # model_bounds = solve.LPBoundLayer(
+            #     network=self.network,
+            #     epsilon=self.epsilon,
+            #     norm=self.norm,
+            #     x=x,
+            #     ytrue=y_pred.item(),
+            #     data_index=i,
+            #     dataset_name=self.dataset_name,
+            #     network_name=self.network_name,
+            #     folder_name=f"results/benchmark/{self.title}/{title_run}",
+            #     use_active_neurons = True,
+            #     use_inactive_neurons = True,
+            #     bounds_method = "IBP"
+            # )
+            
+            # model_bounds.solve()
+
+            # L = model_bounds.L
+            # U = model_bounds.U
+            # print("Recuperation de L :", L)
+            # print("Recuperation de U : ", U)
             try:
                 model_instance = model_class(
                     network=self.network,
                     epsilon=self.epsilon,
                     norm=self.norm,
                     x=x,
-                    ytrue=y_pred.item(),
+                    ytrue=y_pred,
+                    # L = L,
+                    # U = U,
                     data_index=i,
                     dataset_name=self.dataset_name,
                     network_name=self.network_name,
@@ -221,7 +249,12 @@ class Certification_Problem:
             model_instance.solve(verbose=True, only_bounds=False)
             print("STUDY : Model instance solved")
             print("STUDY : model_instance.benchmark_dataframe :", model_instance.benchmark_dataframe)
-
+            exit()
+            for k in range(1, self.network.K + 1):
+                if k not in coefficient_values:
+                    coefficient_values[k] = []
+                coefficient_values[k].extend(model_instance.handler.Constraints.coefficient_values[k])
+            #print("STUDY COEFF after run: coefficient values for each layer: {}".format(coefficient_values))
             self.benchmark = concat_dataframes_with_missing_columns(
                 self.benchmark, model_instance.benchmark_dataframe
             )
@@ -231,17 +264,26 @@ class Certification_Problem:
                 ),
                 index=False,
             )
-            stable_actives_study = pd.concat(
-                [
-                    stable_actives_study,
-                    pd.DataFrame(
-                        {
+            dict_stability = {
                             "label": [ytrue],
                             "data_index": [i],
                             "Number_actives_stable": [nb_actives],
                             "Number_inactives_stable": [nb_inactives],
                             "Number_targets": [nb_targets],
                         }
+            for k in range(1, self.network.K + 1):
+                nb_stable_actives_layer_k = len([(n, j) for (n, j) in model_instance.stable_actives_neurons if n == k])
+                nb_stable_inactives_layer_k = len([(n, j) for (n, j) in model_instance.stable_inactives_neurons if n == k])
+                dict_stability[f"Stable_Actives_Layer_{k}"] = nb_stable_actives_layer_k
+                dict_stability[f"Stable_Inactives_Layer_{k}"] = nb_stable_inactives_layer_k
+                print(
+                    f"STUDY : Layer {k} - Stable actives neurons: {nb_stable_actives_layer_k} - Stable inactives neurons: {nb_stable_inactives_layer_k}"
+                )
+            stable_actives_study = pd.concat(
+                [
+                    stable_actives_study,
+                    pd.DataFrame(
+                       dict_stability
                     ),
                 ],
                 ignore_index=True,
@@ -252,6 +294,51 @@ class Certification_Problem:
                 f"results/benchmark/{self.title}/{title_run}/stable_actives_study.csv"
             )
         )
+
+        for k in range(1, self.network.K + 1):
+            if coefficient_values[k] == []:
+                print(f"No coefficient values collected for layer {k}, skipping histogram.")
+                continue
+            # Histogram with all values
+            plt.hist(coefficient_values[k], bins=50)
+            plt.title("Histogram of coefficients in ReLU Relaxed Layer {}".format(k))
+            plt.xlabel("Coefficient value")
+            plt.ylabel("Frequency")
+            plt.savefig(
+                get_project_path(
+                    f"results/benchmark/{self.title}/{title_run}/histogram_coefficients_Layer_{k}.png"
+                )
+            )
+            plt.close()
+
+            # Histogram with 95% of values (centered around median)
+            median = np.median(coefficient_values[k])
+            p95_distance = np.percentile(np.abs(np.array(coefficient_values[k]) - median), 95)
+            filtered_values_95 = [v for v in coefficient_values[k] if abs(v - median) <= p95_distance]
+            plt.hist(filtered_values_95, bins=50)
+            plt.title("Histogram of coefficients in ReLU Relaxed 95% Layer {}".format(k))
+            plt.xlabel("Coefficient value")
+            plt.ylabel("Frequency")
+            plt.savefig(
+                get_project_path(
+                    f"results/benchmark/{self.title}/{title_run}/histogram_coefficients_95_Layer_{k}.png"
+                )
+            )
+            plt.close()
+
+            # Histogram with 75% of values (centered around median)
+            p75_distance = np.percentile(np.abs(np.array(coefficient_values[k]) - median), 75)
+            filtered_values_75 = [v for v in coefficient_values[k] if abs(v - median) <= p75_distance]
+            plt.hist(filtered_values_75, bins=50)
+            plt.title("Histogram of coefficients in ReLU Relaxed 75% Layer {}".format(k))
+            plt.xlabel("Coefficient value")
+            plt.ylabel("Frequency")
+            plt.savefig(
+                get_project_path(
+                    f"results/benchmark/{self.title}/{title_run}/histogram_coefficients_75_Layer_{k}.png"
+                )
+            )
+            plt.close()
 
     def solve(self, title_run: str = "") -> None:
         print("Starting certification problem solving ...")
@@ -291,7 +378,7 @@ def main(network : str, title_run : str):
     yaml_file = f"{network}.yaml"  # "mnist_one_data_benchmark.yaml"
     certif_problem = Certification_Problem.load_from_yaml(yaml_file)
 
-    launch_date = datetime.datetime.now().strftime("%m_%d_%Hh%M_%Ss")
+    launch_date = datetime.datetime.now().strftime("%Y_%m_%d_%Hh%M_%Ss")
     certif_problem.solve(launch_date + "_" + title_run)
 
 

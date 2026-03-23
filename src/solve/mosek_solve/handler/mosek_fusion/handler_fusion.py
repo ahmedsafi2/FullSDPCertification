@@ -168,28 +168,34 @@ class MosekFusionHandler:
             The parameters to adjust.
         """
 
-        # Paramètres de tolérance pour l'optimiseur
-        self.model.setSolverParam("intpntTolRelGap", 1e-3)
-        self.model.setSolverParam("intpntTolPfeas", 1e-3)
-        self.model.setSolverParam("intpntTolDfeas", 1e-3)
+        # ===== TOLÉRANCES STRICTES pour réduire le gap primal-dual =====
+        # Réduire le gap relatif entre primal et dual (était 1e-3, c'est trop lâche !)
+        self.model.setSolverParam("intpntTolRelGap", 1e-8)  # 1e-3 → 1e-8
+        
+        # Faisabilité primale et duale plus stricte
+        self.model.setSolverParam("intpntTolPfeas", 1e-8)   # 1e-3 → 1e-8
+        self.model.setSolverParam("intpntTolDfeas", 1e-8)   # 1e-3 → 1e-8
 
-        # Limiter le temps de calcul à 7200 secondes (2h)
-        self.model.setSolverParam("optimizerMaxTime", 7200.0)
+        # ===== TEMPS MAX =====
+        # Limiter le temps de calcul à 3600 secondes (1h)
+        self.model.setSolverParam("optimizerMaxTime", 3600.0)
 
-        # Limiter le nombre d'itérations (pour l'algorithme primal-dual intérieur)
-        # self.model.setSolverParam("intpntMaxIterations", 100)
+        # ===== ITÉRATIONS MAX =====
+        # Augmenter le nombre d'itérations pour convergence forcée
+        self.model.setSolverParam("intpntMaxIterations", 300)
 
-        # Désactiver le presolve (optionnel, décommenter si voulu)
-        # M.setSolverParam("presolveUse", "off")
+        # ===== THREADS =====
+        # Nombre de threads (augmenter si vous avez CPU disponible)
+        self.model.setSolverParam("numThreads", 4)
 
-        # Utiliser le simplexe dual (optionnel, décommenter si voulu)
-        # M.setSolverParam("optimizer", "dualSimplex")
-
-        # Limiter le nombre de threads
-        self.model.setSolverParam("numThreads", 2)
-
+        # ===== AUTRES PARAMÈTRES =====
         # Write solutions of the optimization problem
         self.model.setSolverParam("ptfWriteSolutions", "on")
+        
+        # ===== OPTIONS OPTIONNELLES COMMENTÉES =====
+        # Décommenter si vous avez des problèmes numériques :
+        # self.model.setSolverParam("presolveUse", "off")
+        # self.model.setSolverParam("optimizer", "dualSimplex")
 
     @count_calls(
         "init_variables"

@@ -128,7 +128,6 @@ def compute_bounds_data_crown(
                     bias = torch.tensor(self.b[k-1], device=device_, dtype=dtype).unsqueeze(dim=1)
                     estimated_upper = W_pos @ torch.transpose(layer_before_upper, 0, 1) + W_neg @ torch.transpose(layer_before_lower, 0, 1) + bias
 
-
                     preact_bounds[k] = (
                         lower.squeeze().detach().cpu(),
                         estimated_upper.squeeze().detach().cpu()

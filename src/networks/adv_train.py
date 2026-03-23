@@ -26,7 +26,7 @@ def evaluate_clean(model, testloader, device):
     total = 0
 
     with torch.no_grad():
-        for inputs, labels in testloader:
+        for i, (inputs, labels) in enumerate(testloader):
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             _, predicted = torch.max(outputs, 1)
@@ -61,6 +61,8 @@ def evaluate_robust(model, testloader, device, pgd_config, max_batches=None):
         #     continue
 
         if max_batches and batch_idx >= max_batches:
+            break
+        if batch_idx >= 100:
             break
         print("Evaluating batch ", batch_idx)
         inputs, labels = inputs.to(device), labels.to(device)

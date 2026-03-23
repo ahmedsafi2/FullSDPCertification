@@ -325,13 +325,25 @@ def compute_bounds_(self, method: str = "IBP"):
     """
     print("STUDY : Computing bounds with norm: ", self.norm, " ...")
     start_compute_bd_time = time.time()
-    L, U = compute_bounds_data(
-        self.network, self.x, self.epsilon, self.n, self.K, method=method, norm=self.norm
-    )
+    if method == "IBP":
+        self.compute_IBP()
+    elif method == "beta-CROWN" or method == "alpha-CROWN":
+        print("OULA bornes alpha claude")
+        self.compute_bounds_data_crown(
+                method="alpha-beta-CROWN",
+                crown_iters=30,
+                crown_lr=0.05
+            )
+    else :
+        L, U = self.compute_bounds_data(
+            self.network, self.x, self.epsilon, self.n, self.K, method=method, norm=self.norm
+        )
+        self.L = L
+        self.U = U
+
     end_compute_bd_time = time.time()
+    print("compute bounds time créé dans : ", self.__class__.__name__)
     self.compute_bounds_time = end_compute_bd_time - start_compute_bd_time
-    self.L = L
-    self.U = U
 
 
 def check_stability_neurons(
@@ -362,7 +374,7 @@ def check_stability_neurons(
             if self.L[k][j] <= 0 and self.U[k][j] <= 0 and not use_inactive_neurons:
                 self.stable_inactives_neurons.append((k, j))
             elif self.L[k][j] >= 0 and self.U[k][j] > 0 and not use_active_neurons:
-                if k==self.K - 1 and self.keep_penultimate_actives : 
+                if (k==self.K - 1 and self.keep_penultimate_actives) or k > self.ultimate_layer_use_active_neurons: 
                     continue
                 else : 
                     self.stable_actives_neurons.append((k, j))
@@ -393,3 +405,78 @@ def prune_adversarial_targets(self):
         else:
             # print("STUDY : Adversarial target selected : ", j)
             continue
+
+
+# def compute_ibp(self):
+#     "Compute bounds L and U with IBP."
+#     L = [[(self.x[i].item() - self.epsilon) for i in range(self.n[0])]]
+#     U = [[(self.x[i].item() + self.epsilon) for i in range(self.n[0])]]
+#     for k in range(1,self.K+1):
+#         print("IBP de la couche ", k)
+#         lb_layer = []
+#         ub_layer = []
+#         for j in range(self.n[k]):
+#             print(f"Neuron j = {j}")
+#             lb= self.b[k-1][j]
+#             ub = self.b[k-1][j]
+#             for i in range(self.n[k-1]):
+#                 print(f"Neurone precdent i = {i}")
+#                 print("len(self.W_k-1) : ", len(self.W[k-1]))
+#                 print("len(self.W_k-1[0]) : ", len(self.W[k-1][0]))
+
+#                 w_ij = self.W[k-1][j][i]
+#                 print("Poids wij = ", w_ij)
+#                 print(f"L = ", L)
+#                 if w_ij >= 0:
+#                     print("Poids positif")
+#                     print(f"L_{k-1} : ", L[k-1])
+#                     lb += w_ij * L[k-1][i]
+#                     ub += w_ij * U[k-1][i]
+#                     print("Rajouté")
+#                 else:
+#                     print("Poids négatif")
+#                     print(f"L_{k-1} : ", L[k-1])
+#                     lb += w_ij * U[k-1][i]
+#                     ub += w_ij * L[k-1][i]
+#                     print("Rajouté")
+#             lb_layer.append(lb)
+#             ub_layer.append(ub)
+
+#         L.append(lb_layer)
+#         U.append(ub_layer)
+
+
+
+def compute_IBP(self):
+    """
+    Calcule les bornes pré-activation (l, u) pour chaque couche
+    via IBP en norme infinie (L∞).
+    
+    Retourne :
+        bounds = [(l1, u1), (l2, u2), ..., (lL, uL)]
+    """
+    lb = self.x - self.epsilon
+    ub = self.x + self.epsilon
+
+    L, U = [lb.detach().cpu().tolist()], [ub.detach().cpu().tolist()]
+
+    for W, b in zip(self.W, self.b):
+        W = torch.tensor(W, device = self.x.device, dtype = self.x.dtype)
+        b = torch.tensor(b, device = self.x.device, dtype = self.x.dtype)
+        W_pos = torch.maximum(W, torch.zeros_like(W))
+        W_neg = torch.minimum(W, torch.zeros_like(W))
+
+        z_l = W_pos @ lb + W_neg @ ub + b
+        z_u = W_pos @ ub + W_neg @ lb + b
+
+        L.append(z_l.detach().cpu().tolist())
+        U.append(z_u.detach().cpu().tolist())
+
+        lb = torch.maximum(z_l, torch.zeros_like(z_l))
+        ub= torch.maximum(z_u, torch.zeros_like(z_u))
+
+    self.L = L
+    self.U = U
+    
+    for k in range(self.K+1):
+        print(f"Layer {k}, L = {L[k]}, U = {U[k]}")

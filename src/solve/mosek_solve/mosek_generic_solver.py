@@ -212,6 +212,8 @@ class MosekSolver(Solver):
             time_1 = time.time()
             self.adapt_number_RLT()
             self.add_constraints(cuts)  # Constraints must be added after variables
+            self.handler.Constraints.get_histogram_of_coefficients_name_constraint("ReLU Relaxed")
+            
             if verbose: 
                 print("STUDY : Constraints added.")
             if self.only_width_model:
@@ -355,6 +357,7 @@ class MosekSolver(Solver):
                 print("ERROR : An error occurred during optimization:", str(e))
             logger_mosek.error("An error occurred during optimization: %s", str(e))
             self.handler.is_robust = False
+            self.get_results(cuts, verbose)
         finally:
             self.handler.cleanup_mosek()
 

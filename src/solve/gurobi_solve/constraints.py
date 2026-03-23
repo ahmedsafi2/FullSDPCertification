@@ -80,11 +80,16 @@ def RELU_triangular_constraint(self):
             
             #print(f"Adding triangular ReLU constraint for layer {k}, neuron {j}")
             self.m.addConstr(
+                self.z[k, j] >= 0,
+                name = f"ReLU_exact_constraint_layer={k}_neuron={j}_>=0",
+            )
+            self.m.addConstr(
                 gp.quicksum(
                     self.W[k - 1][j][i] * self.z[k - 1, i] for i in range(self.n[k - 1]) if (k - 1, i) not in self.stable_inactives_neurons
                 )
                 + self.b[k - 1][j]
-                <= self.z[k, j]
+                <= self.z[k, j],
+                name = f"ReLU_exact_constraint_layer={k}_neuron={j}_linear",
             )
             if abs(self.U[k][j] - self.L[k][j]) <= 1e-6:
                 logger_gurobi.warning(
@@ -103,7 +108,8 @@ def RELU_triangular_constraint(self):
                     k_cst * self.W[k - 1][j][i] * self.z[k - 1, i] 
                     for i in range(self.n[k - 1]) if (k - 1, i) not in self.stable_inactives_neurons
                 )
-                + B_k_j
+                + B_k_j,
+                name = f"ReLU_triangular_constraint_layer={k}_neuron={j}",
             )
 
 

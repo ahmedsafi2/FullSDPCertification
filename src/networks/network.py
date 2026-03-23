@@ -93,8 +93,6 @@ class ReLUNN(nn.Module):
             print("n : ", n)
             parametres = torch.load(path)
 
-
-            print("parametres : ", parametres)
             # net = cls(K, n)
             # net.load_state_dict(parametres)
 
@@ -123,8 +121,6 @@ class ReLUNN(nn.Module):
         parametres = torch.load(pth_path, map_location="cpu")
         if bb_beta_crown and 'state_dict' in parametres:
             parametres = parametres['state_dict'][0]
-
-        print("parametres loaded in from pth : ", parametres)
 
         W, b, n = [], [], []
 
@@ -198,9 +194,9 @@ class ReLUNN(nn.Module):
         for layer_name, layer in self.layers.items():
 
             x = layer(x)
-            print("layer name : ", layer_name)
-            #print("x : ", x)
-            print("x shape : ", x.shape)
+            # print("layer name : ", layer_name)
+            # #print("x : ", x)
+            # print("x shape : ", x.shape)
             if "Linear" in layer_name : 
                 values_layer.append(x.flatten().detach().cpu().tolist())
             n_couche += 1

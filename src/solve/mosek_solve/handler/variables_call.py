@@ -334,6 +334,7 @@ class VariablesCall:
         )  # ATTENTION : CECI POSERA UN PROBLEME POUR LES CONTRAINTES TRIANGULAIRES
 
         self.LAST_LAYER = kwargs.get("LAST_LAYER", None)
+        self.MATRIX_BY_LAYERS = kwargs.get("MATRIX_BY_LAYERS", None)
         self.BETAS = kwargs.get("BETAS", None)
         assert self.LAST_LAYER is not None, "LAST_LAYER must be specified."
         assert self.BETAS is not None, "BETAS must be specified."
@@ -356,26 +357,26 @@ class VariablesCall:
 
         for layer in range(self.K + 1):
             for neuron in range(self.n[layer]):
-                print(f'Creating equivalent for layer = {layer}, neuron = {neuron}')
+                #print(f'Creating equivalent for layer = {layer}, neuron = {neuron}')
                 equivalent_values_neurons, constant = (
                     self.layers_values.get_equivalent_values(layer, neuron)
                 )
 
-                decomposed_in_front_and_back_matrix = (not ((layer,neuron) in self.stable_actives_neurons)) and (layer < self.K or self.LAST_LAYER)
+                decomposed_in_front_and_back_matrix = ((not ((layer,neuron) in self.stable_actives_neurons)) and (layer < self.K or self.LAST_LAYER)) and self.MATRIX_BY_LAYERS
                 
                 self.equivalent_neurons.create_dict(layer=layer, neuron=neuron, K = self.K, 
                                                     LAST_LAYER=self.LAST_LAYER, 
                                                     decomposed_in_front_and_back_matrix=decomposed_in_front_and_back_matrix)
 
                 if decomposed_in_front_and_back_matrix:
-                    print(f"Layer {layer} : decomposed is true")
+                    #print(f"Layer {layer} : decomposed is true")
                     for (k, j), val in equivalent_values_neurons.items():
-                        print(f"k = {k}, j = {j}, val = {val}, LAST_LAYER = {self.LAST_LAYER}")
+                        #print(f"k = {k}, j = {j}, val = {val}, LAST_LAYER = {self.LAST_LAYER}")
 
                         if (k < self.K - 1 and not self.LAST_LAYER) or (
                                 k < self.K and self.LAST_LAYER
                             ):
-                                print(f"        Decomposing with layer = {layer}, neuron = {neuron}, val = {1} - FRONT OF MATRIX")
+                                #print(f"        Decomposing with layer = {layer}, neuron = {neuron}, val = {1} - FRONT OF MATRIX")
                                 ind_i_front = self.indexes_variables._get_variable_index(
                                     "z", layer=k, neuron=j, front_of_matrix=True
                                 )
@@ -391,7 +392,7 @@ class VariablesCall:
                                     front_of_matrix=True,
                                 )
                         if k > 0:
-                            print(f"        Decomposing with layer = {layer}, neuron = {neuron}, val = {1} - BACK OF MATRIX")
+                            #print(f"        Decomposing with layer = {layer}, neuron = {neuron}, val = {1} - BACK OF MATRIX")
                             ind_i_back = self.indexes_variables._get_variable_index(
                                 "z", layer=k, neuron=j, front_of_matrix=False
                             )
@@ -408,14 +409,14 @@ class VariablesCall:
                             )
 
                 else : 
-                    print(f"Layer {layer} : decomposed is false")
+                    #print(f"Layer {layer} : decomposed is false")
                     for (k, j), val in equivalent_values_neurons.items():
-                        print(f"k = {k}, j = {j}, val = {val}, LAST_LAYER = {self.LAST_LAYER}")
+                        #print(f"k = {k}, j = {j}, val = {val}, LAST_LAYER = {self.LAST_LAYER}")
 
                         if (k < self.K - 1 and not self.LAST_LAYER) or (
                             k < self.K and self.LAST_LAYER
                         ):
-                            print(f"        Decomposing with k = {k}, j = {j}, val = {val} - FRONT OF MATRIX")
+                            #print(f"        Decomposing with k = {k}, j = {j}, val = {val} - FRONT OF MATRIX")
                             ind_i_front = self.indexes_variables._get_variable_index(
                                 "z", layer=k, neuron=j, front_of_matrix=True
                             )
@@ -430,7 +431,7 @@ class VariablesCall:
                                 value=val,
                             )
                         else:
-                            print(f"        Decomposing with k = {k}, j = {j}, val = {val} - BACK OF MATRIX")
+                            #print(f"        Decomposing with k = {k}, j = {j}, val = {val} - BACK OF MATRIX")
                             ind_i_back = self.indexes_variables._get_variable_index(
                                 "z", layer=k, neuron=j, front_of_matrix=False
                             )
@@ -598,13 +599,15 @@ class VariablesCall:
             assert layer is not None, "Layer must be specified for z variable."
             assert neuron is not None, "Neuron must be specified for z variable."
 
-            if (layer,neuron) not in self.stable_actives_neurons and layer != self.K :
+            front_of_matrix = kwargs.get("front_of_matrix", None)
+            print("layer : ", layer, "neuron : ", neuron, "front_of_matrix : ", front_of_matrix)
+
+            if ((layer,neuron) not in self.stable_actives_neurons and layer != self.K) and front_of_matrix is None:
+                
                 if (layer < self.K-1) or self.LAST_LAYER :
                     front_of_matrix = True
                 else : 
                     front_of_matrix = False
-            else :
-                front_of_matrix = None
             
             assert (
                 (front_of_matrix is not None) or ((layer,neuron) in self.stable_actives_neurons) or (layer == self.K and not self.LAST_LAYER)
@@ -612,11 +615,14 @@ class VariablesCall:
 
             assert (front_of_matrix or layer>0, "Layer 0 cannot be a the back of matrix")
             assert (not front_of_matrix or not(layer == self.K or (layer == self.K-1 and self.LAST_LAYER)), f"Layer {layer} cannot be at the front of matrix")
-            print(f"In add_linear_variable : Layer = {layer}, neuron = {neuron}, front_of_matrix = {front_of_matrix}")
+            if not self.MATRIX_BY_LAYERS :
+                front_of_matrix = None
             dict1 = self.equivalent_neurons.get_equivalent(
                     layer=layer, neuron=neuron, front_of_matrix=front_of_matrix
                 )
             assert len(dict1) > 0, "Dictionnary used in add_linear_variable is empty"
+
+            print(f"In add_linear_variable : Layer = {layer}, neuron = {neuron}, front_of_matrix = {front_of_matrix}, dict1 = {dict1}, value = {value}")
             self.add_var(
                 dict1=dict1,
                 value=value,
@@ -666,13 +672,15 @@ class VariablesCall:
             assert (
                 front_of_matrix1 is not None
             ), "Front of matrix must be specified for z variable."
-            assert (layer1,neuron1) not in self.stable_actives_neurons, "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
+            assert not self.MATRIX_BY_LAYERS or ((layer1,neuron1) not in self.stable_actives_neurons), "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
             class_label = kwargs.get("class_label", None)
             assert (
                 class_label is not None
             ), "Class label must be specified for beta variable."
 
             print(f"In add_quad_variable : Layer = {layer1}, neuron = {neuron1}, front_of_matrix = {front_of_matrix1}")
+            if not self.MATRIX_BY_LAYERS :
+                front_of_matrix1 = None
             dict2 = self.equivalent_indexes_betas.get_equivalent(
                 class_label=class_label
             )
@@ -696,7 +704,9 @@ class VariablesCall:
             assert (
                 class_label is not None
             ), "Class label must be specified for beta variable."
-            assert (layer2,neuron2) not in self.stable_actives_neurons, "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
+            assert not self.MATRIX_BY_LAYERS or ((layer2,neuron2) not in self.stable_actives_neurons), "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
+            if not self.MATRIX_BY_LAYERS :
+                front_of_matrix2 = None
             print(f"In add_quad_variable : Layer = {layer2}, neuron = {neuron2}, front_of_matrix = {front_of_matrix2}")
             dict1 = self.equivalent_indexes_betas.get_equivalent(
                 class_label=class_label
@@ -744,8 +754,11 @@ class VariablesCall:
             assert (
                 front_of_matrix2 is not None
             ), "Front of matrix must be specified for z variable."
-            assert (layer1,neuron1) not in self.stable_actives_neurons, "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
-            assert (layer2,neuron2) not in self.stable_actives_neurons, "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
+            assert not self.MATRIX_BY_LAYERS or ((layer1,neuron1) not in self.stable_actives_neurons), "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
+            assert not self.MATRIX_BY_LAYERS or ((layer2,neuron2) not in self.stable_actives_neurons), "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
+            if not self.MATRIX_BY_LAYERS :
+                front_of_matrix1 = None
+                front_of_matrix2 = None
             print(f"In add_quad_variable : Layer = {layer2}, neuron = {neuron2}, front_of_matrix = {front_of_matrix2}")
             constant1 = self.equivalent_neurons.get_constant(layer1, neuron1)
             constant2 = self.equivalent_neurons.get_constant(layer2, neuron2)

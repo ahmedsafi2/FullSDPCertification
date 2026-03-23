@@ -12,6 +12,7 @@ from bounds import (
     compute_bounds_,
     check_stability_neurons,
     prune_adversarial_targets,
+    compute_IBP
 )
 from bounds_crown_claude import (
     compute_bounds_data_crown
@@ -31,6 +32,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 @add_functions_to_class(
     compute_bounds_,
+    compute_IBP,
     check_stability_neurons,
     prune_adversarial_targets,
     get_results_trivially_solved,
@@ -50,6 +52,7 @@ class Solver:
         use_active_neurons: bool = False,
         **kwargs,
     ):
+        print(f"Initializing {self.__class__.__name__}...")
         self.network = network.to(device)
         self.K = network.K
         self.n = network.n
@@ -86,24 +89,21 @@ class Solver:
         
         self.bounds_method = kwargs.get("bounds_method")
         self.keep_penultimate_actives = kwargs.get("keep_penultimate_actives", None)
-
-        self.L = L
-        self.U = U
-        
+        self.ultimate_layer_use_active_neurons = kwargs.get("ultimate_layer_use_active_neurons", self.K+1)
+        print("STUDY COEFF : self ultimate_layer_use_active_neurons : ", self.ultimate_layer_use_active_neurons)
         print("Getting to compute bounds...")
      
         
-        if self.L is None or self.U is None:
-            self.compute_bounds_data_crown(
-                method="alpha-beta-CROWN",
-                crown_iters=30,
-                crown_lr=0.05
+        if L is None or U is None:
+            self.compute_bounds_(
+                method=self.bounds_method,
             )
+        else : 
+            self.L = L
+            self.U = U
+            self.compute_bounds_time = 0
 
-
-            # self.compute_bounds(
-            #     method=self.bounds_method,
-            # )
+            
         ### BORNES (A COMMENTER APRES TEST)
         # self.U = round_list_depth_2(self.U, decimal = 3)
         # self.L = round_list_depth_2(self.L, decimal = 3)
@@ -127,9 +127,10 @@ class Solver:
             use_inactive_neurons=use_inactive_neurons,
         )
 
-        # print("STUDY after checking stable active neurons:", self.stable_actives_neurons)
-        # print("STUDY after checking stable inactive neurons:", self.stable_inactives_neurons)
+        
+        print("STUDY COEFF  after checking stable active neurons:", self.stable_actives_neurons)
 
+        print("STUDY COEFF  after checking stable inactive neurons:", self.stable_inactives_neurons)
 
         # print('STUDY in generic solver: stable inactive neurons: ', self.stable_inactives_neurons)
         # print('STUDY in generic solver: stable active neurons: ', self.stable_actives_neurons)

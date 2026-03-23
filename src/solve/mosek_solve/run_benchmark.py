@@ -100,7 +100,7 @@ def compute_number_RLT(self) -> int:
             nb_RLT += len(neurons_with_great_weights)
     return nb_RLT
 
-def adapt_number_RLT(self, max_nb_RLT : int = 4e6):
+def adapt_number_RLT(self, max_nb_RLT : int = 5e4):
     
     if "RLT" not in self.cuts:
         print('STUDY RLT : RLT not activated, skipping adaptation of number of RLT constraints.')
@@ -144,9 +144,9 @@ def concat_dataframes_with_missing_columns(df1, df2):
 
     Parameters:
     -----------
-    df1 : pandas.DataFrame
+    df1 : pandas.DataFrame or None
         Premier DataFrame à concaténer
-    df2 : pandas.DataFrame
+    df2 : pandas.DataFrame or None
         Second DataFrame à concaténer
 
     Returns:
@@ -154,6 +154,13 @@ def concat_dataframes_with_missing_columns(df1, df2):
     pandas.DataFrame
         Le DataFrame résultant de la concaténation des deux DataFrames d'entrée
     """
+    if df1 is None and df2 is None:
+        return pd.DataFrame()
+    if df1 is None:
+        return df2.copy()
+    if df2 is None:
+        return df1.copy()
+    
     # Créer des copies pour éviter de modifier les originaux
     df1_copy = df1.copy()
     df2_copy = df2.copy()

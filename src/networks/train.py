@@ -15,6 +15,7 @@ from adv_train import (
     complex_adversarial_training_loop,
     load_adversarial_training_config,
 )
+from adv_train import evaluate_clean
 from data import (
     analyze_class_distribution,
     # EMNISTBalancedCSV,
@@ -99,7 +100,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = load_adversarial_training_config(f"config/networks/{args.network}.yaml")
-    train_dataset = torch.load(get_project_path(config["train_path"]))["dataset"]
+    train_dataset = torch.load(get_project_path(config["train_path"]), weights_only=False)["dataset"]
 
     # print("Len of train_dataset: ", len(train_dataset))
     # print("train dataset: ", train_dataset)
@@ -108,7 +109,7 @@ if __name__ == "__main__":
     #     train_dataset, dataset_name=f"Train Dataset {args.data_modele}"
     # )
 
-    test_dataset = torch.load(get_project_path(config["test_path"]))["dataset"]
+    test_dataset = torch.load(get_project_path(config["test_path"]), weights_only=False)["dataset"]
     # print("Len of test_dataset: ", len(test_dataset))
 
     # analyze_class_distribution(
@@ -116,7 +117,7 @@ if __name__ == "__main__":
     # )
     # print("")
     robust_to_test_dataset = torch.load(
-        get_project_path(config["evaluate_robustness_path"])
+        get_project_path(config["evaluate_robustness_path"]), weights_only=False
     )["dataset"]
 
     print("STUDY : len =", len(train_dataset))

@@ -5,6 +5,7 @@ from .quadmodels.Lan_quad import LanQuad
 from .quadmodels.Md_quad import MdQuad
 from .quadmodels.Mzbar_quad import MzbarQuad
 from .lpmodels.LP_attack import ClassicLP
+from .lpmodels.LP_layer_bound import LPBoundLayer
 from tools.utils import get_project_path
 
 
@@ -18,4 +19,4 @@ logger_gurobi.addHandler(handler)
 logger_gurobi.disabled = True
 
 
-__all__ = ["GurobiSolver", "LanQuad", "MdQuad", "MzbarQuad", "ClassicLP"]
+__all__ = ["GurobiSolver", "LanQuad", "MdQuad", "MzbarQuad", "ClassicLP", "LPBoundLayer"]
