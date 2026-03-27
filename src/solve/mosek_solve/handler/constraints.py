@@ -95,39 +95,39 @@ class CommonConstraints(VariablesCall):
                 raise ValueError(
                     "No variable j for the current constraint. Please set a variable."
                 )
-            # exists, num_matrix, i, j = exists_two_similar_pairs_in_three_lists(
-            #     self.list_cstr[self.current_num_constraint]["num_matrix"],
-            #     self.list_cstr[self.current_num_constraint]["i"],
-            #     self.list_cstr[self.current_num_constraint]["j"],
-            # )
-            # if exists:
-            #     raise ValueError(
-            #         f"Two similar pairs in the current constraint {name}: with the matrix n°{num_matrix} and indexes i={i} and j={j} \n \n {self.list_cstr[self.current_num_constraint]}"
-            #     )
-            # diff = deduct_two_lists(
-            #     self.list_cstr[self.current_num_constraint]["j"],
-            #     self.list_cstr[self.current_num_constraint]["i"],
-            # )
-            # if any(el > 0 for el in diff):
-            #     index = next(
-            #         (ind for ind, el in enumerate(diff) if el > 0),
-            #         None,
-            #     )
-            #     i = self.list_cstr[self.current_num_constraint]["i"][index]
-            #     j = self.list_cstr[self.current_num_constraint]["j"][index]
-            #     raise ValueError(
-            #         f"Indexes i and j are not sorted in the current constraint {name} : i = {i} and j = {j} \n"
-            #     )
+            exists, num_matrix, i, j = exists_two_similar_pairs_in_three_lists(
+                self.list_cstr[self.current_num_constraint]["num_matrix"],
+                self.list_cstr[self.current_num_constraint]["i"],
+                self.list_cstr[self.current_num_constraint]["j"],
+            )
+            if exists:
+                raise ValueError(
+                    f"Two similar pairs in the current constraint {name}: with the matrix n°{num_matrix} and indexes i={i} and j={j} \n \n {self.list_cstr[self.current_num_constraint]}"
+                )
+            diff = deduct_two_lists(
+                self.list_cstr[self.current_num_constraint]["j"],
+                self.list_cstr[self.current_num_constraint]["i"],
+            )
+            if any(el > 0 for el in diff):
+                index = next(
+                    (ind for ind, el in enumerate(diff) if el > 0),
+                    None,
+                )
+                i = self.list_cstr[self.current_num_constraint]["i"][index]
+                j = self.list_cstr[self.current_num_constraint]["j"][index]
+                raise ValueError(
+                    f"Indexes i and j are not sorted in the current constraint {name} : i = {i} and j = {j} \n"
+                )
 
-            # logger_mosek.info(
-            #     f"Current constraint {self.current_num_constraint} is valid."
-            # )
-            # if any(
-            #     el == 0 for el in self.list_cstr[self.current_num_constraint]["value"]
-            # ):
-            #     raise ValueError(
-            #         f"Zero value in the current constraint {name} : {self.list_cstr[self.current_num_constraint]}"
-            #     )
+            logger_mosek.info(
+                f"Current constraint {self.current_num_constraint} is valid."
+            )
+            if any(
+                el == 0 for el in self.list_cstr[self.current_num_constraint]["value"]
+            ):
+                raise ValueError(
+                    f"Zero value in the current constraint {name} : {self.list_cstr[self.current_num_constraint]}"
+                )
             if not (
                 (
                     self.list_cstr[self.current_num_constraint]["i"].size
@@ -342,7 +342,7 @@ class CommonConstraints(VariablesCall):
         histogram_bound = {}
         min_bound = infinity
         max_bound = -infinity
-        sum_bound = infinity
+        sum_bound = 0
 
         close_to_zero_total_coeff = infinity
         close_to_zero_total_bound = infinity
@@ -416,12 +416,11 @@ class CommonConstraints(VariablesCall):
     def get_histogram_of_coefficients_name_constraint(self, name_constraint : str = "ReLU Relaxed"):
         print("Getting histogram of coefficients...")
         self.coefficient_values = {k : [] for k in range(self.K+1)}
-        coeff_max_decimals = 0
         decimals_list = []
-        nb_moins_de_10_decimals = 0
-        nb_plus_de_10_decimals = 0
+        equals_zero = 0
+        
         for cstr in self.list_cstr:
-            if "Rec" in cstr["name"]:
+            if "ReLU Relaxed" in cstr["name"]:
                 print("STUDY COEFF : constraint selected : ", cstr["name"], 'with values : ', cstr)
              
              
@@ -429,23 +428,21 @@ class CommonConstraints(VariablesCall):
                     if f"Layer {k}" in cstr["name"]:
                         self.coefficient_values[k].extend([float(val) for val in cstr["value"]])
                         for val in cstr["value"]:
-                            d = decimal.Decimal(val)
-                            decimals_list.append(-d.as_tuple().exponent)
-                            if -d.as_tuple().exponent > coeff_max_decimals:
-                               coeff_max_decimals = -d.as_tuple().exponent
-                            if -d.as_tuple().exponent <= 10:
-                               nb_moins_de_10_decimals += 1
-                            else :  
-                                 nb_plus_de_10_decimals += 1
+                           
+                           
+                            d = decimal.Decimal(str(val))
+                            if '.' in str(d):
+                                nb_decimals = len(str(d).split('.')[1])
+                                decimals_list.append(nb_decimals)
+
+                            if abs(val) < 1e-6:
+
+                                equals_zero += 1
                         break
         print("STUDY COEFF median decimals : ", np.median(decimals_list))
         print("STUDY COEFF mean decimals : ", np.mean(decimals_list))
-        print("STUDY COEFF : coeff_max_decimals : ", coeff_max_decimals)
-        print("STUDY COEFF : nb_moins_de_10_decimals : ", nb_moins_de_10_decimals)
-        print("STUDY COEFF : nb_plus_de_10_decimals : ", nb_plus_de_10_decimals)
+        print("STUDY COEFF number of coefficients equal to zero : ", equals_zero)
   
-        print("STUDY COEFF at the end of function hist: coefficient values for each layer: {}".format(self.coefficient_values))
-        
 
     def reinitialize(self, verbose: bool):
         """

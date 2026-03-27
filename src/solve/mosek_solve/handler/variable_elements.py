@@ -259,15 +259,17 @@ class Equivalent_Neurons_Index:
         assert index in self.equivalent_neurons, f"Index {index} does not exist."
         return self.equivalent_neurons[index]["constant"]
 
-    def get_equivalent(self, layer: int, neuron: int, front_of_matrix: bool = None):
+    def get_equivalent(self, layer: int, neuron: int, front_of_matrix: bool = None, decomposed_in_front_and_back_matrix : bool = False):
         """
         Get the equivalent neurons for a given key.
         """
        
         index = self.get_index(layer, neuron)
         assert index in self.equivalent_neurons, f"Index {index} does not exist."
-        if front_of_matrix is None : 
+        if not decomposed_in_front_and_back_matrix : 
             return self.equivalent_neurons[index]["weights"]
+        if front_of_matrix is None :
+             print(f"ERROR : front_of_matrix must be specified for neuron {neuron} at layer {layer}")
         if not ( (not front_of_matrix and layer > 0) or (front_of_matrix and layer < self.K - 1) ):
             print(f"ERROR : layer = {layer}, neuron = {neuron}; K = {self.K}, front_of_matrix = {front_of_matrix}" )
         weights_str = "weights_front" if front_of_matrix else "weights_back"
@@ -281,10 +283,11 @@ class Equivalent_Neurons_Index:
 def _add_from_key(class_label: int, i: int, num_matrix: int, dict: numba.typed.Dict):
     """
     Add a value to the dictionary for a given key.
+    The dict is already specific to the class_label. dict = self.equivalent_indexs_betas[class_label]
     """
     index = _get_key_linear_(i, num_matrix, big_M_cst)
-    if class_label in dict:
-        raise ValueError(f"Class label {class_label} already exists in the dictionary.")
+    if index in dict:
+        raise ValueError(f"Class label {class_label} already exists in the dictionary index = {index}.")
     else:
         dict[index] = 1
 

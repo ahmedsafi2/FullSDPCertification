@@ -249,11 +249,11 @@ class Certification_Problem:
             model_instance.solve(verbose=True, only_bounds=False)
             print("STUDY : Model instance solved")
             print("STUDY : model_instance.benchmark_dataframe :", model_instance.benchmark_dataframe)
-            exit()
-            for k in range(1, self.network.K + 1):
-                if k not in coefficient_values:
-                    coefficient_values[k] = []
-                coefficient_values[k].extend(model_instance.handler.Constraints.coefficient_values[k])
+            
+            # for k in range(1, self.network.K + 1):
+            #     if k not in coefficient_values:
+            #         coefficient_values[k] = []
+            #     coefficient_values[k].extend(model_instance.handler.Constraints.coefficient_values[k])
             #print("STUDY COEFF after run: coefficient values for each layer: {}".format(coefficient_values))
             self.benchmark = concat_dataframes_with_missing_columns(
                 self.benchmark, model_instance.benchmark_dataframe
@@ -279,6 +279,11 @@ class Certification_Problem:
                 print(
                     f"STUDY : Layer {k} - Stable actives neurons: {nb_stable_actives_layer_k} - Stable inactives neurons: {nb_stable_inactives_layer_k}"
                 )
+            for k in range(self.network.K + 1):
+                for j in range(self.network.n[k]):
+                    dict_stability[f"LB_Layer_{k}_Neuron_{j}"] = model_instance.L[k][j]
+                    dict_stability[f"UB_Layer_{k}_Neuron_{j}"] = model_instance.U[k][j]
+
             stable_actives_study = pd.concat(
                 [
                     stable_actives_study,
@@ -289,11 +294,11 @@ class Certification_Problem:
                 ignore_index=True,
             )
 
-        stable_actives_study.to_csv(
-            get_project_path(
-                f"results/benchmark/{self.title}/{title_run}/stable_actives_study.csv"
+            stable_actives_study.to_csv(
+                get_project_path(
+                    f"results/benchmark/{self.title}/{title_run}/stable_actives_study.csv"
+                )
             )
-        )
 
         for k in range(1, self.network.K + 1):
             if coefficient_values[k] == []:

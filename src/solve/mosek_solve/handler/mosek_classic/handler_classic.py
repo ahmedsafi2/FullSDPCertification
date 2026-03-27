@@ -212,6 +212,7 @@ class MosekClassicHandler:
             logger_mosek.debug(
                 f"Variable matrix {name} already exists. Skipping addition."
             )
+            return
         else:
             if self.verbose:
                 print(f"Adding a variable matrix {name} of dimension %s", dim)
@@ -219,7 +220,7 @@ class MosekClassicHandler:
             self.indexes_matrices.current_matrices_variables.append(
                 {"name": name, "dim": dim, "value": Matrices_Solutions()}
             )
-        self.task.appendbarvars([dim])
+            self.task.appendbarvars([dim])
 
     def add_vector_variable(self, name: str, dim: int):
         """
@@ -440,7 +441,7 @@ class MosekClassicHandler:
 
         y = [0.0] * self.final_number_constraints
 
-        assert len(dual_variables) == len(self.Constraints.list_cstr)
+        assert len(dual_variables) == len(self.Constraints.list_cstr), "Le nombre de variables duales ne correspond pas au nombre de contraintes."
         for i in range(len(dual_variables)):
             self.Constraints.list_cstr[i]["dual_value"] = dual_variables[i]
 

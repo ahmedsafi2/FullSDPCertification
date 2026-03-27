@@ -128,7 +128,7 @@ class Solver:
         )
 
         
-        print("STUDY COEFF  after checking stable active neurons:", self.stable_actives_neurons)
+        print("STUDY COEFF ACTIVES  after checking stable active neurons:", self.stable_actives_neurons)
 
         print("STUDY COEFF  after checking stable inactive neurons:", self.stable_inactives_neurons)
 

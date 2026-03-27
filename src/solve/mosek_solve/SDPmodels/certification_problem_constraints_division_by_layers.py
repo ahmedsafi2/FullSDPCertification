@@ -41,6 +41,7 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
             sum_cstr += 1
 
     if not only_linear_constraints:
+        print("Adding rec matrices quadratic constraint")
         for k in range(1, self.K if self.LAST_LAYER else self.K - 1):
             for j in range(self.n[k]):
                 if (k, j) in self.stable_inactives_neurons:

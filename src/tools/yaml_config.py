@@ -3,6 +3,7 @@ from typing import List, Optional, Any, Union
 from pathlib import Path
 import yaml
 import torch
+import pandas as pd
 from torchvision import transforms
 from torch.utils.data import Dataset
 
@@ -66,37 +67,9 @@ class DataConfig(BaseModel):
         else:
             return x  # x already defined explicitely
 
-    bounds_method: str = "GREAT_BOUNDS"
     ytarget: Optional[int] = None
-    L: Optional[List[float]] = None
-    U: Optional[List[float]] = None
 
-    @model_validator(mode="after")
-    def process_bounds(self) -> "DataConfig":
-
-        if self.bounds_method == "GREAT_BOUNDS":
-            n = self.network.n
-            K = self.network.K
-
-            L = [[self.L[k]] * n[k] for k in range(K + 1)]
-            U = [[self.U[k]] * n[k] for k in range(K + 1)]
-
-            # for j in range(n[0]):
-            #     L[0][j] = max(
-            #         self.data.L[0], self.data.x[j] - self.certification_problem.epsilon
-            #     )
-            #     U[0][j] = min(
-            #         self.data.U[0], self.data.x[j] + self.certification_problem.epsilon
-            #     )
-
-            self.L = L
-            self.U = U
-        else:
-            self.L = None
-            self.U = None
-
-        return self
-
+   
     @model_validator(mode="after")
     def create_dataset(self) -> "DataConfig":
         # Créer une map par label
@@ -180,30 +153,10 @@ class MosekSolverConfig(BaseModel):
         if v is False and values.get("use_active_neurons"):
             raise ValueError("Withdraw of active neurons on penultimate layer incompatible with use_active_neurons = True")
         return v
-
-
-    bounds_method: str = "IBP"
-    alpha_1: Optional[float] = None  # Lower bound for the McCormick envelope
-
-    @validator("alpha_1")
-    def validate_alpha_1(cls, v, values):
-        if v is None and values.get("certification_model_name") in [
-            "MdSDP",
-            "MzbarSDP",
-        ]:
-            raise ValueError("alpha_1 must be defined for MdSDP and MzbarSDP models.")
-        return v
-
-    alpha_2: Optional[float] = None  # Upper bound for the McCormick envelope
-
-    @validator("alpha_2")
-    def validate_alpha_2(cls, v, values):
-        if v is None and values.get("certification_model_name") in [
-            "MdSDP",
-            "MzbarSDP",
-        ]:
-            raise ValueError("alpha_2 must be defined for MdSDP and MzbarSDP models.")
-        return v
+    bounds_file: Optional[str] = None    
+    L: Optional[List[float]] = None
+    U: Optional[List[float]] = None
+    bounds_method: str = "alpha-CROWN"  # Method to compute bounds, options: "IBP", "alpha-CROWN", "GREAT_BOUNDS", "from_file"
     write_model : Optional[bool] = False
 
 
@@ -245,10 +198,41 @@ class ConicBundleConfig(BaseModel):
 
 class FullCertificationConfig(BaseModel):
     input_ball: InputBallConfig
-    models: Optional[List[Union[MosekSolverConfig, GurobiSolverConfig]]] = None
     data: Union[DataConfig, DatasetConfig]
     network: NetworkConfig
+    models: Optional[List[Union[MosekSolverConfig, GurobiSolverConfig]]] = None
+    @validator('models')
+    def process_bounds(cls, v, values):
+        for model in v:
+            if not(model.bounds_method in ["IBP", "alpha-CROWN", "GREAT_BOUNDS", "from_file"]):
+                raise ValueError("Bounds method must be one of 'IBP', 'alpha-CROWN', 'GREAT_BOUNDS', or 'from_file'.")
+            elif model.bounds_method == "from_file" and model.bounds_file is None:
+                raise ValueError("Bounds file must be specified if bounds method is 'from_file'.")
+            if model.bounds_method == "GREAT_BOUNDS":
+                L = [[self.L[k]] * n[k] for k in range(K + 1)]
+                U = [[self.U[k]] * n[k] for k in range(K + 1)]
+                model.L = L
+                model.U = U
+            if model.bounds_method == "from_file":
+                bounds_csv = pd.read_csv(model.bounds_file)
+                L = [[None for j in range(values.get("network").n[k])] for k in range(values.get("network").K + 1)]
+                U = [[None for j in range(values.get("network").n[k])] for k in range(values.get("network").K + 1)]
+                for k in range(values.get("network").K + 1):
+                    for j in range(values.get("network").n[k]):
+                        L[k][j] = float(bounds_csv[f"LB_Layer_{k}_Neuron_{j}"].iloc[0])
+                        U[k][j] = float(bounds_csv[f"UB_Layer_{k}_Neuron_{j}"].iloc[0])
+                model.L = L
+                model.U = U
+                print("Bounds loaded from file : ", model.bounds_file)
+                print("L : ", model.L)
+                print("U : ", model.U)
+            else:
+                model.L = None
+                model.U = None
+        return v
     conic_solver: Optional[ConicBundleConfig] = None
+   
+
 
 
 class Adversarial_Network_Training(BaseModel):

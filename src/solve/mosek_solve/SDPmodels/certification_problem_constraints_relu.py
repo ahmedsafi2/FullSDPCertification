@@ -152,8 +152,7 @@ def ReLU_constraint_Lan(
 
             # zk * (zk - Wk zk-1 - bk) = 0
             if self.MATRIX_BY_LAYERS and any(
-                (k - 1, i) in self.stable_actives_neurons for i in range(self.n[k - 1])
-            ):
+                (k - 1, i) in self.stable_actives_neurons for i in range(self.n[k - 1])):
                 # The constraint cannot be added as it links products of variables from different matrices : a relaxation is needed
                 print("STUDY COEFF Relaxation of ReLU constraint for layer", k, "neuron", j)
                 if relu_quadratic_random :

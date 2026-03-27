@@ -1,4 +1,3 @@
-from tabnanny import verbose
 from typing import List
 import mosek
 from ..indexes_matrices import (
@@ -148,8 +147,7 @@ class ConstraintsClassic(CommonConstraints):
         """
         Add the constraint to the task.
         """
-        if verbose :
-            print(f"CALLBACK : Number of constraints : {len(self.list_cstr)}")
+        print(f"CALLBACK : Number of constraints : {len(self.list_cstr)}")
         logger_mosek.info(f"Adding {len(self.list_cstr)} constraints to the task...")
         for ind_cstr in range(len(self.list_cstr)):
             name = self.list_cstr[ind_cstr]["name"]

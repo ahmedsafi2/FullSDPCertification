@@ -226,6 +226,13 @@ def initialize_variables(self):
                 )
         if self.BETAS:
             self.add_vector_variable(name="betas", dim=self.n[self.K])
+    
+    assert len(self.indexes_matrices.current_matrices_variables) == self.indexes_matrices.nb_matrices, (                                                                                    
+        f"Nombre de matrices incohérent : {len(self.indexes_matrices.current_matrices_variables)} créées "                                                                                  
+        f"mais {self.indexes_matrices.nb_matrices} attendues "                                                                                                                              
+        f"(BETAS_Z={self.BETAS_Z}, MATRIX_BY_LAYERS={self.MATRIX_BY_LAYERS}, "
+        f"LAST_LAYER={self.LAST_LAYER}, BETAS={self.BETAS}, K={self.K})"                                                                                                                    
+    ) 
 
 
 
@@ -387,7 +394,7 @@ class Matrices_Solutions:
             self._data[key] = value
 
         else:
-            return ValueError(
+            raise ValueError(
                 f"Configuration {key} déjà présente avec la value de dim {self._data[key].shape}"
             )
 
@@ -411,7 +418,7 @@ class Matrices_Solutions:
         key = frozenset(cuts)
         if key not in self._data:
             print(f"Configuration {key} non trouvée")
-            return ValueError(
+            raise ValueError(
                 f"Configuration {key} non trouvée dans les configurations disponibles"
             )
         return self._data.get(key)

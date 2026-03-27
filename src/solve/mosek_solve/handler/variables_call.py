@@ -195,15 +195,15 @@ class LayersValues:
                 if (k, j) in self.stable_actives_neurons:
                     upper_bounds = (
                         sum(
-                            value * U[k][j]
-                            for (k, j), value in self.equivalent_values_layers[k, j][
+                            value * U[layer][neuron]
+                            for (layer, neuron), value in self.equivalent_values_layers[k, j][
                                 "neurons_weight"
                             ].items()
                             if value > 0
                         )
                         + sum(
-                            value * L[k][j]
-                            for (k, j), value in self.equivalent_values_layers[k, j][
+                            value * L[layer][neuron]
+                            for (layer, neuron), value in self.equivalent_values_layers[k, j][
                                 "neurons_weight"
                             ].items()
                             if value < 0
@@ -230,15 +230,15 @@ class LayersValues:
                     # print(f"Upper bound for layer {k}, neuron {j}: {self.upper_bounds[(k, j)]} and U = {U[k][j]}")
                     lower_bounds = (
                         sum(
-                            value * L[k][j]
-                            for (k, j), value in self.equivalent_values_layers[k, j][
+                            value * L[layer][neuron]
+                            for (layer, neuron), value in self.equivalent_values_layers[k, j][
                                 "neurons_weight"
                             ].items()
                             if value > 0
                         )
                         + sum(
-                            value * U[k][j]
-                            for (k, j), value in self.equivalent_values_layers[k, j][
+                            value * U[layer][neuron]
+                            for (layer, neuron), value in self.equivalent_values_layers[k, j][
                                 "neurons_weight"
                             ].items()
                             if value < 0
@@ -586,6 +586,30 @@ class VariablesCall:
     # def call_variable(self, var: str, **kwargs):
     #     pass
 
+
+    def verify_variable_z(self, layer : int, neuron : int, front_of_matrix : bool= None):
+        assert layer is not None, "Layer must be specified for z variable."
+        assert neuron is not None, "Neuron must be specified for z variable."
+        assert (layer, neuron) not in self.stable_inactives_neurons, "Stable inactive neurons should not be added as variables."
+        if (layer, neuron) in self.stable_actives_neurons :
+            decomposed_in_front_and_back_matrix = False
+        else : 
+            if self.MATRIX_BY_LAYERS :
+                if front_of_matrix is None:
+                    if layer < self.K-1 :
+                        front_of_matrix = True
+                    elif layer == self.K-1 and self.LAST_LAYER :
+                        front_of_matrix = True
+                    else :
+                        front_of_matrix = False
+                decomposed_in_front_and_back_matrix = (layer < self.K or self.LAST_LAYER) 
+            else : 
+                decomposed_in_front_and_back_matrix = False
+        return decomposed_in_front_and_back_matrix, front_of_matrix
+
+
+              
+
     def add_linear_variable(self, var: str, value: float, **kwargs):
         """
         Add a linear variables to the constraint.
@@ -596,33 +620,16 @@ class VariablesCall:
         if var == "z":
             layer = kwargs.get("layer", None)
             neuron = kwargs.get("neuron", None)
-            assert layer is not None, "Layer must be specified for z variable."
-            assert neuron is not None, "Neuron must be specified for z variable."
-
             front_of_matrix = kwargs.get("front_of_matrix", None)
-            print("layer : ", layer, "neuron : ", neuron, "front_of_matrix : ", front_of_matrix)
+            #print("STUDY COEFF layer : ", layer, "neuron : ", neuron, "front_of_matrix : ", front_of_matrix)
 
-            if ((layer,neuron) not in self.stable_actives_neurons and layer != self.K) and front_of_matrix is None:
-                
-                if (layer < self.K-1) or self.LAST_LAYER :
-                    front_of_matrix = True
-                else : 
-                    front_of_matrix = False
-            
-            assert (
-                (front_of_matrix is not None) or ((layer,neuron) in self.stable_actives_neurons) or (layer == self.K and not self.LAST_LAYER)
-            ), "Front of matrix must be specified for z variable."
-
-            assert (front_of_matrix or layer>0, "Layer 0 cannot be a the back of matrix")
-            assert (not front_of_matrix or not(layer == self.K or (layer == self.K-1 and self.LAST_LAYER)), f"Layer {layer} cannot be at the front of matrix")
-            if not self.MATRIX_BY_LAYERS :
-                front_of_matrix = None
+            decomposed_in_front_and_back_matrix, front_of_matrix = self.verify_variable_z(layer, neuron, front_of_matrix)
             dict1 = self.equivalent_neurons.get_equivalent(
-                    layer=layer, neuron=neuron, front_of_matrix=front_of_matrix
+                    layer=layer, neuron=neuron, front_of_matrix=front_of_matrix, decomposed_in_front_and_back_matrix=decomposed_in_front_and_back_matrix
                 )
             assert len(dict1) > 0, "Dictionnary used in add_linear_variable is empty"
 
-            print(f"In add_linear_variable : Layer = {layer}, neuron = {neuron}, front_of_matrix = {front_of_matrix}, dict1 = {dict1}, value = {value}")
+            #print(f"STUDY COEFF In add_linear_variable : Layer = {layer}, neuron = {neuron}, front_of_matrix = {front_of_matrix}, dict1 = {dict1}, value = {value}")
             self.add_var(
                 dict1=dict1,
                 value=value,
@@ -642,6 +649,8 @@ class VariablesCall:
                 ),
                 value=value,
             )
+
+
 
     def add_quad_variable(self, var1: str, var2: str, value: float, **kwargs):
         """
@@ -667,25 +676,19 @@ class VariablesCall:
             layer1 = kwargs.get("layer1", None)
             neuron1 = kwargs.get("neuron1", None)
             front_of_matrix1 = kwargs.get("front_of_matrix1", None)
-            assert layer1 is not None, "Layer must be specified for z variable."
-            assert neuron1 is not None, "Neuron must be specified for z variable."
-            assert (
-                front_of_matrix1 is not None
-            ), "Front of matrix must be specified for z variable."
-            assert not self.MATRIX_BY_LAYERS or ((layer1,neuron1) not in self.stable_actives_neurons), "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
+            decomposed_in_front_and_back_matrix, front_of_matrix1 = self.verify_variable_z(layer1, neuron1, front_of_matrix1)
             class_label = kwargs.get("class_label", None)
             assert (
                 class_label is not None
             ), "Class label must be specified for beta variable."
 
             print(f"In add_quad_variable : Layer = {layer1}, neuron = {neuron1}, front_of_matrix = {front_of_matrix1}")
-            if not self.MATRIX_BY_LAYERS :
-                front_of_matrix1 = None
+           
             dict2 = self.equivalent_indexes_betas.get_equivalent(
                 class_label=class_label
             )
             dict1 = self.equivalent_neurons.get_equivalent(
-                layer1, neuron1, front_of_matrix1
+                layer1, neuron1, front_of_matrix1, decomposed_in_front_and_back_matrix
             )
             
             constant1 = self.equivalent_neurons.get_constant(layer1, neuron1)
@@ -695,24 +698,18 @@ class VariablesCall:
             layer2 = kwargs.get("layer2", None)
             neuron2 = kwargs.get("neuron2", None)
             front_of_matrix2 = kwargs.get("front_of_matrix2", None)
-            assert layer2 is not None, "Layer must be specified for z variable."
-            assert neuron2 is not None, "Neuron must be specified for z variable."
-            assert (
-                front_of_matrix2 is not None
-            ), "Front of matrix must be specified for z variable."
+            decomposed_in_front_and_back_matrix, front_of_matrix2 = self.verify_variable_z(layer2, neuron2, front_of_matrix2)
             class_label = kwargs.get("class_label", None)
             assert (
                 class_label is not None
             ), "Class label must be specified for beta variable."
-            assert not self.MATRIX_BY_LAYERS or ((layer2,neuron2) not in self.stable_actives_neurons), "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
-            if not self.MATRIX_BY_LAYERS :
-                front_of_matrix2 = None
+           
             print(f"In add_quad_variable : Layer = {layer2}, neuron = {neuron2}, front_of_matrix = {front_of_matrix2}")
             dict1 = self.equivalent_indexes_betas.get_equivalent(
                 class_label=class_label
             )
             dict2 = self.equivalent_neurons.get_equivalent(
-                layer2, neuron2, front_of_matrix2
+                layer2, neuron2, front_of_matrix2, decomposed_in_front_and_back_matrix
             )
 
             constant1 = 0
@@ -741,33 +738,22 @@ class VariablesCall:
             layer1 = kwargs.get("layer1", None)
             neuron1 = kwargs.get("neuron1", None)
             front_of_matrix1 = kwargs.get("front_of_matrix1", None)
-            assert layer1 is not None, "Layer must be specified for z variable."
-            assert neuron1 is not None, "Neuron must be specified for z variable."
-            assert (
-                front_of_matrix1 is not None
-            ), "Front of matrix must be specified for z variable."
             layer2 = kwargs.get("layer2", None)
             neuron2 = kwargs.get("neuron2", None)
             front_of_matrix2 = kwargs.get("front_of_matrix2", None)
-            assert layer2 is not None, "Layer must be specified for z variable."
-            assert neuron2 is not None, "Neuron must be specified for z variable."
-            assert (
-                front_of_matrix2 is not None
-            ), "Front of matrix must be specified for z variable."
-            assert not self.MATRIX_BY_LAYERS or ((layer1,neuron1) not in self.stable_actives_neurons), "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
-            assert not self.MATRIX_BY_LAYERS or ((layer2,neuron2) not in self.stable_actives_neurons), "Stable active neurons should not be directly added in quadratic products. They must be decomposed"
-            if not self.MATRIX_BY_LAYERS :
-                front_of_matrix1 = None
-                front_of_matrix2 = None
+            
+            decomposed_in_front_and_back_matrix1, front_of_matrix1 = self.verify_variable_z(layer1, neuron1, front_of_matrix1)
+            decomposed_in_front_and_back_matrix2, front_of_matrix2 = self.verify_variable_z(layer2, neuron2, front_of_matrix2)
             print(f"In add_quad_variable : Layer = {layer2}, neuron = {neuron2}, front_of_matrix = {front_of_matrix2}")
             constant1 = self.equivalent_neurons.get_constant(layer1, neuron1)
             constant2 = self.equivalent_neurons.get_constant(layer2, neuron2)
             dict1 = self.equivalent_neurons.get_equivalent(
-                layer=layer1, neuron=neuron1, front_of_matrix=front_of_matrix1
+                layer=layer1, neuron=neuron1, front_of_matrix=front_of_matrix1, decomposed_in_front_and_back_matrix=decomposed_in_front_and_back_matrix1
             )
             dict2 = self.equivalent_neurons.get_equivalent(
-                layer=layer2, neuron=neuron2, front_of_matrix=front_of_matrix2
+                layer=layer2, neuron=neuron2, front_of_matrix=front_of_matrix2, decomposed_in_front_and_back_matrix=decomposed_in_front_and_back_matrix2
             )
+
         assert len(dict1) > 0, "Dictionnary used in add_quad_variable is empty"
         assert len(dict2) > 0, "Dictionnary used in add_quad_variable is empty"
         self.add_var(
