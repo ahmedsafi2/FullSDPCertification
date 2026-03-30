@@ -80,7 +80,7 @@ class Indexes_Matrixes_for_Mosek_Solver:
         # Each layer has unstable neurons
         if self.MATRIX_BY_LAYERS:
 
-            for layer in range(self.K-2):
+            for layer in range(self.K-1):
                 taille = len(
                     [
                         (layer, j)

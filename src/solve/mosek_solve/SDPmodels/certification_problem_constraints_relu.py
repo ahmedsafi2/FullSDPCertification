@@ -236,20 +236,22 @@ def ReLU_triangularization(self):
                 not self.keep_penultimate_actives or k != self.K - 1
             ):
                 continue
-            if (
-                abs(self.handler.Constraints.U[k][j] - self.handler.Constraints.L[k][j])
-                <= 1e-6
-            ):
+            U_kj = self.handler.Constraints.U[k][j]
+            L_kj = self.handler.Constraints.L[k][j]
+
+            if U_kj < L_kj:
+                raise ValueError(
+                    f"Layer {k}, Neuron {j} : inverted bounds L={L_kj} > U={U_kj}."
+                )
+            if abs(U_kj - L_kj) <= 1e-6:
                 logger_mosek.warning(
-                    f"Layer {k}, Neuron {j} : L={self.handler.Constraints.L[k][j]} and U={self.handler.Constraints.U[k][j]} are equal, triangular ReLU constraint is not added."
+                    f"Layer {k}, Neuron {j} : L={L_kj} and U={U_kj} are equal, triangular ReLU constraint is not added."
                 )
                 continue
 
-            rel_u = max(self.handler.Constraints.U[k][j], 0)
-            rel_l = max(self.handler.Constraints.L[k][j], 0)
-            k_cst = (rel_u - rel_l) / (
-                self.handler.Constraints.U[k][j] - self.handler.Constraints.L[k][j]
-            )
+            rel_u = max(U_kj, 0)
+            rel_l = max(L_kj, 0)
+            k_cst = (rel_u - rel_l) / (U_kj - L_kj)
             # print(
             #     "k_cst:",
             #     k_cst,

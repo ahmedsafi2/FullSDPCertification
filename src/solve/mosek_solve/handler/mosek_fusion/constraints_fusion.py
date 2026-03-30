@@ -111,27 +111,24 @@ class ConstraintsFusion(CommonConstraints):
                 self.list_cstr[ind_cstr]["j"],
                 self.list_cstr[ind_cstr]["value"],
             )
-            if "ReLU" in self.list_cstr[ind_cstr]["name"] and "upper" in self.list_cstr[ind_cstr]["name"] :
-                name = self.list_cstr[ind_cstr]["name"] 
-                print(f"STUDY constraint = {name}; num = {num_matrix}; i = {i}; j = {j}; value = {value}")
 
-            expression = Expr.constTerm(0.0)
-            for num_matrix, i, j, value in zip(
-                res[0],
-                res[1],
-                res[2],
-                res[3],
-            ):
-                dim = self.indexes_matrices.get_shape_matrix(num_matrix)
+            # Group elements by num_matrix: one dense matrix per PSD variable
+            # (res[0] is already sorted by num_matrix after sort_lists_by_first)
+            unique_matrices, group_starts = np.unique(res[0], return_index=True)
+            group_ends = np.append(group_starts[1:], len(res[0]))
+
+            terms = []
+            for nm, s, e in zip(unique_matrices, group_starts, group_ends):
+                dim = self.indexes_matrices.get_shape_matrix(nm)
                 M = np.zeros((dim, dim))
-                M[i, j] = value
-                name = self.indexes_matrices.get_name_matrix(num_matrix)
+                M[res[1][s:e], res[2][s:e]] = res[3][s:e]
+                name = self.indexes_matrices.get_name_matrix(nm)
                 var = self.model.getVariable(name)
+                terms.append(Expr.sum(Expr.mulElm(Matrix.dense(M), var)))
 
-                expression = Expr.add(
-                    expression,
-                    Expr.sum(Expr.mulElm(Matrix.dense(M), var)),
-                )
+            expression = terms[0]
+            for t in terms[1:]:
+                expression = Expr.add(expression, t)
             if self.list_cstr[ind_cstr]["bound_type"] == mosek.boundkey.fx:
                 lb = self.list_cstr[ind_cstr]["lb"]
                 constraint = self.model.constraint(

@@ -133,11 +133,11 @@ class CommonConstraints(VariablesCall):
                     self.list_cstr[self.current_num_constraint]["i"].size
                     == self.list_cstr[self.current_num_constraint]["j"].size
                 )
-                or (
+                and (
                     self.list_cstr[self.current_num_constraint]["num_matrix"].size
                     == self.list_cstr[self.current_num_constraint]["value"].size
                 )
-                or (
+                and (
                     self.list_cstr[self.current_num_constraint]["i"].size
                     == self.list_cstr[self.current_num_constraint]["value"].size
                 )

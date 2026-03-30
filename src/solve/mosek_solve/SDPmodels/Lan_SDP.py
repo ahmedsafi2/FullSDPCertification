@@ -87,11 +87,6 @@ class LanSDP(MosekSolver):
         # print("L before adding constraints  :   ", self.L)
         # print("U before adding constraints  :   ", self.U)
         # RELU
-        ub_neurons = "ReLU_active_ub_neurons" in cuts
-        lb_neurons = "ReLU_active_lb_neurons" in cuts
-        ub_decomposed = "ReLU_active_ub_decomposed" in cuts
-        lb_decomposed = "ReLU_active_lb_decomposed" in cuts
-
 
         self.ReLU_constraint_Lan()
 

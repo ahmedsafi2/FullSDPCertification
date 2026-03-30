@@ -505,7 +505,7 @@ class VariablesCall:
             line += f"Layer {layer}:\n"
             for neuron in range(self.n[layer]):
                 
-                decomposed_in_front_and_back_matrix = (not ((layer,neuron) in self.stable_actives_neurons)) and (layer < self.K or self.LAST_LAYER)
+                decomposed_in_front_and_back_matrix = (not ((layer,neuron) in self.stable_actives_neurons)) and (layer < self.K or self.LAST_LAYER) and self.MATRIX_BY_LAYERS
 
                 constant = self.equivalent_neurons.get_constant(
                     layer=layer, neuron=neuron
@@ -559,30 +559,7 @@ class VariablesCall:
     def add_var(self, **kwargs):
         raise NotImplementedError("This method should be implemented in the subclass Constraint or Objective.")
 
-    def get_upper_bound_value(self, layer: int, neuron: int) -> float:
-        """
-        Get the upper bound value for a given layer and neuron.
-        """
-        if layer < 0 or layer > self.K:
-            raise ValueError(f"Layer {layer} is out of bounds (0 to {self.K}).")
-        if neuron < 0 or neuron >= self.n[layer]:
-            raise ValueError(
-                f"Neuron {neuron} in layer {layer} is out of bounds (0 to {self.n[layer] - 1})."
-            )
-        return self.layers_values.upper_bounds.get((layer, neuron))
-
-    def get_lower_bound_value(self, layer: int, neuron: int) -> float:
-        """
-        Get the upper bound value for a given layer and neuron.
-        """
-        if layer < 0 or layer > self.K:
-            raise ValueError(f"Layer {layer} is out of bounds (0 to {self.K}).")
-        if neuron < 0 or neuron >= self.n[layer]:
-            raise ValueError(
-                f"Neuron {neuron} in layer {layer} is out of bounds (0 to {self.n[layer] - 1})."
-            )
-        return self.layers_values.lower_bounds.get((layer, neuron))
-
+  
     # def call_variable(self, var: str, **kwargs):
     #     pass
 

@@ -19,7 +19,7 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
             if self.handler.Constraints.new_constraint(
                 f"Rec: P_{k-1}[z_{k,j}] == P_{k}[z_{k,j}]", label="same_for_data"
             ):
-                return
+                continue
             self.handler.Constraints.add_linear_variable(
                 "z",
                 value=1,
@@ -55,10 +55,10 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
                         continue
                     # P_{k-1}[z_{k,j} * z_{k,j2}] == P_{k}[z_{k,j} * z_{k,j2}]
                     if self.handler.Constraints.new_constraint(
-                        f"Rec: P_{k-1}[z_{k,j}  * z_{k,j2}] == P_{k}[z_{k,j} *  * z_{k,j2}]",
+                        f"Rec: P_{k-1}[z_{k,j}  * z_{k,j2}] == P_{k}[z_{k,j} * z_{k,j2}]",
                         label="same_for_data",
                     ):
-                        return
+                        continue
                     self.handler.Constraints.add_quad_variable(
                         var1="z",
                         layer1=k,

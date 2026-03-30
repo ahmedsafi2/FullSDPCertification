@@ -47,10 +47,7 @@ def quad_bounds(self):
     for k in range(self.K + 1 if self.LAST_LAYER else self.K):
         print(f"Adding quadratic bounds constraint for layer {k}")
         for j in range(self.n[k]):
-            if (k, j) in self.stable_inactives_neurons or (
-                k,
-                j,
-            ):
+            if (k, j) in self.stable_inactives_neurons:
                 continue
             elif (k, j) in self.stable_actives_neurons and (
                 not self.keep_penultimate_actives or k != self.K - 1
@@ -328,7 +325,7 @@ def all_4_McCormick(self, layer1: int, neuron1: int, layer2: int, neuron2: int):
     )
 
     # z_{k1 j1} z_{k2 j2} <= z_{k1 j1} * U_{k2 j2} + z_{k2 j2} * L_{k1 j1} - U_{k2 - j2} * L_{k1 j1}
-    name_cstr = f"z_({layer1} {neuron1}) z_({layer2} {neuron2}) >= z_({layer1} {neuron1}) * U_({layer2} {neuron2}) + z_({layer2} {neuron2}) * L_({layer1} {neuron1}) - L_({layer1} {neuron1}) * U_({layer2} {neuron2})"
+    name_cstr = f"z_({layer1} {neuron1}) z_({layer2} {neuron2}) <= z_({layer1} {neuron1}) * U_({layer2} {neuron2}) + z_({layer2} {neuron2}) * L_({layer1} {neuron1}) - L_({layer1} {neuron1}) * U_({layer2} {neuron2})"
     if self.handler.Constraints.new_constraint(
         f"McCormick - Layer {layer1}, neuron {neuron1}    ; Layer {layer2}, neuron {neuron2} - {name_cstr}"
     ):
@@ -362,7 +359,7 @@ def all_4_McCormick(self, layer1: int, neuron1: int, layer2: int, neuron2: int):
         * self.handler.Constraints.L[layer1][neuron1],
     )
     # z_{k - 1+1j} z_{k - 1i} <= z_{k - 1+1j} * L_{k - 1j} + z_{k - 1i} * U_{k - 1+1j} - L_{k - 1j} * U_{k - 1+1j}
-    name_cstr = f"z_({layer1} {neuron1}) z_({layer2} {neuron2}) >= z_({layer1} {neuron1}) * L_({layer2} {neuron2}) + z_({layer2} {neuron2}) * U_({layer1} {neuron1}) - U_({layer1} {neuron1}) * L_({layer2} {neuron2})"
+    name_cstr = f"z_({layer1} {neuron1}) z_({layer2} {neuron2}) <= z_({layer1} {neuron1}) * L_({layer2} {neuron2}) + z_({layer2} {neuron2}) * U_({layer1} {neuron1}) - U_({layer1} {neuron1}) * L_({layer2} {neuron2})"
     if self.handler.Constraints.new_constraint(
         f"McCormick - Layer {layer1}, neuron {neuron1}    ; Layer {layer2}, neuron {neuron2}  - {name_cstr}"
     ):

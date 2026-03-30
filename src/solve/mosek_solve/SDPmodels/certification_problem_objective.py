@@ -87,6 +87,7 @@ def objective_Md(self):
                 if (self.K - 1, i) in self.stable_inactives_neurons:
                     continue
                 elif (self.K - 1, i) in self.stable_actives_neurons:
+                    raise ValueError("This objective has not been implemented yet.")
                     print(f"ERROR : stable active neuron at layer K-1 = {self.K-1} in objective")
                     # self.handler.Objective.add_quad_variable_bounding(
                     #     value=self.network.W[self.K - 1][j][i],

@@ -98,7 +98,7 @@ def McCormick_beta_z(self, layer: int):
 
             # ****************************************************
             if self.handler.Constraints.new_constraint(
-                f"T_{(layer, i),j} <= z__{layer, i}"
+                f"T_{(layer, i),j} <= z__{layer, i}", label="same_for_data"
             ):
                 continue
             self.handler.Constraints.add_quad_variable(
@@ -388,7 +388,7 @@ def betai_betaj(self):
 
                 # beta_j1 * beta_j2 <= min(betaj1, betaj2)
                 if self.handler.Constraints.new_constraint(
-                    f"betaibetaj - beta_{j1} beta_{j2} <= min(beta_{j1}, beta_{j2})",
+                    f"betaibetaj - beta_{j1} beta_{j2} <= beta_{j1}",
                     label="same_for_data",
                 ):
                     continue
@@ -409,7 +409,7 @@ def betai_betaj(self):
                 )
 
                 if self.handler.Constraints.new_constraint(
-                    f"betaibetaj - beta_{j1} beta_{j2} <= min(beta_{j1}, beta_{j2})",
+                    f"betaibetaj - beta_{j1} beta_{j2} <= beta_{j2}",
                     label="same_for_data",
                 ):
                     continue
@@ -527,7 +527,8 @@ def z_j2_beta_j2_less_than_zj(self):
                 if (self.K - 1, i) in self.stable_inactives_neurons:
                     continue
 
-                # if (self.K - 1, i) in self.stable_actives_neurons:
+                if (self.K - 1, i) in self.stable_actives_neurons:
+                    raise ValueError("There should not be actives on the penultimate layer with the untargeted objective.")
                 #     # beta_j2 * z_j2 - W part
                 #     self.handler.Constraints.add_quad_variable_bounding(
                 #         layer=self.K - 1,

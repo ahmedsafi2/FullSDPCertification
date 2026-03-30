@@ -82,8 +82,8 @@ models :
     - "RLT"
     - "triangularization"
     - "Tij"
-    # - "beta_logits_comparaison_1"
-    # - "beta_logits_comparaison_2"
+    - "beta_logits_comparaison_1"
+    - "beta_logits_comparaison_2"
     - "McC_betaz_logits"
     - "Tij_before_penultimate_layer"
     RLT_props : 
@@ -91,7 +91,7 @@ models :
     all_combinations_cuts : false
     MATRIX_BY_LAYERS: true
     LAST_LAYER: false
-    use_fusion: false  # Whether to use the fusion API for MOSEK
+    use_fusion: true  # Whether to use the fusion API for MOSEK
     use_callback : false # Whether to use the callback for MOSEK
     use_active_neurons: true # Whether to use active neurons in the certification problem as variables
     #ultimate_layer_use_active_neurons: 5 # Whether to use active neurons in the ultimate layer in the certification problem as variables
