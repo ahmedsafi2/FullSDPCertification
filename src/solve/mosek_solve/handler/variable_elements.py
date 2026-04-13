@@ -194,7 +194,7 @@ class Equivalent_Neurons_Index:
                 self.equivalent_neurons[key]["weights_back"] = Dict.empty(
                         key_type=numba.types.int64, value_type=numba.types.float64
                     )
-            if (layer <= K - 1 and not LAST_LAYER) or (layer <= K) : 
+            if layer <= K - 2 or (LAST_LAYER and layer == K - 1):
                 self.equivalent_neurons[key]["weights_front"] = Dict.empty(
                         key_type=numba.types.int64, value_type=numba.types.float64
                     )
@@ -204,7 +204,7 @@ class Equivalent_Neurons_Index:
                     )
     
     def add_unstable_neuron(self, front_of_matrix : bool, i : int, num_matrix : int, value : float, key : int):
-        print("add_unstable_neuron")
+       
         weight_str = "weights_front" if front_of_matrix else "weights_back"
         _add_ni(
             i,
@@ -269,7 +269,7 @@ class Equivalent_Neurons_Index:
         if not decomposed_in_front_and_back_matrix : 
             return self.equivalent_neurons[index]["weights"]
         if front_of_matrix is None :
-             print(f"ERROR : front_of_matrix must be specified for neuron {neuron} at layer {layer}")
+            raise ValueError(f"front_of_matrix must be specified for neuron {neuron} at layer {layer}")
         if not ( (not front_of_matrix and layer > 0) or (front_of_matrix and layer < self.K - 1) ):
             print(f"ERROR : layer = {layer}, neuron = {neuron}; K = {self.K}, front_of_matrix = {front_of_matrix}" )
         weights_str = "weights_front" if front_of_matrix else "weights_back"
@@ -311,9 +311,6 @@ class Equivalent_Betas_Index:
         """
         Add an equivalent beta index.
         """
-        print(
-            f"Adding equivalent beta for class label {class_label}, i: {i}, num_matrix: {num_matrix}"
-        )
         assert (
             class_label in self.equivalent_indexes_betas
         ), f"Class label {class_label} not found in equivalent betas."

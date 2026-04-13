@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 from .indexes_matrices import (
     Indexes_Matrixes_for_Mosek_Solver,
@@ -619,7 +620,6 @@ class VariablesCall:
             assert (
                 class_label is not None
             ), "Class label must be specified for beta variable."
-            print(f"In add_linear_variable : beta_class = {class_label}")
             self.add_var(
                 dict1=self.equivalent_indexes_betas.get_equivalent(
                     class_label=class_label
@@ -659,8 +659,6 @@ class VariablesCall:
                 class_label is not None
             ), "Class label must be specified for beta variable."
 
-            print(f"In add_quad_variable : Layer = {layer1}, neuron = {neuron1}, front_of_matrix = {front_of_matrix1}")
-           
             dict2 = self.equivalent_indexes_betas.get_equivalent(
                 class_label=class_label
             )
@@ -681,7 +679,6 @@ class VariablesCall:
                 class_label is not None
             ), "Class label must be specified for beta variable."
            
-            print(f"In add_quad_variable : Layer = {layer2}, neuron = {neuron2}, front_of_matrix = {front_of_matrix2}")
             dict1 = self.equivalent_indexes_betas.get_equivalent(
                 class_label=class_label
             )
@@ -701,7 +698,6 @@ class VariablesCall:
             assert (
                 class_label2 is not None
             ), "Class label2 must be specified for beta variable."
-            print(f"In add_quad_variable : class_label1 = {class_label1}, class_label2 = {class_label2}")
             dict1 = self.equivalent_indexes_betas.get_equivalent(
                 class_label=class_label1
             )
@@ -721,7 +717,6 @@ class VariablesCall:
             
             decomposed_in_front_and_back_matrix1, front_of_matrix1 = self.verify_variable_z(layer1, neuron1, front_of_matrix1)
             decomposed_in_front_and_back_matrix2, front_of_matrix2 = self.verify_variable_z(layer2, neuron2, front_of_matrix2)
-            print(f"In add_quad_variable : Layer = {layer2}, neuron = {neuron2}, front_of_matrix = {front_of_matrix2}")
             constant1 = self.equivalent_neurons.get_constant(layer1, neuron1)
             constant2 = self.equivalent_neurons.get_constant(layer2, neuron2)
             dict1 = self.equivalent_neurons.get_equivalent(
@@ -757,123 +752,159 @@ class VariablesCall:
         bound_sense: str = "upper",
         bound_type: str = "one_variable",
     ):
-        assert bound_type in ["one_variable", "composed"]
+        assert bound_type in ["one_variable", "composed", "random"]
         assert bound_sense in ["lower", "upper"]
+
 
         assert (layer_prev, neuron_prev) in self.stable_actives_neurons
         equivalent_values_neurons, constant = self.layers_values.get_equivalent_values(
             layer_prev, neuron_prev
         )
-        #print(f"            STUDY RELU add z quad bound layer_next = {layer_next}, neuron_next = {neuron_next}; front_of_matrix_next = {front_of_matrix_next}; layer_prev = {layer_prev}, neuron_prev = {neuron_prev} : front_of_matrix_prev = {front_of_matrix_prev}; weight = {weight}, constant = {constant} equivalent_values = ", equivalent_values_neurons)
-     
-        # print(
-        #     f"RELU STABLE bound_type: {bound_type}, bound_sense: {bound_sense}, weight = {weight}, constant = {constant}"
-        # )
-        for (layer1, neuron1), val1 in equivalent_values_neurons.items():
-            # print(
-            #     f"RELU STABLE: layer1 = {layer1}, neuron1 = {neuron1}, val1 = {val1}:"
-            # )
-            # print(f"RELU STABLE: val1 * weight = {val1 * weight}")
-            if bound_type == "one_variable":
-                if (bound_sense == "upper") :
-                    if (weight > 0 and val1 >= 0) or (weight <= 0 and val1 <= 0) :
 
-                        self.add_z_bound_one_variable_2(
-                            layer1=layer1,
-                            neuron1=neuron1,
-                            layer2=layer_next,
-                            neuron2=neuron_next,
-                            front_of_matrix1=front_of_matrix_prev,
-                            front_of_matrix2=front_of_matrix_next,
-                            value=weight * val1,
-                        )
-                    else : 
-                        self.add_z_bound_one_variable_1(
-                            layer1=layer1,
-                            neuron1=neuron1,
-                            layer2=layer_next,
-                            neuron2=neuron_next,
-                            front_of_matrix1=front_of_matrix_prev,
-                            front_of_matrix2=front_of_matrix_next,
-                            value=weight * val1,
-                        )
-                
+        U_next = self.U[layer_next][neuron_next]
+        coeff_next = 0.0  # accumulated coefficient for z_{layer_next}
+        cst = 0.0         # accumulated constant
 
-                else:
-                    if (weight > 0 and val1 >= 0) or (weight <= 0 and val1 <= 0) :
+        if bound_type == "one_variable":
+            # All contributions land on z_{layer_next} → accumulate into one scalar
+            for (layer1, neuron1), val1 in equivalent_values_neurons.items():
+                v = weight * val1
+                if bound_sense == "upper":
+                    if v >= 0:
+                        # one_variable_2: z*z' <= U_{layer1} * z_next
+                        coeff_next -= v * self.U[layer1][neuron1]
+                    elif layer1 == 0:
+                        # one_variable_1: z*z' >= L_{layer1} * z_next (input layer only)
+                        coeff_next -= v * self.L[layer1][neuron1]
+                else:  # lower
+                    if v >= 0 and layer1 == 0:
+                        # one_variable_1: input layer only
+                        coeff_next -= v * self.L[layer1][neuron1]
+                    elif v < 0:
+                        # one_variable_2: always
+                        coeff_next -= v * self.U[layer1][neuron1]
 
-                        self.add_z_bound_one_variable_1(
-                            layer1=layer1,
-                            neuron1=neuron1,
-                            layer2=layer_next,
-                            neuron2=neuron_next,
-                            front_of_matrix1=front_of_matrix_prev,
-                            front_of_matrix2=front_of_matrix_next,
-                            value=weight * val1,
-                        )
-                    else : 
-                        self.add_z_bound_one_variable_2(
-                            layer1=layer1,
-                            neuron1=neuron1,
-                            layer2=layer_next,
-                            neuron2=neuron_next,
-                            front_of_matrix1=front_of_matrix_prev,
-                            front_of_matrix2=front_of_matrix_next,
-                            value=weight * val1,
-                        )
-                
-            else:
-                if (bound_sense == "upper"):
-                    
-                    if (weight > 0 and val1 >= 0) or (weight <= 0 and val1 <= 0):
-                        self.add_z_bound_composed_4(
-                            layer1=layer1,
-                            neuron1=neuron1,
-                            layer2=layer_next,
-                            neuron2=neuron_next,
-                            front_of_matrix1=front_of_matrix_prev,
-                            front_of_matrix2=front_of_matrix_next,
-                            value=weight * val1,
-                        )
-                    else : 
-                        self.add_z_bound_composed_3(
-                            layer1=layer1,
-                            neuron1=neuron1,
-                            layer2=layer_next,
-                            neuron2=neuron_next,
-                            front_of_matrix1=front_of_matrix_prev,
-                            front_of_matrix2=front_of_matrix_next,
-                            value=weight * val1,
-                        )
+            if coeff_next != 0:
+                self.add_linear_variable(
+                    var="z",
+                    layer=layer_next,
+                    neuron=neuron_next,
+                    value=coeff_next,
+                    front_of_matrix=front_of_matrix_next,
+                )
 
-                else:
-                    if (weight > 0 and val1 >= 0) or (weight <= 0 and val1 <= 0):
-                        self.add_z_bound_composed_3(
-                            layer1=layer1,
-                            neuron1=neuron1,
-                            layer2=layer_next,
-                            neuron2=neuron_next,
-                            front_of_matrix1=front_of_matrix_prev,
-                            front_of_matrix2=front_of_matrix_next,
-                            value=weight * val1,
-                        )
-                    else : 
-                        self.add_z_bound_composed_4(
-                            layer1=layer1,
-                            neuron1=neuron1,
-                            layer2=layer_next,
-                            neuron2=neuron_next,
-                            front_of_matrix1=front_of_matrix_prev,
-                            front_of_matrix2=front_of_matrix_next,
-                            value=weight * val1,
-                        )
+        elif bound_type == "composed":
+            # Accumulate z_next contributions and constant as scalars.
+            # z_{layer_prev} contribution: Σ (-weight*val1*U_next)*z_{layer1}
+            #   = -weight * U_next * z_{layer_prev}  (by linearity of the decomposition)
+            # → replaced by a single add_linear_variable call on the stable active neuron itself.
+            for (layer1, neuron1), val1 in equivalent_values_neurons.items():
+                v = weight * val1
+                if bound_sense == "upper":
+                    if v >= 0:
+                        # composed_4: z_next part only for layer1==0
+                        if layer1 == 0:
+                            coeff_next -= v * self.L[layer1][neuron1]
+                            cst        += v * self.L[layer1][neuron1] * U_next
+                    else:
+                        # composed_3: z_next part always
+                        coeff_next -= v * self.U[layer1][neuron1]
+                        cst        += v * self.U[layer1][neuron1] * U_next
+                else:  # lower
+                    if v >= 0:
+                        # composed_3
+                        coeff_next -= v * self.U[layer1][neuron1]
+                        cst        += v * self.U[layer1][neuron1] * U_next
+                    else:
+                        # composed_4: z_next part only for layer1==0
+                        if layer1 == 0:
+                            coeff_next -= v * self.L[layer1][neuron1]
+                            cst        += v * self.L[layer1][neuron1] * U_next
 
-        self.add_linear_variable(
-            var="z",
-            layer=layer_next,
-            neuron=neuron_next,
-            value=-weight * constant,
-        )
+            if coeff_next != 0:
+                self.add_linear_variable(
+                    var="z",
+                    layer=layer_next,
+                    neuron=neuron_next,
+                    value=coeff_next,
+                    front_of_matrix=front_of_matrix_next,
+                )
+
+            # Single call replacing N calls to add_linear_variable(z_{layer1})
+            self.add_linear_variable(
+                var="z",
+                layer=layer_prev,
+                neuron=neuron_prev,
+                value=-weight * U_next,
+                front_of_matrix=front_of_matrix_prev,
+            )
+
+            if cst != 0:
+                self.add_constant(cst)
+
+        else:  # random: pick bound_type independently for each term
+            for (layer1, neuron1), val1 in equivalent_values_neurons.items():
+                v = weight * val1
+                bt = random.choice(["one_variable", "composed"])
+
+                if bt == "one_variable":
+                    if bound_sense == "upper":
+                        if v >= 0:
+                            coeff_next -= v * self.U[layer1][neuron1]
+                        elif layer1 == 0:
+                            coeff_next -= v * self.L[layer1][neuron1]
+                    else:  # lower
+                        if v >= 0 and layer1 == 0:
+                            coeff_next -= v * self.L[layer1][neuron1]
+                        elif v < 0:
+                            coeff_next -= v * self.U[layer1][neuron1]
+
+                else:  # composed
+                    if bound_sense == "upper":
+                        if v >= 0:  # composed_4
+                            if layer1 == 0:
+                                coeff_next -= v * self.L[layer1][neuron1]
+                                cst        += v * self.L[layer1][neuron1] * U_next
+                        else:       # composed_3
+                            coeff_next -= v * self.U[layer1][neuron1]
+                            cst        += v * self.U[layer1][neuron1] * U_next
+                    else:  # lower
+                        if v >= 0:  # composed_3
+                            coeff_next -= v * self.U[layer1][neuron1]
+                            cst        += v * self.U[layer1][neuron1] * U_next
+                        else:       # composed_4
+                            if layer1 == 0:
+                                coeff_next -= v * self.L[layer1][neuron1]
+                                cst        += v * self.L[layer1][neuron1] * U_next
+                    # z_{layer1} contribution for composed: -v * U_next (always)
+                    self.add_linear_variable(
+                        var="z",
+                        layer=layer1,
+                        neuron=neuron1,
+                        value=-v * U_next,
+                        front_of_matrix=front_of_matrix_prev,
+                    )
+
+            if coeff_next != 0:
+                self.add_linear_variable(
+                    var="z",
+                    layer=layer_next,
+                    neuron=neuron_next,
+                    value=coeff_next,
+                    front_of_matrix=front_of_matrix_next,
+                )
+            if cst != 0:
+                self.add_constant(cst)
+
+        # Linear term from the constant part of the stable-active decomposition
+        if weight * constant != 0:
+            self.add_linear_variable(
+                var="z",
+                layer=layer_next,
+                neuron=neuron_next,
+                value=-weight * constant,
+                front_of_matrix=front_of_matrix_next,
+            )
 
 
     def add_z_bound_one_variable_1(

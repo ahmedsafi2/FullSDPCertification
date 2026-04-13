@@ -208,24 +208,11 @@ class FullCertificationConfig(BaseModel):
                 raise ValueError("Bounds method must be one of 'IBP', 'alpha-CROWN', 'GREAT_BOUNDS', or 'from_file'.")
             elif model.bounds_method == "from_file" and model.bounds_file is None:
                 raise ValueError("Bounds file must be specified if bounds method is 'from_file'.")
-            if model.bounds_method == "GREAT_BOUNDS":
-                L = [[self.L[k]] * n[k] for k in range(K + 1)]
-                U = [[self.U[k]] * n[k] for k in range(K + 1)]
+            elif model.bounds_method == "GREAT_BOUNDS":
+                L = [[model.L[k]] * model.n[k] for k in range(model.K + 1)]
+                U = [[model.U[k]] * model.n[k] for k in range(model.K + 1)]
                 model.L = L
                 model.U = U
-            if model.bounds_method == "from_file":
-                bounds_csv = pd.read_csv(model.bounds_file)
-                L = [[None for j in range(values.get("network").n[k])] for k in range(values.get("network").K + 1)]
-                U = [[None for j in range(values.get("network").n[k])] for k in range(values.get("network").K + 1)]
-                for k in range(values.get("network").K + 1):
-                    for j in range(values.get("network").n[k]):
-                        L[k][j] = float(bounds_csv[f"LB_Layer_{k}_Neuron_{j}"].iloc[0])
-                        U[k][j] = float(bounds_csv[f"UB_Layer_{k}_Neuron_{j}"].iloc[0])
-                model.L = L
-                model.U = U
-                print("Bounds loaded from file : ", model.bounds_file)
-                print("L : ", model.L)
-                print("U : ", model.U)
             else:
                 model.L = None
                 model.U = None

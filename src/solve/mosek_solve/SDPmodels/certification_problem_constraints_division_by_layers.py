@@ -13,7 +13,7 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons:
                 continue
-            elif (k, j) in self.stable_actives_neurons :
+            elif (k, j) in self.stable_actives_neurons and not self.use_active_neurons: 
                 continue
             # P_{k-1}[z_{k,j}] == P_{k}[z_{k,j}]
             if self.handler.Constraints.new_constraint(

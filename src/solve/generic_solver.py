@@ -118,7 +118,9 @@ class Solver:
 
         self.L = [np.array(self.L[k]) for k in range(self.K + 1)]
         self.U = [np.array(self.U[k]) for k in range(self.K + 1)]
-    
+
+
+ 
 
         self.use_inactive_neurons = use_inactive_neurons
         self.use_active_neurons = use_active_neurons
@@ -181,6 +183,17 @@ class Solver:
                     f.write(f"\n            W = {self.W[k - 1][j]}")
                     f.write(f"\n            b = {self.b[k - 1][j]}")
                     f.write(f"\n            U = {self.U[k][j]}, L = {self.L[k][j]}")
+
+        for k in range(1, self.K + 1):
+            for j in range(self.n[k]):
+                if self.U[k][j] <= 0:
+                    print(f"STUDY : Neuron {j} in layer {k} is stable inactive with U = {self.U[k][j]} and L = {self.L[k][j]}")
+                elif self.L[k][j] >= 0:
+                    print(f"STUDY : Neuron {j} in layer {k} is stable active with U = {self.U[k][j]} and L = {self.L[k][j]}")
+                else:
+                    print(f"STUDY : Neuron {j} in layer {k} is unstable with U = {self.U[k][j]} and L = {self.L[k][j]}")
+
+        exit()
 
         #self.ytargets = [0,1]
 

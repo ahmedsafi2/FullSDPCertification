@@ -153,6 +153,8 @@ class MosekFusionHandler:
         self.model = Model(self.name)
         self.model.__enter__()
 
+        self.indexes_matrices.current_matrices_variables = []
+        self.vector_variables = []
         self.Constraints.reinitialize(verbose)
         self.Constraints.add_model(self.model)
         self.Objective.reinitialize(verbose)

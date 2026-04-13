@@ -48,10 +48,6 @@ def ReLU_constraint_stable_active_relaxation(
             continue
         elif (k - 1, i) in self.stable_actives_neurons :
             #print(f"STUDY RELU : layer = {k-1}, neuron = {i}, weight = {self.network.W[k - 1][j][i]}")
-            if bound_type == "random" :
-                bound_type_ = random.choice(["one_variable", "composed"])
-            else :
-                bound_type_ = bound_type
             self.handler.Constraints.add_z_quad_bound(
                 layer_prev=k - 1,
                 neuron_prev=i,
@@ -61,7 +57,7 @@ def ReLU_constraint_stable_active_relaxation(
                 front_of_matrix_next=False,
                 weight=self.network.W[k - 1][j][i],
                 bound_sense=bound_sense,
-                bound_type=bound_type_,
+                bound_type=bound_type,
             )
             
 
@@ -147,7 +143,7 @@ def ReLU_constraint_Lan(
 
             self.handler.Constraints.add_bound(
                 bound_type=mosek.boundkey.lo,
-                bound=self.network.b[k - 1][j],
+                bound=self.b[k - 1][j],
             )
 
             # zk * (zk - Wk zk-1 - bk) = 0

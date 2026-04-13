@@ -24,15 +24,15 @@ def objective_Lan(self):
                 continue
             self.handler.Objective.add_linear_variable(
                 "z",
-                self.network.W[self.K - 1][self.ytrue][i]
-                - self.network.W[self.K - 1][self.ytarget][i],
+                self.W[self.K - 1][self.ytrue][i]
+                - self.W[self.K - 1][self.ytarget][i],
                 layer=self.K - 1,
                 neuron=i,
                 front_of_matrix=False,
             )
         self.handler.Objective.add_constant(
-            value=self.network.b[self.K - 1][self.ytrue]
-            - self.network.b[self.K - 1][self.ytarget]
+            value=self.b[self.K - 1][self.ytrue]
+            - self.b[self.K - 1][self.ytarget]
         )
 
 
@@ -66,14 +66,14 @@ def objective_Md(self):
             else:
                 self.handler.Objective.add_linear_variable(
                     "z",
-                    value=self.network.W[self.K - 1][self.ytrue][i],
+                    value=self.W[self.K - 1][self.ytrue][i],
                     layer=self.K - 1,
                     neuron=i,
                     front_of_matrix=False,
                 )
 
         self.handler.Objective.add_constant(
-            value=self.network.b[self.K - 1][self.ytrue]
+            value=self.b[self.K - 1][self.ytrue]
         )
         for j in self.ytargets:
             if j == self.ytrue:
@@ -90,7 +90,7 @@ def objective_Md(self):
                     raise ValueError("This objective has not been implemented yet.")
                     print(f"ERROR : stable active neuron at layer K-1 = {self.K-1} in objective")
                     # self.handler.Objective.add_quad_variable_bounding(
-                    #     value=self.network.W[self.K - 1][j][i],
+                    #     value=self.W[self.K - 1][j][i],
                     #     layer=self.K - 1,
                     #     neuron=i,
                     #     class_label=j,
@@ -105,7 +105,7 @@ def objective_Md(self):
                         var2="z",
                         layer2=self.K - 1,
                         neuron2=i,
-                        value=-self.network.W[self.K - 1][j][i],
+                        value=-self.W[self.K - 1][j][i],
                         front_of_matrix2=False,
                     )
 
@@ -128,13 +128,13 @@ def objective_Mzbar(self):
                 continue
             self.handler.Objective.add_linear_variable(
                 "z",
-                self.network.W[self.K - 1][self.ytrue][i],
+                self.W[self.K - 1][self.ytrue][i],
                 layer=self.K - 1,
                 neuron=i,
             )
 
         self.handler.Objective.add_constant(
-            value=self.network.b[self.K - 1][self.ytrue]
+            value=self.b[self.K - 1][self.ytrue]
         )
 
         self.handler.Objective.add_linear_variable("zbar", -1)

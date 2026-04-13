@@ -267,12 +267,15 @@ class CommonConstraints(VariablesCall):
         print("Creating new constraint : ", name)
         logger_mosek.info("Creating new constraint")
         if name in self.cstr_names:
-            logger_mosek.warning(
-                f"CONSTRAINT CALLBACK : Constraint {name} already exists. Skipping creation."
+            existing = next(c for c in self.list_cstr if c["name"] == name)
+            if existing["label"] != "same_for_data":
+                raise ValueError(
+                    f"Duplicate constraint name '{name}' for a 'to_change' constraint — "
+                    f"likely a naming bug in the constraint loop."
+                )
+            logger_mosek.debug(
+                f"CONSTRAINT CALLBACK : Constraint '{name}' already exists (same_for_data). Skipping."
             )
-            # print(f"CONSTRAINT CALLBACK : Constraint {name} already exists. Skipping creation.")
-            # if "McCormick" in name :
-            #     print("CALLBACK list cstr : ", [cst["name"] for cst in self.list_cstr])
             return True
         # else :
         #     print(f"CALLBACK Adding constraint {name}.")

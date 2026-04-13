@@ -265,7 +265,7 @@ def McCormick_beta_z_with_penultimate_layer(self):
         self.handler.Constraints.add_linear_variable(
             var="beta",
             class_label=j,
-            value=-self.handler.Constraints.U_above_zero[self.K][j],
+            value=-self.handler.Constraints.L[self.K][j],
         )
         self.handler.Constraints.add_bound(
             bound_type=mosek.boundkey.up,
@@ -274,7 +274,7 @@ def McCormick_beta_z_with_penultimate_layer(self):
 
         # *************************************************
         if self.handler.Constraints.new_constraint(
-            f"z_{self.K,j} beta_{j} <= z_{self.K,j} + U_{self.K,j} beta_{j} - U_{self.K,j}",
+            f"z_{self.K,j} beta_{j} >= z_{self.K,j} + U_{self.K,j} beta_{j} - U_{self.K,j}",
             label="same_for_data",
         ):
             continue
@@ -304,7 +304,7 @@ def McCormick_beta_z_with_penultimate_layer(self):
         self.handler.Constraints.add_linear_variable(
             var="beta",
             class_label=j,
-            value=self.handler.Constraints.U_above_zero[self.K][j],
+            value=-self.handler.Constraints.U_above_zero[self.K][j],
         )
         self.handler.Constraints.add_bound(
             bound_type=mosek.boundkey.lo,

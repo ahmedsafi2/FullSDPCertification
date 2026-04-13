@@ -103,7 +103,7 @@ class Indexes_Variables_for_Mosek_Solver:
         """
         max_index = 0
         if self.MATRIX_BY_LAYERS:
-            for k in range(self.K if self.LAST_LAYER else self.K - 1):
+            for k in range(self.K+1 if self.LAST_LAYER else self.K):
                 max_index_k = 1 + self.n[k] + self.n[k + 1]
                 if k == self.K - 1 and not self.LAST_LAYER and self.BETAS_Z:
                     max_index_k += len(self.ytargets)

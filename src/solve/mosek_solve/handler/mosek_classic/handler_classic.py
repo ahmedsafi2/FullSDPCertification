@@ -155,6 +155,8 @@ class MosekClassicHandler:
 
         self.adjust_solver_parameters()
 
+        self.indexes_matrices.current_matrices_variables = []
+        self.vector_variables = []
         self.Objective.add_task(self.task)
         self.Objective.reinitialize(verbose)
         self.Constraints.add_task(self.task)
@@ -434,10 +436,10 @@ class MosekClassicHandler:
 
         # Check solution status
         prosta = self.task.getprosta(mosek.soltype.itr)
-        dusta = self.task.getdusta(mosek.soltype.itr)
+        solsta = self.task.getsolsta(mosek.soltype.itr)
 
         print(f"Primal status: {prosta}")
-        print(f"Dual status: {dusta}")
+        print(f"Solution status: {solsta}")
 
         y = [0.0] * self.final_number_constraints
 

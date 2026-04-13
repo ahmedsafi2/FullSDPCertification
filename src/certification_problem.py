@@ -145,7 +145,23 @@ class Certification_Problem:
         )
         width_model_study = pd.DataFrame()
         coefficient_values = {k : [] for k in range(1, self.network.K + 1)}
+
+        if solver_config.bounds_method == "from_file":
+                bounds_csv = pd.read_csv(solver_config.bounds_file)
+
         for i, (x, ytrue) in enumerate(dataloader):
+            if solver_config.bounds_method == "from_file":
+                L = [[float(bounds_csv[bounds_csv["data_index"] == i][f"LB_Layer_{k}_Neuron_{j}"].iloc[0])                                                                                                                   
+                 for j in range(self.network.n[k])]                                                                                                                                     
+                for k in range(self.network.K + 1)]                                                                                                                                     
+                U = [[float(bounds_csv[bounds_csv["data_index"] == i][f"UB_Layer_{k}_Neuron_{j}"].iloc[0])                                                                                                                   
+                        for j in range(self.network.n[k])]
+                        for k in range(self.network.K + 1)] 
+                solver_config.L = L
+                solver_config.U = U
+                print("Bounds loaded from file : ", solver_config.bounds_file)
+                print("L : ", solver_config.L)
+                print("U : ", solver_config.U)
 
             # print("x  :", x)
             # if (i) % 10 != 0:
@@ -161,11 +177,11 @@ class Certification_Problem:
             # assert ytrue == y, "ytrue should match the label y"
 
             # # SHARE
-            # if i <= 71:
-            #     #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
-            #     # )
-            #     #print("Skipping data sample ", i + 1, "for testing purposes.")
-            #     continue
+            if i < 1:
+                #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
+                # )
+                #print("Skipping data sample ", i + 1, "for testing purposes.")
+                continue
 
             print("i : ", i)
 
