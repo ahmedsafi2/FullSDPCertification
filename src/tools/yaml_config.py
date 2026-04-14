@@ -132,9 +132,23 @@ class MosekSolverConfig(BaseModel):
             raise ValueError("RLT cuts are required, but RLT_prop is None.")
         return v
 
-    MATRIX_BY_LAYERS: bool = (
-        True  # Whether to use chordal decomposition of variable matrices
-    )
+    MATRIX_BY_LAYERS: Union[bool, List[List[int]]] = True
+    @validator("MATRIX_BY_LAYERS", pre=True)
+    def validate_and_normalize_matrix_by_layers(cls, v, values):
+        """Normalise en List[List[int]] ou garde bool pour résolution tardive."""
+        if isinstance(v, bool):
+            return v  # résolution tardive quand K est connu
+        if isinstance(v, list):
+            # Validation : chaque groupe a ≥ 2 couches
+            for group in v:
+                assert len(group) >= 2, f"Group {group} must have at least 2 layers"
+            # Validation : chevauchement exact entre groupes consécutifs
+            for i in range(len(v) - 1):
+                assert v[i][-1] == v[i+1][0], (
+                    f"Groups {v[i]} and {v[i+1]} must share exactly one boundary layer"
+                )
+            return v
+        raise ValueError(f"MATRIX_BY_LAYERS must be bool or List[List[int]], got {type(v)}")
     LAST_LAYER: bool = (
         False  # Whether to use the last layer of the network (logits) as variables
     )

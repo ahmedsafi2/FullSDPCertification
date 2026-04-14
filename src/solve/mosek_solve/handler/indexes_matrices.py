@@ -1,16 +1,48 @@
-from typing import List
+from typing import List, Union
+
+
+def resolve_layer_groups(
+    MATRIX_BY_LAYERS: Union[bool, List[List[int]]],
+    K: int,
+    LAST_LAYER: bool = False,
+) -> List[List[int]]:
+    """
+    Résout MATRIX_BY_LAYERS en liste canonique de groupes de couches.
+
+    Exemples :
+      True,  K=5 → [[0,1],[1,2],[2,3],[3,4]]
+      False, K=5 → [[0,1,2,3,4]]
+      [[0,1],[1,2,3,4],[4,5]] → tel quel (avec K=5, LAST_LAYER=True)
+    """
+    last = K if LAST_LAYER else K - 1
+    if isinstance(MATRIX_BY_LAYERS, bool):
+        if MATRIX_BY_LAYERS:
+            return [[k, k + 1] for k in range(last)]
+        else:
+            return [list(range(last + 1))]
+    else:
+        assert MATRIX_BY_LAYERS[0][0] == 0, "First group must start at layer 0"
+        assert MATRIX_BY_LAYERS[-1][-1] == last, (
+            f"Last group must end at layer {last}, got {MATRIX_BY_LAYERS[-1][-1]}"
+        )
+        for i in range(len(MATRIX_BY_LAYERS) - 1):
+            assert MATRIX_BY_LAYERS[i][-1] == MATRIX_BY_LAYERS[i + 1][0], (
+                f"Groups {MATRIX_BY_LAYERS[i]} and {MATRIX_BY_LAYERS[i + 1]} "
+                f"must share exactly one boundary layer"
+            )
+        return MATRIX_BY_LAYERS
 
 
 class Indexes_Matrixes_for_Mosek_Solver:
     """
-    Class to handle the indexes of the variables and constraints in the MOSEK solver.
+    Class to handle the indexes of the matrices in the MOSEK solver.
     """
 
     def __init__(
         self,
         K: int,
         n: List[int],
-        MATRIX_BY_LAYERS: bool = False,
+        MATRIX_BY_LAYERS: Union[bool, List[List[int]]] = False,
         LAST_LAYER: bool = False,
         BETAS: bool = False,
         BETAS_Z: bool = False,
@@ -26,93 +58,78 @@ class Indexes_Matrixes_for_Mosek_Solver:
             List of the number of neurons in each layer.
         K: int
             Number of layers.
-        matrix_by_layers: bool
-            Whether to use matrix by layers or not.
-        last_layer: bool
-            Whether the last layer is included in the matrix of the z variables or not.
-        betas: bool
-            Whether to include the beta variables or not.
-        betas_z: bool
-            Whether to include the beta variables in the matrixes for z variables.
-        zbar: bool
-            Whether to include the zbar variables or not.
+        MATRIX_BY_LAYERS: Union[bool, List[List[int]]]
+            If bool: True = standard pairwise chordal decomposition, False = single matrix.
+            If List[List[int]]: explicit grouping of layers into matrices, e.g. [[0,1],[1,2,3,4],[4,5]].
+            Consecutive groups must share exactly one boundary layer.
+        LAST_LAYER: bool
+            Whether the last layer (logits) is included as variables.
+        BETAS: bool
+            Whether to include beta variables.
+        BETAS_Z: bool
+            Whether beta variables are embedded in the last z-matrix.
+        ZBAR: bool
+            Whether to include zbar variables.
         """
         self.n = n
         self.K = K
-        self.MATRIX_BY_LAYERS = MATRIX_BY_LAYERS
         self.LAST_LAYER = LAST_LAYER
         self.BETAS = BETAS
         self.BETAS_Z = BETAS_Z
         self.ZBAR = ZBAR
 
         self.ytargets = kwargs.get("ytargets")
-
         self.stable_inactives_neurons = kwargs.get("stable_inactives_neurons")
         self.stable_actives_neurons = kwargs.get("stable_actives_neurons")
+
+        self.layer_groups = resolve_layer_groups(MATRIX_BY_LAYERS, K, LAST_LAYER)
+        self._layer_to_groups = self._build_layer_to_groups()  # Mapping layer → list of (group_idx, position_in_group)merc
+
         self.check_conformity()
 
         self.current_matrices_variables = []
         self.count_nb_matrices()
 
+    def _build_layer_to_groups(self) -> dict:
+        """
+        Build a mapping: layer → list of (group_idx, position_in_group).
+        A boundary layer shared between two groups appears twice.
+        """
+        mapping = {}
+        for group_idx, group in enumerate(self.layer_groups):
+            for pos, layer in enumerate(group):
+                mapping.setdefault(layer, []).append((group_idx, pos))
+        return mapping
+
     def count_nb_matrices(self):
         """
-        Count the number of matrices based on the configuration.
+        Count the number of SDP matrices based on the layer grouping.
         """
-        self.nb_matrices = 0
-        if self.MATRIX_BY_LAYERS:
-            self.nb_matrices += self.K - 1
-            if self.LAST_LAYER:
-                self.nb_matrices += 1
-            if not self.BETAS_Z and self.BETAS:
-                self.nb_matrices += 1
-        else:
-            self.nb_matrices += 1
-            if not self.BETAS_Z and self.BETAS:
-                self.nb_matrices += 1
+        self.nb_matrices = len(self.layer_groups)
+        if not self.BETAS_Z and self.BETAS:
+            self.nb_matrices += 1  # separate matrix for beta variables
 
     def check_conformity(self):
         """
-        Check the presence of unstable neurons in each layer. (TO MAKE : extension for layers with no unstable neurons)
+        Check the presence of unstable neurons in each layer.
         Check the number of layers and the number of neurons in each layer.
         """
-
         assert self.K == len(self.n) - 1
-        # Each layer has unstable neurons
-        if self.MATRIX_BY_LAYERS:
 
-            for layer in range(self.K-1):
-                taille = len(
-                    [
-                        (layer, j)
-                        for j in range(self.n[layer])
-                        if (layer, j) not in self.stable_inactives_neurons
-                        and (layer, j) not in self.stable_actives_neurons
-                    ]
-                    + [
-                        (layer, j)
-                        for j in range(self.n[layer + 1])
-                        if (layer, j) not in self.stable_inactives_neurons
-                        and (layer, j) not in self.stable_actives_neurons
-                    ]
+        if len(self.layer_groups) > 1:
+            for group_idx, group in enumerate(self.layer_groups):
+                unstable_count = sum(
+                    1
+                    for layer in group
+                    for j in range(self.n[layer])
+                    if (layer, j) not in self.stable_inactives_neurons
+                    and (layer, j) not in self.stable_actives_neurons
                 )
-                print("Taille de la matrice pour la couche ", layer, " : ", taille)
-                assert (
-                    len(
-                        [
-                            (layer, j)
-                            for j in range(self.n[layer])
-                            if (layer, j) not in self.stable_inactives_neurons
-                            and (layer, j) not in self.stable_actives_neurons
-                        ]
-                        + [
-                            (layer, j)
-                            for j in range(self.n[layer + 1])
-                            if (layer, j) not in self.stable_inactives_neurons
-                            and (layer, j) not in self.stable_actives_neurons
-                        ]
-                    )
-                    > 0
+                print(f"Taille de la matrice pour le groupe {group_idx} {group} : {unstable_count}")
+                assert unstable_count > 0, (
+                    f"Group {group} has no unstable neurons — a special treatment is needed."
                 )
+
         if any(
             all(
                 (layer, j) in self.stable_inactives_neurons
@@ -126,160 +143,115 @@ class Indexes_Matrixes_for_Mosek_Solver:
 
     def is_in_matrix_with_betas(self, layer: int) -> bool:
         """
-        Check if the matrix for beta variables is used in the given layer.
-
-        Parameters
-        ----------
-        layer: int
-            The layer number to check.
-
-        Returns
-        -------
-        bool
-            True if the matrix for beta variables is used in the given layer, False otherwise.
+        Check if `layer` belongs to the last z-matrix (which carries beta variables when BETAS_Z=True).
         """
         if self.BETAS_Z:
-            if self.MATRIX_BY_LAYERS:
-                if self.LAST_LAYER:
-                    return layer == self.K - 1 or layer == self.K
-                else:
-                    return layer == self.K - 2 or layer == self.K - 1
-            else:
-                return True
-        else:
-            return False
+            last_group = self.layer_groups[-1]
+            return layer in last_group
+        return False
 
     def index_matrix_z(self, layer: int, front_of_matrix: bool) -> int:
         """
-        Get the index of the matrix variable for the variable z for a given layer and neuron.
+        Get the index of the SDP matrix for variable z_{layer}.
 
         Parameters
         ----------
         layer: int
             The layer number.
         front_of_matrix: bool
-            Whether the variable is at the front of the matrix or not.
+            True  → the layer is NOT the last in its group (look for a group where it appears before the end).
+            False → the layer IS the last in its group (look for the group where it is the last element).
+
         Returns
         -------
         int
-            The index of the matrix for the z variable.
+            The index of the matrix.
         """
+        if layer not in self._layer_to_groups:
+            raise ValueError(f"Layer {layer} not found in any group.")
 
-        if (layer == self.K and not self.LAST_LAYER) or layer < 0 or layer > self.K:
-            raise ValueError(f"Layer index {layer} out of range.")
-        if self.MATRIX_BY_LAYERS:
-            if front_of_matrix:
-                if (layer == self.K - 1 and not self.LAST_LAYER) or (
-                    layer == self.K and self.LAST_LAYER
-                ):
-                    raise ValueError(
-                        f"Layer {layer} can not be at the front of the matrix."
-                    )
-                else:
-                    return layer
-            else:
-                if layer == 0:
-                    raise ValueError("Layer 0 can not be at the back of the matrix.")
-                else:
-                    return layer - 1
+        entries = self._layer_to_groups[layer]
+
+        if front_of_matrix:
+            for group_idx, pos_in_group in entries:
+                if pos_in_group < len(self.layer_groups[group_idx]) - 1:
+                    return group_idx
+            raise ValueError(
+                f"Layer {layer} cannot be front_of_matrix=True: "
+                f"it is always the last element of its group(s)."
+            )
         else:
-            return 0
+            for group_idx, pos_in_group in entries:
+                if pos_in_group == len(self.layer_groups[group_idx]) - 1:
+                    return group_idx
+            raise ValueError(
+                f"Layer {layer} cannot be front_of_matrix=False: "
+                f"it is never the last element of any group."
+            )
 
     def index_matrix_beta(self) -> int:
         """
-        Get the index of the matrix with the beta variables.
+        Get the index of the matrix containing beta variables.
         """
         assert self.BETAS
         if self.BETAS_Z:
-            if self.MATRIX_BY_LAYERS:
-                if self.LAST_LAYER:
-                    return self.K - 1
-                else:
-                    return self.K - 2
-            else:
-                return 0
+            # Betas are embedded in the last z-matrix
+            return len(self.layer_groups) - 1
         else:
-            if self.MATRIX_BY_LAYERS:
-                if self.LAST_LAYER:
-                    return self.K
-                else:
-                    return self.K - 1
-            else:
-                return 1
+            # Betas have their own dedicated matrix, after all z-matrices
+            return len(self.layer_groups)
 
     def index_matrix_zbar(self) -> int:
         """
-        Get the index of the matrix of the zbar variable.
-
-        Returns
-        -------
-        int
-            The index of the matrix with the zbar variable.
+        Get the index of the matrix containing the zbar variable.
         """
         assert self.ZBAR
         assert self.BETAS_Z
-
-        if self.MATRIX_BY_LAYERS:
-            if self.LAST_LAYER:
-                return self.K - 1
-            else:
-                return self.K - 2
-        else:
-            return 0
+        # zbar is embedded in the last z-matrix alongside betas
+        return len(self.layer_groups) - 1
 
     def _get_matrix_index(self, var_type: str, is_first: bool = None, **kwargs):
         """
-        Helper method to get matrix index based on type and parameters for z, beta, and zbar variables.
-        Parameters :
+        Helper method to get matrix index based on type and parameters.
+
+        Parameters
+        ----------
         var_type : str
-            Type of the variable (z, beta, zbar)
-        is_first : bool
-            Whether the variable is the first or second in the pair (True for linear variables)
+            Type of the variable: 'z', 'beta', or 'zbar'.
+        is_first : bool or None
+            None for linear variables (no suffix), True/False for quadratic pairs.
         """
-        if is_first is None:
-            suffix = ""
-        else:
-            suffix = "1" if is_first else "2"
+        suffix = "" if is_first is None else ("1" if is_first else "2")
         front_of_matrix = kwargs.get(f"front_of_matrix{suffix}", None)
 
         if var_type == "z":
-            # For z variables
-            layer = kwargs.get(
-                f"layer{suffix}" if f"layer{suffix}" in kwargs else "layer"
-            )
-            if front_of_matrix is None and (layer == self.K and self.LAST_LAYER):
-                front_of_matrix = False
-            elif front_of_matrix is None and (
-                layer == self.K - 1 and not self.LAST_LAYER
-            ):
-                front_of_matrix = False
-            elif front_of_matrix is None:
-                front_of_matrix = True
+            layer_key = f"layer{suffix}" if f"layer{suffix}" in kwargs else "layer"
+            layer = kwargs.get(layer_key)
 
             if layer is None:
                 raise ValueError(
                     f"Layer required for z variable ({'first' if is_first else 'second'})"
                 )
 
+            if front_of_matrix is None:
+                # Default: last layer of the network can only be back-of-matrix
+                last_layer = self.layer_groups[-1][-1]
+                front_of_matrix = (layer != last_layer)
+
             return self.index_matrix_z(layer, front_of_matrix)
 
         elif var_type == "beta":
-            # For beta variables
-            class_label = kwargs.get(
-                f"class_label{suffix}"
-                if f"class_label{suffix}" in kwargs
-                else "class_label"
+            class_label_key = (
+                f"class_label{suffix}" if f"class_label{suffix}" in kwargs else "class_label"
             )
-
+            class_label = kwargs.get(class_label_key)
             if class_label is None:
                 raise ValueError(
                     f"Class label required for beta variable ({'first' if is_first else 'second'})"
                 )
-
             return self.index_matrix_beta()
 
         elif var_type == "zbar":
-            # For zbar variables
             return self.index_matrix_zbar()
 
         else:
