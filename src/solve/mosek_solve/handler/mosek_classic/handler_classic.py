@@ -6,11 +6,7 @@ import mosek
 import logging
 import time
 
-from ..indexes_matrices import Indexes_Matrixes_for_Mosek_Solver
-
-from ..indexes_variables import (
-    Indexes_Variables_for_Mosek_Solver,
-)
+from ..indexes import Indexes_Mosek_Solver
 from .objective_classic import ObjectiveClassic
 from .constraints_classic import ConstraintsClassic
 from .results_classic import (
@@ -110,12 +106,8 @@ class MosekClassicHandler:
 
 
 
-        self.indexes_matrices = Indexes_Matrixes_for_Mosek_Solver(
-            **kwargs,
-        )
-        self.indexes_variables = Indexes_Variables_for_Mosek_Solver(
-            **kwargs,
-        )
+        self.indexes_matrices = Indexes_Mosek_Solver(**kwargs)
+        self.indexes_variables = self.indexes_matrices  # même objet fusionné
 
         # print(
         #     "\n \n \n INDEXES \n \n \n : ",
@@ -195,7 +187,7 @@ class MosekClassicHandler:
         
         # ===== OPTIONS OPTIONNELLES COMMENTÉES =====
         # Décommenter si vous avez des problèmes numériques :
-        self.task.putintparam(mosek.iparam.presolve_use, mosek.presolvemode.off)
+        # self.task.putintparam(mosek.iparam.presolve_use, mosek.presolvemode.off)
         # self.task.putdouparam(mosek.dparam.optimizer_max_time, 3600)  # Limite temps à 3600s
 
     @count_calls(

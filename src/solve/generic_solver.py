@@ -193,7 +193,6 @@ class Solver:
                 else:
                     print(f"STUDY : Neuron {j} in layer {k} is unstable with U = {self.U[k][j]} and L = {self.L[k][j]}")
 
-        exit()
 
         #self.ytargets = [0,1]
 

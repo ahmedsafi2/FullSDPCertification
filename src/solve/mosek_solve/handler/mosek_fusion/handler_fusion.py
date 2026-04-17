@@ -7,8 +7,7 @@ import mosek
 import logging
 import time
 
-from ..indexes_matrices import Indexes_Matrixes_for_Mosek_Solver
-from ..indexes_variables import Indexes_Variables_for_Mosek_Solver
+from ..indexes import Indexes_Mosek_Solver
 
 from .objective_fusion import ObjectiveFusion
 from .constraints_fusion import ConstraintsFusion
@@ -119,12 +118,8 @@ class MosekFusionHandler:
         self.stable_inactives_neurons = kwargs.get("stable_inactives_neurons", None)
         self.stable_actives_neurons = kwargs.get("stable_actives_neurons", None)
 
-        self.indexes_matrices = Indexes_Matrixes_for_Mosek_Solver(
-            **kwargs,
-        )
-        self.indexes_variables = Indexes_Variables_for_Mosek_Solver(
-            **kwargs,
-        )
+        self.indexes_matrices = Indexes_Mosek_Solver(**kwargs)
+        self.indexes_variables = self.indexes_matrices  # même objet fusionné
 
         # print(
         #     "\n \n \n INDEXES \n \n \n : ",

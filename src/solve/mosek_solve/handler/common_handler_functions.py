@@ -23,207 +23,59 @@ logger_mosek = logging.getLogger("Mosek_logger")
 def initialize_variables(self):
     """
     Add variables to the task.
+
+    Itère sur self.indexes_matrices.layer_groups pour créer une matrice SDP
+    par groupe. Le dernier groupe inclut les variables beta/zbar si BETAS_Z=True.
     """
     logger_mosek.info("Initializing variables...")
     print("Initializing variables...")
+
+    layer_groups = self.indexes_matrices.layer_groups
+    indexes = self.indexes_matrices  # objet fusionné (alias aussi indexes_variables)
+
+    def group_name(group):
+        return "_".join(map(str, group))
+
+    def plain_dim(group):
+        """Dimension d'une matrice z pure pour un groupe donné."""
+        return 1 + sum(indexes._n_vars_in_layer(l) for l in group)
+
     if self.BETAS_Z:
         logger_mosek.info("Model with betaz variables")
-        if self.MATRIX_BY_LAYERS:
-            logger_mosek.info("Model with matrices by layers")
-            for k in range(self.K - 2):
-                self.add_matrix_variable(
-                    name=f"z_layers_{k}_{k+1}",
-                    dim=1
-                    + self.n[k]
-                    + self.n[k + 1]
-                    - self.indexes_variables.get_number_pruned_neurons_on_layer(layer=k)
-                    - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                        layer=k + 1
-                    ),
-                )
-            if self.LAST_LAYER:
-                logger_mosek.info("Model with last layer in solution matrices")
-                self.add_matrix_variable(
-                    name=f"z_layers_{self.K-2}_{self.K-1}",
-                    dim=1
-                    + self.n[self.K - 2]
-                    + self.n[self.K - 1]
-                    - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                        layer=self.K - 2
-                    )
-                    - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                        layer=self.K - 1
-                    ),
-                )
-                if self.ZBAR:
-                    logger_mosek.info("Model with zbar")
-                    self.add_matrix_variable(
-                        name=f"z_layers_{self.K-1}_{self.K}_zbar_betas",
-                        dim=1
-                        + self.n[self.K - 1]
-                        + self.n[self.K]
-                        + 1
-                        + self.n[self.K]
-                        - 1
-                        - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                            layer=self.K - 1
-                        ),
-                    )
-                else:
-                    logger_mosek.info("Model without zbar")
-                    self.add_matrix_variable(
-                        name=f"z_layers_{self.K-1}_{self.K}_betas",
-                        dim=1
-                        + self.n[self.K - 1]
-                        + self.n[self.K]
-                        + self.n[self.K]
-                        - 1
-                        - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                            layer=self.K - 1
-                        ),
-                    )
 
-            else:
-                if self.ZBAR:
-                    logger_mosek.info("Model with zbar")
-                    self.add_matrix_variable(
-                        name=f"z_layers_{self.K-2}_{self.K-1}_zbar_betas",
-                        dim=1
-                        + self.n[self.K - 2]
-                        + self.n[self.K - 1]
-                        + 1
-                        + self.n[self.K]
-                        - 1
-                        - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                            layer=self.K - 2
-                        )
-                        - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                            layer=self.K - 1
-                        ),
-                    )
-                else:
-                    logger_mosek.info("Model without zbar")
-                    self.add_matrix_variable(
-                        name=f"z_layers_{self.K-2}_{self.K-1}_betas",
-                        dim=1
-                        + self.n[self.K - 2]
-                        + self.n[self.K - 1]
-                        + self.n[self.K]
-                        - 1
-                        - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                            layer=self.K - 2
-                        )
-                        - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                            layer=self.K - 1
-                        ),
-                    )
+        # Tous les groupes sauf le dernier : matrices z pures
+        for group in layer_groups[:-1]:
+            self.add_matrix_variable(
+                name=f"z_layers_{group_name(group)}",
+                dim=plain_dim(group),
+            )
+
+        # Dernier groupe : z + zbar (optionnel) + betas
+        last_group = layer_groups[-1]
+        base_dim = indexes._offset_end_of_last_group()
+        n_betas = len(indexes.ytargets)
+
+        if self.ZBAR:
+            logger_mosek.info("Model with zbar")
+            self.add_matrix_variable(
+                name=f"z_layers_{group_name(last_group)}_zbar_betas",
+                dim=base_dim + 1 + n_betas,
+            )
         else:
-            if self.LAST_LAYER:
-                logger_mosek.info("Model with last layer in solution matrices")
-                if self.ZBAR:
-                    logger_mosek.info("Model with zbar")
-                    self.add_matrix_variable(
-                        name="z_all_layers_zbar_betas",
-                        dim=1
-                        + sum(self.n)
-                        + 1
-                        + self.n[self.K]
-                        - 1
-                        - self.indexes_variables.get_number_pruned_neurons_before_layer(
-                            layer=self.K - 1
-                        ),
-                    )
-                else:
-                    logger_mosek.info("Model without zbar")
-                    self.add_matrix_variable(
-                        name="z_all_layers_betas",
-                        dim=1
-                        + sum(self.n)
-                        + self.n[self.K]
-                        - 1
-                        - self.indexes_variables.get_number_pruned_neurons_before_layer(
-                            layer=self.K - 1
-                        ),
-                    )
-            else:
-                if self.ZBAR:
-                    logger_mosek.info("Model with zbar")
-                    self.add_matrix_variable(
-                        name="z_all_layers_until_penultimate_zbar_betas",
-                        dim=1
-                        + sum(self.n[: self.K])
-                        + 1
-                        + self.n[self.K]
-                        - 1
-                        - self.indexes_variables.get_number_pruned_neurons_before_layer(
-                            layer=self.K - 1,
-                        ),
-                    )
-                else:
-                    logger_mosek.info("Model without zbar")
-                    self.add_matrix_variable(
-                        name="z_all_layers_until_penultimate_betas",
-                        dim=1
-                        + sum(self.n[: self.K])
-                        + self.n[self.K]
-                        - 1
-                        - self.indexes_variables.get_number_pruned_neurons_before_layer(
-                            layer=self.K - 1,
-                        ),
-                    )
+            logger_mosek.info("Model without zbar")
+            self.add_matrix_variable(
+                name=f"z_layers_{group_name(last_group)}_betas",
+                dim=base_dim + n_betas,
+            )
 
     else:
-        if self.MATRIX_BY_LAYERS:
-            logger_mosek.info("Model with matrices by layers")
-            for k in range(self.K - 1):
-                self.add_matrix_variable(
-                    name=f"z_layers_{k}_{k+1}",
-                    dim=1
-                    + self.n[k]
-                    + self.n[k + 1]
-                    - self.indexes_variables.get_number_pruned_neurons_on_layer(layer=k)
-                    - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                        layer=k
-                        + 1  # Peut-être qu'il y a une erreur sur le layer choisi ici ou plus haut
-                    ),
-                )
-            if self.LAST_LAYER:
-                self.add_matrix_variable(
-                    name=f"z_layers_{self.K-1}_{self.K}",
-                    dim=1
-                    + self.n[self.K - 1]
-                    + self.n[self.K]
-                    - self.indexes_variables.get_number_pruned_neurons_on_layer(
-                        layer=self.K
-                    ),
-                )
-        else:
-            if self.LAST_LAYER:
-                self.add_matrix_variable(
-                    name="z_all_layers",
-                    dim=1
-                    + sum(self.n)
-                    - self.indexes_variables.get_number_pruned_neurons_before_layer(
-                        layer=self.K
-                    ),
-                )
-            else:
-                print("Adding z_all_layers until penultimate layer without betas")
-                print("sum(self.n[: self.K]) : ", sum(self.n[: self.K]))
-                print(
-                    "self.indexes_variables.get_number_pruned_neurons_before_layer(self.K) : ",
-                    self.indexes_variables.get_number_pruned_neurons_before_layer(
-                        self.K
-                    ),
-                )
-                self.add_matrix_variable(
-                    name="z_all_layers",
-                    dim=1
-                    + sum(self.n[: self.K])
-                    - self.indexes_variables.get_number_pruned_neurons_before_layer(
-                        self.K
-                    ),
-                )
+        # Tous les groupes : matrices z pures
+        for group in layer_groups:
+            self.add_matrix_variable(
+                name=f"z_layers_{group_name(group)}",
+                dim=plain_dim(group),
+            )
+
         if self.BETAS:
             self.add_vector_variable(name="betas", dim=self.n[self.K])
     

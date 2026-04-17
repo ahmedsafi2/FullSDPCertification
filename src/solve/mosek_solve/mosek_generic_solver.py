@@ -50,7 +50,7 @@ class MosekSolver(Solver):
 
     def __init__(
         self,
-        MATRIX_BY_LAYERS: bool = False,
+        MATRIX_BY_LAYERS = False,  # Union[bool, List[List[int]]]
         LAST_LAYER: bool = False,
         BETAS: bool = False,
         BETAS_Z: bool = False,

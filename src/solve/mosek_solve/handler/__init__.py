@@ -1,6 +1,7 @@
 # Indexation
-from .indexes_matrices import Indexes_Matrixes_for_Mosek_Solver
-from .indexes_variables import Indexes_Variables_for_Mosek_Solver
+from .indexes import Indexes_Mosek_Solver, resolve_layer_groups
+from .indexes_matrices import Indexes_Matrixes_for_Mosek_Solver  # alias rétrocompat
+from .indexes_variables import Indexes_Variables_for_Mosek_Solver  # alias rétrocompat
 
 # Éléments de base (variables, contraintes, objectif)
 from .variable_elements import (
@@ -20,8 +21,10 @@ from .mosek_fusion import MosekFusionHandler
 
 __all__ = [
     # Indexation
-    "Indexes_Matrixes_for_Mosek_Solver",
-    "Indexes_Variables_for_Mosek_Solver",
+    "Indexes_Mosek_Solver",
+    "resolve_layer_groups",
+    "Indexes_Matrixes_for_Mosek_Solver",  # alias rétrocompat
+    "Indexes_Variables_for_Mosek_Solver",  # alias rétrocompat
     # Éléments
     "ElementsinConstraintsObjectives",
     "Equivalent_Neurons_Index",
