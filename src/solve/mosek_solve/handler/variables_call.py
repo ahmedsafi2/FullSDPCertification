@@ -754,7 +754,7 @@ class VariablesCall:
                 cst        = 0
            
         else: 
-                # Adding constraint z_next * z_{layer1} >= U_{layer1} * z_next + U_{layer1} * z_next - U_{layer1} * U_{layer1}
+                # Adding constraint z_next * z_{layer1} >= U_{layer1} * z_next + U_next * z_{layer1} - U_{layer1} * U_{layer1}
                 coeff_next = -v * self.U[layer1][neuron1]
                 cst        = v * self.U[layer1][neuron1] * U_next
         
@@ -762,7 +762,7 @@ class VariablesCall:
             var="z",
             layer=layer1,
             neuron=neuron1,
-            value=-weight * U_next,
+            value=-v * U_next,
             front_of_matrix=front_of_matrix1,
         )
 
@@ -787,7 +787,7 @@ class VariablesCall:
 
         
 
-    def add_z_quad_bound(
+    def add_z_quad_active_neuron(
         self,
         layer_prev: int,
         neuron_prev: int,
@@ -812,19 +812,33 @@ class VariablesCall:
         cst = 0.0         # accumulated constant
 
         for (layer1, neuron1), coeff1 in equivalent_values_neurons.items():
-            if bound_type == "random":
-                bound_type_ = random.choice(["one_variable", "composed"])
+            # Vérification que le produit quadratique z_next * z_{layer1} est présent dans les matrices variables
+            groups_layer1 = {g for g, _ in self.indexes_matrices._layer_to_groups.get(layer1, [])}
+            groups_layer_next = {g for g, _ in self.indexes_matrices._layer_to_groups.get(layer_next, [])}
+
+            if groups_layer1 & groups_layer_next: # Produit présent, pas d'encadrement à faire
+                print("STUDY RELU : ", "Product of z_next and z_{layer1} is present in the variable matrices, adding product without bounding.")
+                decomposed1, front1 = self.verify_variable_z(layer1, neuron1, None)
+                dict_layer1 = self.equivalent_neurons.get_equivalent(layer1, neuron1, front1, decomposed1)
+                decomposed_next, front_next = self.verify_variable_z(layer_next, neuron_next, front_of_matrix_next)
+                dict_layer_next = self.equivalent_neurons.get_equivalent(layer_next, neuron_next, front_next, decomposed_next)
+                self.add_var(dict1=dict_layer1, dict2=dict_layer_next, value=weight * coeff1)
             else:
-                bound_type_ = bound_type
+                print("STUDY RELU : ", "Product of z_next and z_{layer1} is not present in the variable matrices, adding product with bounding.")
+                # Produit non présent, utilisation d'encadrement avec bornes de mccormick
+                if bound_type == "random":
+                    bound_type_ = random.choice(["one_variable", "composed"])
+                else:
+                    bound_type_ = bound_type
 
-            if bound_type_ == "composed":
-                coeff_next_, cst_ = self.add_z_quad_bound_composed(layer1, neuron1, front_of_matrix_prev,
-                                                                   weight, coeff1, U_next, bound_sense)
-            else : 
-                coeff_next_, cst_ = self.add_z_quad_bound_one_variable(layer1, neuron1, weight, coeff1, bound_sense)
+                if bound_type_ == "composed":
+                    coeff_next_, cst_ = self.add_z_quad_bound_composed(layer1, neuron1, front_of_matrix_prev,
+                                                                       weight, coeff1, U_next, bound_sense)
+                else:
+                    coeff_next_, cst_ = self.add_z_quad_bound_one_variable(layer1, neuron1, weight, coeff1, bound_sense)
 
-            coeff_next += coeff_next_
-            cst        += cst_
+                coeff_next += coeff_next_
+                cst        += cst_
         
             
         if coeff_next != 0:
@@ -849,129 +863,7 @@ class VariablesCall:
             )
 
 
-    def add_z_bound_one_variable_1(
-        self,
-        layer1: int,
-        neuron1: int,
-        layer2: int,
-        neuron2: int,
-        front_of_matrix1: bool,
-        front_of_matrix2: bool,
-        value: float,
-    ):
-        """z_{layer2} z_{layer1} >= L_{layer1} z_{layer2}"""
-        #print("STUDY RELU : add_z_bound_composed_1")
-        # print(
-        #     f"RELU : z_{layer2}_{neuron2}, value = -{value}*L={self.L[layer1][neuron1]}    add_z_bound_one_variable_1 "
-        # )
-        if layer1 > 0:
-            # print(f"RELU STABLE: Skipping as layer1 = {layer1} > 0")
-            return
-        
-        self.add_linear_variable(
-            var="z",
-            layer=layer2,
-            neuron=neuron2,
-            value=-value * self.L[layer1][neuron1],
-        )
-        
-
-    def add_z_bound_one_variable_2(
-        self,
-        layer1: int,
-        neuron1: int,
-        layer2: int,
-        neuron2: int,
-        front_of_matrix1: bool,
-        front_of_matrix2: bool,
-        value: float,
-    ):
-        """z_{layer2} z_{layer1} <= U_{layer1} z_{layer2}"""
-        # print(
-        #     f"RELU STABLE: z_{layer2}_{neuron2}, value = -{value}*U={self.U[layer1][neuron1]}    add_z_bound_one_variable_2 "
-        # )
-        #print("STUDY RELU : add_z_bound_composed_2")
-        
-        self.add_linear_variable(
-            var="z",
-            layer=layer2,
-            neuron=neuron2,
-            value=-value * self.U[layer1][neuron1],
-        )
-        
-
-    def add_z_bound_composed_3(
-        self,
-        layer1: int,
-        neuron1: int,
-        layer2: int,
-        neuron2: int,
-        front_of_matrix1: bool,
-        front_of_matrix2: bool,
-        value: float,
-    ):
-        """z_{layer2} z_{layer1} >= U_{layer1} z_{layer2} + U_{layer2} z_{layer1} - U_{layer1} U_{layer2}"""
-        # print(
-        #     f"RELU STABLE: z_{layer2}_{neuron2}, value = -{value}*U={self.U[layer1][neuron1]}    add_z_bound_composed_3 "
-        # )
-        
-        self.add_linear_variable(
-            var="z",
-            layer=layer2,
-            neuron=neuron2,
-            value=-value * self.U[layer1][neuron1],
-        )
-        # print(
-        #     f"RELU STABLE: z_{layer1}_{neuron1}, value = -{value}*U={self.U[layer2][neuron2]}    add_z_bound_composed_3 "
-        # )
-        
-        self.add_linear_variable(
-            var="z",
-            layer=layer1,
-            neuron=neuron1,
-            value=-value * self.U[layer2][neuron2],
-        )
-        
-        self.add_constant(value * self.U[layer1][neuron1] * self.U[layer2][neuron2])
-        
-
-    def add_z_bound_composed_4(
-        self,
-        layer1: int,
-        neuron1: int,
-        layer2: int,
-        neuron2: int,
-        front_of_matrix1: bool,
-        front_of_matrix2: bool,
-        value: float,
-    ):
-        """z_{layer2} z_{layer1} <= L_{layer1} z_{layer2} + U_{layer2} z_{layer1} - L_{layer1} U_{layer2}"""
-        # print(
-        #     f"RELU STABLE: z_{layer1}_{neuron1}, value = -{value}*U={self.U[layer2][neuron2]}    add_z_bound_composed_3 "
-        # )
-        
-        self.add_linear_variable(
-            var="z",
-            layer=layer1,
-            neuron=neuron1,
-            value=-value * self.U[layer2][neuron2],
-        )
-        if layer1 > 0:
-            # print(f"RELU STABLE: Skipping as layer1 = {layer1} > 0")
-            
-            return
-        # print(
-        #     f"RELU STABLE: z_{layer2}_{neuron2}, value = -{value}*L={self.L[layer1][neuron1]}    add_z_bound_composed_3 "
-        # )
-        self.add_linear_variable(
-            var="z",
-            layer=layer2,
-            neuron=neuron2,
-            value=-value * self.L[layer1][neuron1],
-        )
-        self.add_constant(value * self.L[layer1][neuron1] * self.U[layer2][neuron2])
-        
-
+   
     # def add_linear_variable(self, var: str, value: float, **kwargs):
     #     """
     #     Add a linear variables to the constraint.
