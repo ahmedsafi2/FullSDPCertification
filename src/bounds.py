@@ -335,7 +335,7 @@ def compute_bounds_(self, method: str = "IBP"):
                 crown_lr=0.05
             )
     else :
-        L, U = self.compute_bounds_data(
+        L, U = compute_bounds_data(
             self.network, self.x, self.epsilon, self.n, self.K, method=method, norm=self.norm
         )
         self.L = L

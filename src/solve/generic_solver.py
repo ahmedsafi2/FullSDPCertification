@@ -13,7 +13,6 @@ from bounds import (
     check_stability_neurons,
     prune_adversarial_targets,
     compute_IBP,
-    compute_bounds_data,
 )
 from bounds_crown_claude import (
     compute_bounds_data_crown
@@ -38,7 +37,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     prune_adversarial_targets,
     get_results_trivially_solved,
     compute_bounds_data_crown,
-    compute_bounds_data,
 )
 class Solver:
     def __init__(

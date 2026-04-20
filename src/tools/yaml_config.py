@@ -148,6 +148,7 @@ class MosekSolverConfig(BaseModel):
                     f"Groups {v[i]} and {v[i+1]} must share exactly one boundary layer"
                 )
             return v
+           
         raise ValueError(f"MATRIX_BY_LAYERS must be bool or List[List[int]], got {type(v)}")
     LAST_LAYER: bool = (
         False  # Whether to use the last layer of the network (logits) as variables
@@ -230,6 +231,19 @@ class FullCertificationConfig(BaseModel):
             else:
                 model.L = None
                 model.U = None
+
+        network = values.get("network")
+        if network is not None:
+            K = network.K
+            for model in v:
+                if isinstance(model.MATRIX_BY_LAYERS, list):
+                    last_index = model.MATRIX_BY_LAYERS[-1][-1]
+                    expected_last = 7 if model.LAST_LAYER else K - 1
+                    if last_index != expected_last:
+                        raise ValueError(
+                            f"With LAST_LAYER={model.LAST_LAYER}, last element of MATRIX_BY_LAYERS "
+                            f"must be {expected_last}, got {last_index}."
+                        )
         return v
     conic_solver: Optional[ConicBundleConfig] = None
    

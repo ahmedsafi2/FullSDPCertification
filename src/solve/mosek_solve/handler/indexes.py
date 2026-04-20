@@ -14,7 +14,11 @@ def resolve_layer_groups(
       False, K=5 → [[0,1,2,3,4]]
       [[0,1],[1,2,3,4],[4,5]] → tel quel (avec K=5, LAST_LAYER=True)
     """
+    print("LAST_LAYER in resolve_layer_groups : ", LAST_LAYER)
+    print("K : ", K)
     last = K if LAST_LAYER else K - 1
+    print("MATRIX_BY_LAYERS  in resolve layer groups: ", MATRIX_BY_LAYERS)
+ 
     if isinstance(MATRIX_BY_LAYERS, bool):
         if MATRIX_BY_LAYERS:
             return [[k, k + 1] for k in range(last)]
@@ -22,6 +26,8 @@ def resolve_layer_groups(
             return [list(range(last + 1))]
     else:
         assert MATRIX_BY_LAYERS[0][0] == 0, "First group must start at layer 0"
+        print("MATRIX_LAYERS[-1][-1] : ", MATRIX_BY_LAYERS[-1][-1])
+        print("last : ", last)
         assert MATRIX_BY_LAYERS[-1][-1] == last, (
             f"Last group must end at layer {last}, got {MATRIX_BY_LAYERS[-1][-1]}"
         )

@@ -83,14 +83,17 @@ models :
     - "RLT"
     - "triangularization"
     - "Tij"
-    - "beta_logits_comparaison_1"
-    - "beta_logits_comparaison_2"
+    # - "beta_logits_comparaison_1"
+    # - "beta_logits_comparaison_2"
     - "McC_betaz_logits"
     - "Tij_before_penultimate_layer"
     RLT_props : 
     - 1.
     all_combinations_cuts : false
-    MATRIX_BY_LAYERS: false
+    MATRIX_BY_LAYERS: 
+    - [0,1]
+    - [1,2,3]
+    - [3,4,5,6]
     LAST_LAYER: false
     use_fusion: false  # Whether to use the fusion API for MOSEK
     use_callback : false # Whether to use the callback for MOSEK

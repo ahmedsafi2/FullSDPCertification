@@ -363,7 +363,8 @@ class VariablesCall:
                     self.layers_values.get_equivalent_values(layer, neuron)
                 )
 
-                decomposed_in_front_and_back_matrix = ((not ((layer,neuron) in self.stable_actives_neurons)) and (layer < self.K or self.LAST_LAYER)) and self.MATRIX_BY_LAYERS
+                is_boundary_layer = len(self.indexes_matrices._layer_to_groups.get(layer, [])) > 1
+                decomposed_in_front_and_back_matrix = ((not ((layer,neuron) in self.stable_actives_neurons)) and (layer < self.K or self.LAST_LAYER)) and self.MATRIX_BY_LAYERS and is_boundary_layer
                 
                 self.equivalent_neurons.create_dict(layer=layer, neuron=neuron, K = self.K, 
                                                     LAST_LAYER=self.LAST_LAYER, 
@@ -373,10 +374,17 @@ class VariablesCall:
                     #print(f"Layer {layer} : decomposed is true")
                     for (k, j), val in equivalent_values_neurons.items():
                         #print(f"k = {k}, j = {j}, val = {val}, LAST_LAYER = {self.LAST_LAYER}")
+                        k_groups = self.indexes_matrices._layer_to_groups.get(k, [])
+                        k_can_be_front = any(
+                            pos < len(self.indexes_matrices.layer_groups[g]) - 1
+                            for g, pos in k_groups
+                        )
+                        k_can_be_back = any(
+                            pos == len(self.indexes_matrices.layer_groups[g]) - 1
+                            for g, pos in k_groups
+                        )
 
-                        if (k < self.K - 1 and not self.LAST_LAYER) or (
-                                k < self.K and self.LAST_LAYER
-                            ):
+                        if k_can_be_front:
                                 #print(f"        Decomposing with layer = {layer}, neuron = {neuron}, val = {1} - FRONT OF MATRIX")
                                 ind_i_front = self.indexes_variables._get_variable_index(
                                     "z", layer=k, neuron=j, front_of_matrix=True
@@ -392,7 +400,7 @@ class VariablesCall:
                                     value=1,
                                     front_of_matrix=True,
                                 )
-                        if k > 0:
+                        if k_can_be_back:
                             #print(f"        Decomposing with layer = {layer}, neuron = {neuron}, val = {1} - BACK OF MATRIX")
                             ind_i_back = self.indexes_variables._get_variable_index(
                                 "z", layer=k, neuron=j, front_of_matrix=False
@@ -580,7 +588,8 @@ class VariablesCall:
                         front_of_matrix = True
                     else :
                         front_of_matrix = False
-                decomposed_in_front_and_back_matrix = (layer < self.K or self.LAST_LAYER) 
+                is_boundary_layer = len(self.indexes_matrices._layer_to_groups.get(layer, [])) > 1
+                decomposed_in_front_and_back_matrix = (layer < self.K or self.LAST_LAYER) and is_boundary_layer
             else : 
                 decomposed_in_front_and_back_matrix = False
         return decomposed_in_front_and_back_matrix, front_of_matrix
