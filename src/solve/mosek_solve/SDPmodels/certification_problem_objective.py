@@ -1,3 +1,6 @@
+import mosek
+
+
 def objective_Lan(self):
    
     print("Adding objective function for Lan")
@@ -38,14 +41,15 @@ def objective_Lan(self):
 
 def objective_Md(self):
     if not self.use_active_neurons:
-        assert self.keep_penultimate_actives , "keep_penultimate_actives must be True for Md objective function"
+        assert self.keep_penultimate_actives or self.LAST_LAYER, "keep_penultimate_actives must be True for Md objective function"
     print("Making objective ...")
     if self.LAST_LAYER:
         self.handler.Objective.add_linear_variable(
-            "z",
-            1,
+            var = "z",
             layer=self.K,
             neuron=self.ytrue,
+            front_of_matrix=False,
+            value = 1
         )
         for j in self.ytargets:
             if j == self.ytrue:
@@ -54,8 +58,8 @@ def objective_Md(self):
                 var1="beta",
                 class_label=j,
                 var2="z",
-                layer=self.K,
-                neuron=j,
+                layer2=self.K,
+                neuron2=j,
                 value=-1,
                 front_of_matrix2=False,
             )
@@ -138,3 +142,5 @@ def objective_Mzbar(self):
         )
 
         self.handler.Objective.add_linear_variable("zbar", -1)
+
+

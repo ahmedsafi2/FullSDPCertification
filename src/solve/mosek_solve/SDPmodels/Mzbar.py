@@ -21,7 +21,7 @@ from .certification_problem_constraints_bounds import (
     all_4_McCormick,
     is_front_of_matrix,
 )
-from .certification_problem_constraints_relu import (
+from .certification_problem_constraints_forward_pass import (
     ReLU_constraint_Lan,
     ReLU_triangularization,
 )
@@ -29,7 +29,7 @@ from .certification_problem_constraints_beta import (
     discrete_betas,
     sum_betas_equals_1,
     McCormick_beta_z,
-    McCormick_beta_z_with_penultimate_layer,
+    McCormick_beta_z,
     betai_betaj,
     zbar_sum_beta_z,
     zbar_max_z,
@@ -64,7 +64,7 @@ logger_mosek = logging.getLogger("Mosek_logger")
     all_4_McCormick,
     is_front_of_matrix,
     McCormick_beta_z,
-    McCormick_beta_z_with_penultimate_layer,
+    McCormick_beta_z,
     z_j2_beta_j2_greater_than_zj,
     z_j2_beta_j2_less_than_zj,
 )
@@ -115,7 +115,7 @@ class MzbarSDP(MosekSolver):
 
         # McCormick on beta z : with z logits
         if "McC_betaz_logits" in cuts:
-            self.McCormick_beta_z_with_penultimate_layer()
+            self.McCormick_beta_z()
 
         # Some cuts comparing different logits
         if "logits_comparaison_11" in cuts:

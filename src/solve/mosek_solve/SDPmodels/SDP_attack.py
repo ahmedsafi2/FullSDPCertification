@@ -21,7 +21,7 @@ from .certification_problem_constraints_bounds import (
     all_4_McCormick,
     is_front_of_matrix,
 )
-from .certification_problem_constraints_relu import (
+from .certification_problem_constraints_forward_pass import (
     ReLU_constraint_Lan,
     ReLU_triangularization,
 )

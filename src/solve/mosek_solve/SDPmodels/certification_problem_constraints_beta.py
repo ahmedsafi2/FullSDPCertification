@@ -53,16 +53,22 @@ def sum_betas_equals_1(self):
 def McCormick_beta_z(self, layer: int):
     if layer == self.K:
         assert self.LAST_LAYER
+        list_z = self.ytargets
+    else :
+        list_z = range(self.n[layer])
+    
+    print("STUDY : list_z = ", list_z)
+    
     for j in self.ytargets:
         if j == self.ytrue:
             continue
-        for i in range(self.n[layer]):
+        for i in list_z:
             if (layer, i) in self.stable_inactives_neurons:
                 continue
             elif (layer, i) in self.stable_actives_neurons and (
                 not self.keep_penultimate_actives or layer != self.K - 1
             ):
-                continue
+                continue  # Skip constraint
 
             front_of_matrix = (
                 False
@@ -166,151 +172,16 @@ def McCormick_beta_z(self, layer: int):
             self.handler.Constraints.add_bound(bound_type=mosek.boundkey.lo, bound=0)
 
 
-def McCormick_beta_z_with_penultimate_layer(self):
+def McCormick_beta_z_all_valid_layers(self):
     """
-    Add the McCormick constraints on zKj = WKj T_{(K-1, i)} + beta_j bKj
+    Call McCormick_beta_z for every layer that shares the last PSD matrix with beta.
+    Beta lives in the last chordal group; the valid layers are exactly the layers
+    listed in that group.
     """
-    assert not self.LAST_LAYER
-    assert self.BETAS and self.BETAS_Z
-    for j in self.ytargets:
-        if j == self.ytrue:
-            continue
+    last_group = self.handler.indexes_matrices.layer_groups[-1]
+    for layer in last_group:
+        self.McCormick_beta_z(layer=layer)
 
-        if self.handler.Constraints.new_constraint(
-            f"z_{self.K,j} beta_{j} >= L_{self.K,j} beta_{j}", label="same_for_data"
-        ):
-            continue
-        for i in range(self.n[self.K - 1]):
-            if (self.K - 1, i) in self.stable_inactives_neurons:
-                continue
-            self.handler.Constraints.add_quad_variable(
-                var1="beta",
-                class_label=j,
-                var2="z",
-                layer2=self.K - 1,
-                neuron2=i,
-                value=self.W[self.K - 1][j][i],
-                front_of_matrix2=False,  # Always False for the last layer
-            )
-        self.handler.Constraints.add_linear_variable(
-            var="beta",
-            class_label=j,
-            value=self.b[self.K - 1][j],
-        )
-        self.handler.Constraints.add_linear_variable(
-            var="beta",
-            class_label=j,
-            value=-self.handler.Constraints.L[self.K][j],
-        )
-        self.handler.Constraints.add_bound(bound_type=mosek.boundkey.lo, bound=0)
-
-        # *************************************************
-        if self.handler.Constraints.new_constraint(
-            f"z_{self.K,j} beta_{j} <= U_{self.K,j} beta_{j}", label="same_for_data"
-        ):
-            continue
-        for i in range(self.n[self.K - 1]):
-            if (self.K - 1, i) in self.stable_inactives_neurons:
-                continue
-            self.handler.Constraints.add_quad_variable(
-                var1="beta",
-                class_label=j,
-                var2="z",
-                layer2=self.K - 1,
-                neuron2=i,
-                value=self.W[self.K - 1][j][i],
-                front_of_matrix2=False,  # Always False for the last layer
-            )
-        self.handler.Constraints.add_linear_variable(
-            var="beta",
-            class_label=j,
-            value=self.b[self.K - 1][j],
-        )
-        self.handler.Constraints.add_linear_variable(
-            var="beta",
-            class_label=j,
-            value=-self.handler.Constraints.U_above_zero[self.K][j],
-        )
-        self.handler.Constraints.add_bound(bound_type=mosek.boundkey.up, bound=0)
-
-        # *************************************************
-        if self.handler.Constraints.new_constraint(
-            f"z_{self.K,j} beta_{j} <= z_{self.K,j} + L_{self.K,j} beta_{j} - L_{self.K,j}",
-            label="same_for_data",
-        ):
-            continue
-        for i in range(self.n[self.K - 1]):
-            if (self.K - 1, i) in self.stable_inactives_neurons:
-                continue
-            self.handler.Constraints.add_quad_variable(
-                var1="beta",
-                class_label=j,
-                var2="z",
-                layer2=self.K - 1,
-                neuron2=i,
-                value=self.W[self.K - 1][j][i],
-                front_of_matrix2=False,  # Always False for the last layer
-            )
-            self.handler.Constraints.add_linear_variable(
-                var="z",
-                layer=self.K - 1,
-                neuron=i,
-                value=-self.W[self.K - 1][j][i],
-            )
-        self.handler.Constraints.add_linear_variable(
-            var="beta",
-            class_label=j,
-            value=self.b[self.K - 1][j],
-        )
-        self.handler.Constraints.add_linear_variable(
-            var="beta",
-            class_label=j,
-            value=-self.handler.Constraints.L[self.K][j],
-        )
-        self.handler.Constraints.add_bound(
-            bound_type=mosek.boundkey.up,
-            bound=self.b[self.K - 1][j] - self.handler.Constraints.L[self.K][j],
-        )
-
-        # *************************************************
-        if self.handler.Constraints.new_constraint(
-            f"z_{self.K,j} beta_{j} >= z_{self.K,j} + U_{self.K,j} beta_{j} - U_{self.K,j}",
-            label="same_for_data",
-        ):
-            continue
-        for i in range(self.n[self.K - 1]):
-            if (self.K - 1, i) in self.stable_inactives_neurons:
-                continue
-            self.handler.Constraints.add_quad_variable(
-                var1="beta",
-                class_label=j,
-                var2="z",
-                layer2=self.K - 1,
-                neuron2=i,
-                value=self.W[self.K - 1][j][i],
-                front_of_matrix2=False,  # Always False for the last layer
-            )
-            self.handler.Constraints.add_linear_variable(
-                var="z",
-                layer=self.K - 1,
-                neuron=i,
-                value=-self.W[self.K - 1][j][i],
-            )
-        self.handler.Constraints.add_linear_variable(
-            var="beta",
-            class_label=j,
-            value=self.b[self.K - 1][j],
-        )
-        self.handler.Constraints.add_linear_variable(
-            var="beta",
-            class_label=j,
-            value=-self.handler.Constraints.U_above_zero[self.K][j],
-        )
-        self.handler.Constraints.add_bound(
-            bound_type=mosek.boundkey.lo,
-            bound=self.b[self.K - 1][j]
-            - self.handler.Constraints.U_above_zero[self.K][j],
-        )
 
 
 def betai_betaj(self):
@@ -431,12 +302,52 @@ def betai_betaj(self):
                 )
 
 
+def z_j2_zj_big_m(self):
+    """
+    Add the big M constraint z_j1 >= z_j2 - (1 - beta_j1) (L_j1 - U_j2)
+    """
+    assert self.BETAS
+
+    for j2 in self.ytargets:
+        if j2 == self.ytrue:
+            continue
+        for j1 in self.ytargets:
+            if j1 == self.ytrue or j1 == j2:
+                continue
+            if self.handler.Constraints.new_constraint(
+                f"z_{self.K, j1}  >= z_{self.K,j2} - (1 - beta_{j1}) (L_{j1} - U_{j2})", label="same_for_data"
+            ):
+                continue
+            big_M = self.handler.Constraints.L[self.K][j1] - self.handler.Constraints.U_above_zero[self.K][j2]
+            self.handler.Constraints.add_linear_variable(
+                var="z",
+                layer=self.K,
+                neuron=j1,
+                value=1,
+            )
+            self.handler.Constraints.add_linear_variable(
+                var="z",
+                layer=self.K,
+                neuron=j2,
+                value=-1,
+            )
+            self.handler.Constraints.add_linear_variable(
+                var="beta",
+                class_label=j1,
+                value=-big_M,
+            )
+            self.handler.Constraints.add_bound(
+                bound_type=mosek.boundkey.lo,
+                bound=-big_M,
+            )
+
+
 def z_j2_beta_j2_greater_than_zj(self):
     """
     Add the constraint z_2 beta_2 >= z_1 - (1 - beta_2) U_1    (11)
     """
     assert self.BETAS
-    assert not self.LAST_LAYER
+    assert self.BETAS_Z
 
     for j2 in self.ytargets:
         if j2 == self.ytrue:
@@ -449,49 +360,24 @@ def z_j2_beta_j2_greater_than_zj(self):
                 label="same_for_data",
             ):
                 continue
-            for i in range(self.n[self.K - 1]):
-                if (self.K - 1, i) in self.stable_inactives_neurons:
-                    continue
-                # elif (self.K - 1, i) in self.stable_actives_neurons:
-                #     # beta_j2 * z_j2 - W part
-                #     self.handler.Constraints.add_quad_variable_bounding(
-                #         layer=self.K - 1,
-                #         neuron=i,
-                #         class_label=j2,
-                #         value=self.W[self.K - 1][j2][i],
-                #         alpha_1=self.alpha_1,
-                #         alpha_2=self.alpha_2,
-                #         type="upper",
-                #     )
-                else:
-                    # beta_j2 * z_j2 - W part
-                    self.handler.Constraints.add_quad_variable(
-                        var1="z",
-                        layer1=self.K - 1,
-                        neuron1=i,
-                        var2="beta",
-                        class_label=j2,
-                        value=self.W[self.K - 1][j2][i],
-                        front_of_matrix1=False,
-                    )
 
-                # - z_j1 - W part
-                self.handler.Constraints.add_linear_variable(
-                    var="z",
-                    layer=self.K - 1,
-                    neuron=i,
-                    value=-self.W[self.K - 1][j1][i],
-                )
-            # beta_j2 * z_j2 - b part
-            self.handler.Constraints.add_linear_variable(
-                var="beta",
+            self.handler.Constraints.add_quad_variable(
+                var1="z",
+                layer1=self.K,
+                neuron1=j2,
+                var2="beta",
                 class_label=j2,
-                value=self.b[self.K - 1][j2],
+                value=1,
+                front_of_matrix1=False,
             )
-            # - z_j1 - b part
-            self.handler.Constraints.add_constant(value=-self.b[self.K - 1][j1])
 
-            # - beta_j2 * U_j1
+            self.handler.Constraints.add_linear_variable(
+                var="z",
+                layer=self.K,
+                neuron=j1,
+                value=-1,
+            )
+
             self.handler.Constraints.add_linear_variable(
                 var="beta",
                 class_label=j2,
@@ -523,126 +409,54 @@ def z_j2_beta_j2_less_than_zj(self):
             ):
                 continue
 
-            for i in range(self.n[self.K - 1]):
-                if (self.K - 1, i) in self.stable_inactives_neurons:
-                    continue
-
-                if (self.K - 1, i) in self.stable_actives_neurons:
-                    raise ValueError("There should not be actives on the penultimate layer with the untargeted objective.")
-                #     # beta_j2 * z_j2 - W part
-                #     self.handler.Constraints.add_quad_variable_bounding(
-                #         layer=self.K - 1,
-                #         neuron=i,
-                #         class_label=j2,
-                #         value=self.W[self.K - 1][j2][i],
-                #         type="lower",
-                #         alpha_1=self.alpha_1,
-                #         alpha_2=self.alpha_2,
-                #     )
-                #     # beta_j1 * z_j1 - W part
-                #     self.handler.Constraints.add_quad_variable_bounding(
-                #         layer=self.K - 1,
-                #         neuron=i,
-                #         class_label=j1,
-                #         value=self.W[self.K - 1][j1][i],
-                #         type="lower",
-                #         alpha_1=self.alpha_1,
-                #         alpha_2=self.alpha_2,
-                #     )
-                #     # beta_j2 * z_j1 - W part
-                #     self.handler.Constraints.add_quad_variable_bounding(
-                #         layer=self.K - 1,
-                #         neuron=i,
-                #         class_label=j2,
-                #         value=self.W[self.K - 1][j1][i],
-                #         type="lower",
-                #         alpha_1=self.alpha_1,
-                #         alpha_2=self.alpha_2,
-                #     )
-                else:
-                    # beta_j2 * z_j2 - W part
-                    self.handler.Constraints.add_quad_variable(
-                        var1="z",
-                        layer1=self.K - 1,
-                        neuron1=i,
-                        var2="beta",
-                        class_label=j2,
-                        value=self.W[self.K - 1][j2][i],
-                        front_of_matrix1=False,
-                    )
-                    # beta_j1 * z_j1 - W part
-                    self.handler.Constraints.add_quad_variable(
-                        var1="z",
-                        layer1=self.K - 1,
-                        neuron1=i,
-                        var2="beta",
-                        class_label=j1,
-                        value=self.W[self.K - 1][j1][i],
-                        front_of_matrix1=False,
-                    )
-                    # beta_j2 * z_j1 - W part
-                    self.handler.Constraints.add_quad_variable(
-                        var1="z",
-                        layer1=self.K - 1,
-                        neuron1=i,
-                        var2="beta",
-                        class_label=j2,
-                        value=self.W[self.K - 1][j1][i],
-                        front_of_matrix1=False,
-                    )
-                # - z_j1 - W part
-                self.handler.Constraints.add_linear_variable(
-                    var="z",
-                    layer=self.K - 1,
-                    neuron=i,
-                    value=-self.W[self.K - 1][j1][i],
-                )
-
-            # beta_j2 * z_j2 - b part
-            self.handler.Constraints.add_linear_variable(
-                var="beta",
+            self.handler.Constraints.add_quad_variable(
+                var1="z",
+                layer1=self.K,
+                neuron1=j2,
+                var2="beta",
                 class_label=j2,
-                value=self.b[self.K - 1][j2],
+                value=1,
+                front_of_matrix=False,
             )
-
-            # - z_j1 - b part
-            self.handler.Constraints.add_constant(value=-self.b[self.K - 1][j1])
-
-            # beta_j1 * z_j1 - b part
             self.handler.Constraints.add_linear_variable(
-                var="beta",
+                var="z",
+                layer=self.K,
+                neuron=j1,
+                value=-1,
+                front_of_matrix=False,
+            )
+            self.handler.Constraints.add_quad_variable(
+                var1="beta",
                 class_label=j1,
-                value=self.b[self.K - 1][j1],
+                var2="z",
+                layer2=self.K,
+                neuron2=j1,
+                
+                value=1,
+                front_of_matrix2=False,
             )
 
-            # beta_j2 * z_j1 - b part
             self.handler.Constraints.add_linear_variable(
                 var="beta",
                 class_label=j2,
-                value=self.b[self.K - 1][j1],
+                value=-self.handler.Constraints.U_above_zero[self.K][j2] - self.handler.Constraints.L[self.K][j1],
             )
 
-            # - beta_j2 * U_j2
-            self.handler.Constraints.add_linear_variable(
-                var="beta",
-                class_label=j2,
-                value=-self.handler.Constraints.U_above_zero[self.K][j2],
-            )
-
-            # - beta_j1 * L_j1
             self.handler.Constraints.add_linear_variable(
                 var="beta",
                 class_label=j1,
                 value=-self.handler.Constraints.L[self.K][j1],
             )
 
-            # - beta_j2 * L_j1
-            self.handler.Constraints.add_linear_variable(
-                var="beta",
+            self.handler.Constraints.add_quad_variable(
+                var1="beta",
                 class_label=j2,
-                value=-self.handler.Constraints.L[self.K][j1],
+                var2="z",
+                layer2=self.K,
+                neuron2=j1,
+                value=1,
+                front_of_matrix2=False,
             )
-
             self.handler.Constraints.add_bound(
                 bound_type=mosek.boundkey.up,
                 bound=-self.handler.Constraints.L[self.K][j1],
@@ -677,25 +491,13 @@ def zbar_sum_beta_z(self):
     for j in self.ytargets:
         if j == self.ytrue:
             continue
-        for i in range(self.n[self.K - 1]):
-            if (self.K - 1, i) in self.stable_inactives_neurons or (
-                self.K - 1,
-                i,
-            ) in self.stable_actives_neurons:
-                continue
-            self.handler.Constraints.add_quad_variable(
-                var1="beta",
-                class_label=j,
-                var2="z",
-                layer2=self.K - 1,
-                neuron2=i,
-                value=-self.W[self.K - 1][j][i],
-            )
-
-        self.handler.Constraints.add_linear_variable(
-            var="beta",
+        self.handler.Constraints.add_quad_variable(
+            var1="beta",
             class_label=j,
-            value=-self.b[self.K - 1][j],
+            var2="z",
+            layer2=self.K,
+            neuron2=j,
+            value=-1,
         )
 
     self.handler.Constraints.add_bound(bound_type=mosek.boundkey.fx, bound=0)
@@ -718,18 +520,12 @@ def zbar_max_z(self):
             var="zbar",
             value=1,
         )
-        for i in range(self.n[self.K - 1]):
-            if (self.K - 1, i) in self.stable_inactives_neurons or (
-                self.K - 1,
-                i,
-            ) in self.stable_actives_neurons:
-                continue
-            self.handler.Constraints.add_linear_variable(
-                var="z",
-                layer=self.K - 1,
-                neuron=i,
-                value=-self.W[self.K - 1][j][i],
-            )
+        self.handler.Constraints.add_linear_variable(
+            var="z",
+            layer=self.K,
+            neuron=j,
+            value=-1,
+        )
 
         self.handler.Constraints.add_bound(
             bound_type=mosek.boundkey.lo, bound=self.b[self.K - 1][j]

@@ -270,7 +270,8 @@ class Equivalent_Neurons_Index:
             return self.equivalent_neurons[index]["weights"]
         if front_of_matrix is None :
             raise ValueError(f"front_of_matrix must be specified for neuron {neuron} at layer {layer}")
-        if not ( (not front_of_matrix and layer > 0) or (front_of_matrix and layer < self.K - 1) ):
+        max_front_layer = self.K if self.LAST_LAYER else self.K - 1
+        if not ( (not front_of_matrix and layer > 0) or (front_of_matrix and layer < max_front_layer) ):
             print(f"ERROR : layer = {layer}, neuron = {neuron}; K = {self.K}, front_of_matrix = {front_of_matrix}" )
         weights_str = "weights_front" if front_of_matrix else "weights_back"
         return self.equivalent_neurons[index][weights_str]

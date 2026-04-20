@@ -24,19 +24,21 @@ from .certification_problem_constraints_bounds import (
     all_4_McCormick,
     is_front_of_matrix,
 )
-from .certification_problem_constraints_relu import (
+from .certification_problem_constraints_forward_pass import (
     ReLU_constraint_Lan,
     ReLU_constraint_stable_active_relaxation,
     ReLU_triangularization,
+    last_layer_linear_equality
 )
 from .certification_problem_constraints_beta import (
     discrete_betas,
     sum_betas_equals_1,
     McCormick_beta_z,
-    McCormick_beta_z_with_penultimate_layer,
+    McCormick_beta_z_all_valid_layers,
     betai_betaj,
     z_j2_beta_j2_greater_than_zj,
     z_j2_beta_j2_less_than_zj,
+    z_j2_zj_big_m
 )
 from .certification_problem_constraints_division_by_layers import (
     matrix_by_layers_rec,
@@ -65,10 +67,12 @@ logger_mosek = logging.getLogger("Mosek_logger")
     all_4_McCormick,
     is_front_of_matrix,
     McCormick_beta_z,
-    McCormick_beta_z_with_penultimate_layer,
+    McCormick_beta_z_all_valid_layers,
     z_j2_beta_j2_greater_than_zj,
     z_j2_beta_j2_less_than_zj,
-    L2_ball_bounds
+    L2_ball_bounds,
+    last_layer_linear_equality,
+    z_j2_zj_big_m
 )
 class MdSDP(MosekSolver):
     def __init__(self, **kwargs):
@@ -109,35 +113,31 @@ class MdSDP(MosekSolver):
         self.betai_betaj()
 
         # Tij
-        if "Tij" in cuts:
-            self.McCormick_beta_z(layer=self.K - 1)
+        if "McCormick_beta_z" in cuts:
+            self.McCormick_beta_z_all_valid_layers()
 
-        if "Tij_before_penultimate_layer" in cuts:
-            self.McCormick_beta_z(layer=self.K - 2)
-
-        # McCormick on beta z : with z logits
-        if "McC_betaz_logits" in cuts:
-            self.McCormick_beta_z_with_penultimate_layer()
+        # if "Tij_before_penultimate_layer" in cuts:
+        #     self.McCormick_beta_z(layer=self.K - 2)
 
         # # Some cuts comparing different logits
-        if "beta_logits_comparaison_2" in cuts:
+        if "beta_logits_comparaison" in cuts:
             self.z_j2_beta_j2_greater_than_zj()
-
-        if "beta_logits_comparaison_1" in cuts:
             self.z_j2_beta_j2_less_than_zj()
+        
+        if "beta_logits_comparaison_big_M" in cuts : 
+            self.z_j2_zj_big_m()
 
         # RLT
         if "RLT" in cuts:
             self.add_RLT_constraints(p=self.RLT_prop)
-
-        # McCormick
-        if "allMC" in cuts:
-            self.all_Mc_Cormick_all_layers()
 
         self.first_term_equal_zero()
 
         # MATRIX BY LAYERS
         if self.MATRIX_BY_LAYERS:
             self.matrix_by_layers_rec(only_linear_constraints=True)
+
+        if self.LAST_LAYER:
+            self.last_layer_linear_equality()
 
         self.handler.Constraints.end_constraints()

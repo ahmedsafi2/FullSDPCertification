@@ -291,3 +291,42 @@ def ReLU_triangularization(self):
             )
 
             # self.handler.Constraints.print_current_constraint()
+
+
+def last_layer_linear_equality(self):
+    """
+    Add z_{K,j} = W_K z_{K-1} + b_K for each output neuron j.
+    Mandatory when LAST_LAYER=True: the last layer is linear (no ReLU), so
+    this equality is never added by ReLU_constraint_Lan and must be explicit.
+    z_K  → front_of_matrix=False (last element of last chordal group)
+    z_{K-1} → front_of_matrix=True  (first element of last chordal group)
+    """
+    assert self.LAST_LAYER
+    for class_label in list(set([self.ytrue]).union(self.ytargets)):
+        print("STUDY : adding last layer linear equality for class ", class_label)
+        if self.handler.Constraints.new_constraint(
+            f"Last layer linear equality: z_{{{self.K},{class_label}}} = W_K z_{{K-1}} + b_K",
+            label="same_for_data",
+        ):
+            continue
+        self.handler.Constraints.add_linear_variable(
+            "z",
+            value=1,
+            layer=self.K,
+            neuron=class_label,
+            front_of_matrix=False,
+        )
+        for i in range(self.n[self.K - 1]):
+            if (self.K - 1, i) in self.stable_inactives_neurons:
+                continue
+            self.handler.Constraints.add_linear_variable(
+                "z",
+                value=-self.network.W[self.K - 1][class_label][i],
+                layer=self.K - 1,
+                neuron=i,
+                front_of_matrix=True,
+            )
+        self.handler.Constraints.add_bound(
+            bound_type=mosek.boundkey.fx,
+            bound=self.network.b[self.K - 1][class_label],
+        )

@@ -118,6 +118,13 @@ class MosekSolverConfig(BaseModel):
         return v
 
     cuts: Optional[List[str]] = []
+    @validator("cuts")
+    def validate_cuts(cls, v, values):
+        for cut in v :
+            if cut not in ["RLT", "triangularization", "McCormick_beta_z", "beta_logits_comparaison", "beta_logits_comparaison_big_M"]:
+                raise ValueError(f"cut {cut} not valid.")
+        return v
+
     all_combinations_cuts: Optional[bool] = False
     RLT_props: Optional[List[float]] = [0.0]
 

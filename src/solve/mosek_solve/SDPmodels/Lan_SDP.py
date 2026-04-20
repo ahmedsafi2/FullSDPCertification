@@ -22,10 +22,11 @@ from .certification_problem_constraints_bounds import (
     all_4_McCormick,
     is_front_of_matrix,
 )
-from .certification_problem_constraints_relu import (
+from .certification_problem_constraints_forward_pass import (
     ReLU_constraint_Lan,
     ReLU_constraint_stable_active_relaxation,
     ReLU_triangularization,
+    last_layer_linear_equality
 )
 from .certification_problem_constraints_rlt import add_RLT_constraints
 from .certification_problem_constraints_division_by_layers import matrix_by_layers_rec
@@ -48,7 +49,8 @@ logger_mosek = logging.getLogger("Mosek_logger")
     all_Mc_Cormick_all_layers,
     all_4_McCormick,
     is_front_of_matrix,
-    L2_ball_bounds
+    L2_ball_bounds,
+    last_layer_linear_equality
 )
 class LanSDP(MosekSolver):
     def __init__(self, **kwargs):
@@ -106,6 +108,9 @@ class LanSDP(MosekSolver):
 
         if self.MATRIX_BY_LAYERS:
             self.matrix_by_layers_rec(only_linear_constraints=True)
+
+        if self.LAST_LAYER:
+            self.last_layer_linear_equality()
 
         self.first_term_equal_zero()
 
