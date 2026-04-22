@@ -179,10 +179,6 @@ class Certification_Problem:
             print(
                 f"STUDY : Running certification for sample {i + 1} of label {ytrue.item()}"
             )
-            dict_infos = dict(solver_config)
-            dict_infos.pop("certification_model_name")
-            print("STUDY dict_infos:", dict_infos)
-
             # print("Network device : ", self.network.device)
             print("x device : ", x.device)
             x = x.to(device_)
@@ -198,17 +194,21 @@ class Certification_Problem:
                 continue
 
             if solver_config.bounds_method == "from_file":
-                L = [[float(bounds_csv[bounds_csv["data_index"] == i][f"LB_Layer_{k}_Neuron_{j}"].iloc[0])                                                                                                                   
-                 for j in range(self.network.n[k])]                                                                                                                                     
-                for k in range(self.network.K + 1)]                                                                                                                                     
-                U = [[float(bounds_csv[bounds_csv["data_index"] == i][f"UB_Layer_{k}_Neuron_{j}"].iloc[0])                                                                                                                   
+                L = [[float(bounds_csv[bounds_csv["data_index"] == i][f"LB_Layer_{k}_Neuron_{j}"].iloc[0])
+                 for j in range(self.network.n[k])]
+                for k in range(self.network.K + 1)]
+                U = [[float(bounds_csv[bounds_csv["data_index"] == i][f"UB_Layer_{k}_Neuron_{j}"].iloc[0])
                         for j in range(self.network.n[k])]
-                        for k in range(self.network.K + 1)] 
+                        for k in range(self.network.K + 1)]
                 solver_config.L = L
                 solver_config.U = U
                 print("Bounds loaded from file : ", solver_config.bounds_file)
                 print("L : ", solver_config.L)
                 print("U : ", solver_config.U)
+
+            dict_infos = dict(solver_config)
+            dict_infos.pop("certification_model_name")
+            print("STUDY dict_infos:", dict_infos)
    
             # model_bounds = solve.LPBoundLayer(
             #     network=self.network,
@@ -252,7 +252,9 @@ class Certification_Problem:
                 nb_targets = len(model_instance.ytargets)
                 print("STUDY : number of targets : ", nb_targets)
             except Exception as e:
+                import traceback
                 print("STUDY ERROR : Error while creating model instance:", e)
+                traceback.print_exc()
                 nb_actives = -1
                 nb_inactives = -1
                 nb_targets = 0

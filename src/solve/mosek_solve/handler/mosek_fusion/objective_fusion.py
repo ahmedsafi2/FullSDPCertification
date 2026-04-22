@@ -94,7 +94,7 @@ class ObjectiveFusion(Objective):
                 dict2=dict2,
                 value=value,
                 nb_index=self.indexes_variables.max_index,
-                dividing_diag=True,
+                dividing_diag=False,
             )
 
 

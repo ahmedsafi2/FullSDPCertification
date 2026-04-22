@@ -463,6 +463,43 @@ def z_j2_beta_j2_less_than_zj(self):
             )
 
 
+def sum_beta_j_z_i_equal_z_i(self):
+    """
+    Add the constraint sum(beta_j z_i for j in ytargets) = z_i
+    """
+    
+    assert self.BETAS
+    assert self.BETAS_Z
+
+    for i in self.ytargets:
+        if self.handler.Constraints.new_constraint(
+                f"sum(z_{i} beta_j for j in targets) == z_K^{i}",
+                label="same_for_data",
+            ):
+                continue
+        self.handler.Constraints.add_linear_variable(
+            var="z",
+            layer = self.K,
+            neuron = i,
+            value = 1
+        )
+        for class_label in self.ytargets:
+            self.handler.Constraints.add_quad_variable(
+                var1="beta",
+                class_label=class_label,
+                var2="z",
+                layer2=self.K,
+                neuron2=i,
+                value=-1,
+                front_of_matrix2=False,
+            )
+        self.handler.Constraints.add_bound(
+            bound_type=mosek.boundkey.fx,
+            bound=0,
+        )
+        
+
+
 # *****************************************************************************************************************
 # *********************************************ZBAR ***************************************************************
 # *****************************************************************************************************************

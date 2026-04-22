@@ -296,6 +296,113 @@ def get_matrices_variables(self, cuts: List):
     return matrices
 
 
+def diagnose_infeasibility(self, gap_threshold: float = 0.01, max_constraints_for_rank: int = 5000):
+    """
+    Diagnostic de la condition de Slater : appelé quand le gap primal-dual est persistant.
+
+    Étape 1 : valeurs propres de chaque matrice PSD (détecte X ≈ 0 ou rang déficient).
+    Étape 2 : rang de la matrice des contraintes A_i (détecte redondances linéaires).
+    """
+    logger_mosek.warning("=== DIAGNOSTIC INFAISABILITÉ (condition de Slater) ===")
+
+    # --- Étape 1 : spectre de chaque matrice PSD ---
+    for ind, mat_info in enumerate(self.indexes_matrices.current_matrices_variables):
+        name = mat_info["name"]
+        dim  = mat_info["dim"]
+        try:
+            X = self.get_solution(ind_solution=ind, name_solution=name, dim=dim)
+            eigvals = np.linalg.eigvalsh(X)
+            effective_rank = int(np.sum(eigvals > 1e-8))
+            min_eig = float(eigvals[0])
+            max_eig = float(eigvals[-1])
+            msg = (
+                f"  Matrice '{name}' (dim={dim}) : "
+                f"rang_effectif={effective_rank}/{dim}, "
+                f"λ_min={min_eig:.3e}, λ_max={max_eig:.3e}"
+            )
+            logger_mosek.warning(msg)
+            print(msg)
+            if effective_rank < dim:
+                warn = f"    ⚠ Rang déficient ({effective_rank}<{dim}) → X sur la frontière du cône, Slater non satisfaite"
+                logger_mosek.warning(warn)
+                print(warn)
+        except Exception as e:
+            logger_mosek.warning(f"  Impossible d'analyser '{name}' : {e}")
+
+    # --- Étape 2 : identification des contraintes redondantes par QR avec pivot ---
+    import re
+    from scipy.linalg import qr as scipy_qr
+
+    list_cstr = self.Constraints.list_cstr
+    n_cstr = len(list_cstr)
+    if n_cstr == 0:
+        logger_mosek.warning("  Aucune contrainte trouvée.")
+        return
+
+    sample = list_cstr[:max_constraints_for_rank]
+    truncated = n_cstr > max_constraints_for_rank
+
+    # Construire la matrice A : une ligne par contrainte, une colonne par entrée PSD unique (nm, i, j)
+    col_index: dict = {}
+    col_counter = 0
+    rows = []
+    for cstr in sample:
+        row: dict = {}
+        for k in range(len(cstr["num_matrix"])):
+            nm, ci, cj, cv = cstr["num_matrix"][k], cstr["i"][k], cstr["j"][k], cstr["value"][k]
+            key = (nm, min(ci, cj), max(ci, cj))
+            if key not in col_index:
+                col_index[key] = col_counter
+                col_counter += 1
+            col = col_index[key]
+            row[col] = row.get(col, 0.0) + cv
+        rows.append(row)
+
+    n_rows, n_cols = len(rows), col_counter
+    if n_cols == 0 or n_rows == 0:
+        logger_mosek.warning("  Matrice des contraintes vide — impossible de calculer le rang.")
+        return
+
+    A = np.zeros((n_rows, n_cols))
+    for r, row in enumerate(rows):
+        for c, v in row.items():
+            A[r, c] = v
+
+    # QR avec pivotage sur A^T : identifie les lignes (contraintes) redondantes
+    _, R, P = scipy_qr(A.T, pivoting=True)
+    diag = np.abs(np.diag(R))
+    rank = int(np.sum(diag > 1e-8 * diag[0])) if diag[0] > 0 else 0
+
+    label = " (tronqué)" if truncated else ""
+    msg = f"CALLBACK  Matrice des contraintes : {n_rows}{label} × {n_cols} → rang={rank}"
+    logger_mosek.warning(msg)
+    print(msg)
+
+    if rank < n_rows:
+        redundant_indices = P[rank:]  # indices dans `sample` des contraintes redondantes
+
+        # Extraire le type de chaque contrainte (préfixe avant le premier chiffre)
+        def cstr_type(name: str) -> str:
+            match = re.match(r'^(.*?)(?:_\d|$)', name)
+            return match.group(1) if match else name
+
+        # Compter les redondantes par type
+        counts: dict = {}
+        for idx in redundant_indices:
+            t = cstr_type(sample[idx]["name"])
+            counts[t] = counts.get(t, 0) + 1
+
+        warn = f"CALLBACK  ⚠ {len(redundant_indices)} contrainte(s) redondante(s) par type :"
+        logger_mosek.warning(warn)
+        print(warn)
+        for t, cnt in sorted(counts.items(), key=lambda x: -x[1]):
+            line = f"CALLBACK      {cnt:4d}  {t}"
+            logger_mosek.warning(line)
+            print(line)
+
+    logger_mosek.warning("=== FIN DIAGNOSTIC ===")
+
+
 def compute_solutions(self, cuts: List, print_sol: bool = False):
     """
     Get the solutions and dual variables of the optimization problem.

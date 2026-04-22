@@ -38,7 +38,8 @@ from .certification_problem_constraints_beta import (
     betai_betaj,
     z_j2_beta_j2_greater_than_zj,
     z_j2_beta_j2_less_than_zj,
-    z_j2_zj_big_m
+    z_j2_zj_big_m,
+    sum_beta_j_z_i_equal_z_i
 )
 from .certification_problem_constraints_division_by_layers import (
     matrix_by_layers_rec,
@@ -72,7 +73,8 @@ logger_mosek = logging.getLogger("Mosek_logger")
     z_j2_beta_j2_less_than_zj,
     L2_ball_bounds,
     last_layer_linear_equality,
-    z_j2_zj_big_m
+    z_j2_zj_big_m,
+    sum_beta_j_z_i_equal_z_i
 )
 class MdSDP(MosekSolver):
     def __init__(self, **kwargs):
@@ -95,6 +97,11 @@ class MdSDP(MosekSolver):
         Add constraints to the task.
         """
         # RELU
+
+        if "sum_beta_logits_equal_logit" in cuts :
+            self.sum_beta_j_z_i_equal_z_i()
+
+
         print("STUDY : Adding ReLU constraints...")
         self.ReLU_constraint_Lan()
         print("STUDY : ReLU constraints added.")
@@ -112,12 +119,8 @@ class MdSDP(MosekSolver):
         self.sum_betas_equals_1()
         self.betai_betaj()
 
-        # Tij
         if "McCormick_beta_z" in cuts:
             self.McCormick_beta_z_all_valid_layers()
-
-        # if "Tij_before_penultimate_layer" in cuts:
-        #     self.McCormick_beta_z(layer=self.K - 2)
 
         # # Some cuts comparing different logits
         if "beta_logits_comparaison" in cuts:
@@ -126,7 +129,7 @@ class MdSDP(MosekSolver):
         
         if "beta_logits_comparaison_big_M" in cuts : 
             self.z_j2_zj_big_m()
-
+        
         # RLT
         if "RLT" in cuts:
             self.add_RLT_constraints(p=self.RLT_prop)

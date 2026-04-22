@@ -19,7 +19,6 @@ logger_mosek = logging.getLogger("Mosek_logger")
 
 all_possible_cuts = [
     "betaibetaj",
-    "Tij",
     "RLT",
     "triangularization",
     "ReLU_active_ub_neurons",

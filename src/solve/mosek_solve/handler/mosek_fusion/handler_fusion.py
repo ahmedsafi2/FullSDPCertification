@@ -29,6 +29,7 @@ from ..common_handler_functions import (
     Matrices_Solutions,
     get_matrices_variables,
     compute_solutions,
+    diagnose_infeasibility,
 )
 from solve.mosek_solve.run_benchmark import compute_cuts_str
 from tools import get_project_path
@@ -62,6 +63,7 @@ class LoggerWriter:
     is_status_unknown,
     add_all_infos_optimal_values_to_dic,
     compute_solutions,
+    diagnose_infeasibility,
     print_index_variables_matrices,
     num_matrices_variables,
     print_num_variables,

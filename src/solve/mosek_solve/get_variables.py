@@ -106,17 +106,23 @@ def get_results(self, cuts: List, verbose: bool = False):
         print ("CALLBACK : infeasible status")
         if verbose:
             logger_mosek.debug("Primal or dual infeasibility certificate found.\n")
+        print("CALLBACK : Déclenchement du diagnostic (contraintes contradictoires)")
+        try:
+            self.handler.diagnose_infeasibility()
+        except Exception as e:
+            print(f"CALLBACK : Diagnostic échoué : {e}")
         self.handler.get_dual_variables()
-        if True:
-            file_cb = open(
-                get_project_path(f"{self.folder_name}/{self.name}/results.txt"),
-                "w",
-            )
+        cuts_str = compute_cuts_str(cuts)
+        dual_path = get_project_path(
+            f"{self.folder_name}/dual_infeasible_ind={self.data_index}_{cuts_str}.txt"
+        )
+        os.makedirs(os.path.dirname(dual_path), exist_ok=True)
+        with open(dual_path, "w") as file_cb:
             file_cb.write("Dual Solutions \n")
             print_dual_variable_to_file_for_cb_solver(
                 list_cstr=self.handler.Constraints.list_cstr, file_cb=file_cb
             )
-            file_cb.close()
+        print(f"CALLBACK : Variables duales sauvegardées dans {dual_path}")
     elif self.handler.is_status_unknown():
         print ("CALLBACK : unknown status")
         logger_mosek.debug("Unknown solution status")

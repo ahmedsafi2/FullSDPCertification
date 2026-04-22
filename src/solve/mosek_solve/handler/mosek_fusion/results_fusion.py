@@ -26,8 +26,18 @@ def add_all_infos_optimal_values_to_dic(self, cuts: List, verbose: bool = False)
     print(
         f"Optimal value (no added constant, already written in model): {self.optimal_value} : with cuts {cuts}"
     )
-    # self.compute_solutions(cuts, verbose)
     self.is_robust = self.optimal_value >= 0
+
+    gap = abs(self.dual_obj_value - self.primal_obj_value)
+    if gap > 0.01 * max(1.0, abs(self.dual_obj_value)):
+        print(f"⚠ Gap primal-dual persistant ({gap:.3e}) → déclenchement du diagnostic Slater")
+        logger_mosek.warning("Gap primal-dual persistant (%.3e) → diagnostic Slater", gap)
+        try:
+            self.diagnose_infeasibility()
+        except Exception as e:
+            logger_mosek.warning("Diagnostic Slater échoué : %s", e)
+
+    # self.compute_solutions(cuts, verbose)
     dic_sol = {"optimal_value": self.optimal_value}
     dic_sol.update({"primal_obj_value": self.primal_obj_value})
     dic_sol.update({"dual_obj_value": self.dual_obj_value})

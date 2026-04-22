@@ -90,51 +90,49 @@ class MzbarSDP(MosekSolver):
         Add constraints to the task.
         """
         # RELU
+        print("STUDY : Adding ReLU constraints...")
         self.ReLU_constraint_Lan()
+        print("STUDY : ReLU constraints added.")
+
         if "triangularization" in cuts:
             self.ReLU_triangularization()
 
+        #ZBAR
+        self.zbar_sum_beta_z()
+        self.zbar_max_z()
+
         # BOUNDS
         self.quad_bounds()
+        if self.norm == "L2":
+            self.L2_ball_bounds()
 
         # BETA
         self.discrete_betas()
         self.sum_betas_equals_1()
         self.betai_betaj()
 
-        # ZBAR
-        self.zbar_sum_beta_z()
-        self.zbar_max_z()
+        if "McCormick_beta_z" in cuts:
+            self.McCormick_beta_z_all_valid_layers()
 
-        # Tij
-        if "Tij" in cuts:
-            self.McCormick_beta_z(layer=self.K - 1)
-
-        if "Tij_before_penultimate_layer" in cuts:
-            self.McCormick_beta_z(layer=self.K - 2)
-
-        # McCormick on beta z : with z logits
-        if "McC_betaz_logits" in cuts:
-            self.McCormick_beta_z()
-
-        # Some cuts comparing different logits
-        if "logits_comparaison_11" in cuts:
+        # # Some cuts comparing different logits
+        if "beta_logits_comparaison" in cuts:
             self.z_j2_beta_j2_greater_than_zj()
-
-        if "logits_comparaison_12" in cuts:
             self.z_j2_beta_j2_less_than_zj()
+        
+        if "beta_logits_comparaison_big_M" in cuts : 
+            self.z_j2_zj_big_m()
+
         # RLT
         if "RLT" in cuts:
             self.add_RLT_constraints(p=self.RLT_prop)
 
-        # McCormick
-        if "allMC" in cuts:
-            self.all_Mc_Cormick_all_layers()
+        self.first_term_equal_zero()
 
         # MATRIX BY LAYERS
         if self.MATRIX_BY_LAYERS:
             self.matrix_by_layers_rec(only_linear_constraints=True)
 
-        self.first_term_equal_zero()
+        if self.LAST_LAYER:
+            self.last_layer_linear_equality()
 
         self.handler.Constraints.end_constraints()

@@ -84,11 +84,10 @@ models :
     cuts : 
     - "RLT"
     - "triangularization"
-    - "Tij"
-    - "beta_logits_comparaison_1"
-    - "beta_logits_comparaison_2"
-    - "McC_betaz_logits"
-    - "Tij_before_penultimate_layer"
+    - "McCormick_beta_z"
+    - "beta_logits_comparaison"
+    - "beta_logits_comparaison_big_M"
+    - "sum_beta_logits_equal_logit"
     RLT_props : 
     - 0.5
     all_combinations_cuts : false

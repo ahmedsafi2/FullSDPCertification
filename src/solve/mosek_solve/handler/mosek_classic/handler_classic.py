@@ -30,6 +30,7 @@ from ..common_handler_functions import (
     Matrices_Solutions,
     get_matrices_variables,
     compute_solutions,
+    diagnose_infeasibility,
 )
 
 from tools.utils import count_calls, add_functions_to_class, get_project_path
@@ -48,6 +49,7 @@ logger_mosek = logging.getLogger("Mosek_logger")
     is_status_infeasible,
     is_status_unknown,
     compute_solutions,
+    diagnose_infeasibility,
     print_index_variables_matrices,
     num_matrices_variables,
     print_num_variables,

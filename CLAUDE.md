@@ -334,7 +334,42 @@ Entraînés avec PGD adversarial training (Adam, lr=0.001, batch=128, 200 epochs
 
 5. **Contrainte de cohérence relaxée** : on ne garde que les `n_k` contraintes linéaires `Pk[z_{k+1}] = P_{k+1}[z_{k+1}]`, pas les `n_k(n_k+3)/2` contraintes quadratiques complètes.
 
+### Comparaison entre les modèles
+
+#### Invariants théoriques — violation = bug certain
+
+- **Équivalence décomposition chordale complète** : val(SDPa classique) = val(SDPa chordale complète), quelle que soit la topologie chordale ([k,k+1] ou plus raffinée), dès lors que *toutes* les contraintes de cohérence (quadratiques + linéaires) sont présentes. La décomposition chordale est une reformulation exacte, pas une relaxation.
+⚠ *Point non vérifié formellement pour cas autre que [k,k+1] — à confirmer.*   
+  > En pratique on n'utilise que les contraintes linéaires (point 5 ci-dessus), donc val(SDPa chordale linéaire) ≤ val(SDPa classique).
+
+- **SDPu ≤ SDPt** : val(SDPu) ≤ val(SDPt) pour toute instance. (SDPU) est une relaxation de (SDPT^j) pour tout j — son ensemble admissible est plus grand.
+
+- **Monotonie des coupes** : ajouter des coupes ne peut qu'augmenter ou laisser égale la valeur optimale. Si un run avec plus de coupes donne une valeur *strictement inférieure*, c'est un bug.
+
+- **FP sans décomposition chordale = pruning inactifs seul** : val(SDPa FP classique) = val(SDPa pruning-inactifs-seul classique). Sans décomposition chordale, le pruning des actifs substitue les variables exactement — l'objectif ne change pas.
+
+#### Tendances empiriques — violations à investiguer, pas forcément un bug
+
+- **Pruning actifs + décomposition chordale** tend à faire baisser la valeur optimale vs. décomposition chordale sans pruning actifs. La substitution des actifs dans les blocs Pk introduit de la relaxation sur les produits croisés cross-layer (approximés par McCormick, pas exacts). Non automatique : si les actifs concernés sont peu couplés, la perte peut être nulle.
+
+- **FP avec décomposition chordale ≤ FP classique** : val(SDPa FP chordale) ≤ val(SDPa FP classique). Même argument — la décomposition chordale avec actifs prunés relaxe davantage.
+
+#### Tableau de synthèse des inégalités
+
+```
+val(SDPu chordale) ≤ val(SDPt chordale) ≤ val(SDPt classique)
+        |                     |
+   + coupes (≥)          + coupes (≥)
+
+val(SDPa FP chordale) ≤ val(SDPa FP classique) = val(SDPa pruning-inactifs classique)
+                                 ↑
+                       invariant théorique garanti
+```
+
+> **Utilisation pour le débogage** : les invariants théoriques sont des tests de non-régression. Si une expérience les viole, chercher en priorité dans les fichiers `certification_problem_constraints_relu.py` (pruning actifs), `certification_problem_constraints_beta.py` (coupes QPU), et `indexes_matrices.py` (indexation des blocs Pk).
+
 ---
+
 
 ## Commandes utiles
 
@@ -347,4 +382,68 @@ python src/certification_problem.py mnist-9x100 "Test-certification"
 
 # Vérifier les dépendances
 python -c "import mosek; print(mosek.version())"
+```
+---
+                                                                          
+## Structure d'un dossier de résultats results/benchmark/  
+
+### Nommage du dossier
+                                                  
+results/benchmark/<réseau>-<epsilon>/<date_heure>_<nom_expérience>/                                                                                                                                                                                   
+Exemple : 6x100-0.026/2026_04_21_16h22_51s_SDPu-FP-special-decompo/                                                                                                                                                                                                      
+La date/heure permet d'identifier et comparer plusieurs runs. Le nom est passé en argument à certification_problem.py
+
+### Fichiers à la racine  
+
+mnist-6x100.yaml — Copie exacte de la config utilisée pour ce run. Permet de reproduire l'expérience à l'identique.
+
+results.csv — Une ligne par résolution SDP (1 ligne = 1 sample × 1 modèle). Colonnes clés :                    
+┌───────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────┐                                                                                                                                
+│                        Colonne                        │                       Signification                        │
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤                                                                                                                                
+│ data_index, label, label_predicted                    │ Identifiant et vraie classe de l'image                     │
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+│ optimal_value                                         │ Borne inférieure certifiée (≥ 0 → robustesse certifiée)    │                                                                                                                                
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤                                                                                                                                
+│ dual_obj_value, primal_obj_value                      │ Valeurs primale/duale MOSEK (gap = qualité de la solution) │                                                                                                                                
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤                                                                                                                                
+│ status                                                │ Statut MOSEK (0 = optimal, autre = problème)               │
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤                                                                                                                                
+│ iterations                                            │ Nombre d'itérations du solveur                             │
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤                                                                                                                                
+│ time                                                  │ Temps total de résolution (secondes)                       │
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤                                                                                                                                
+│ bound_time, pretreatment_time                         │ Temps de calcul des bornes + prétraitement                 │
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤                                                                                                                                
+│ Nb_constraints                                        │ Nombre total de contraintes dans le problème SDP           │
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤                                                                                                                                
+│ Nb_stable_actives, Nb_stable_inactives                │ Neurones prunés (stables actifs / inactifs)                │
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤                                                                                                                                
+│ MATRIX_BY_LAYERS, LAST_LAYER, USE_STABLE_ACTIVES, ... │ Paramètres de configuration pour tracer                    │
+├───────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤                                                                                                                                
+│ RLT, RLT_prop, McCormick_beta_z, ...                  │ Coupes activées et leurs proportions                       │
+└───────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────┘                                                                                                 
+
+stable_actives_study.csv — Une ligne par sample. Contient pour chaque couche k : le nombre de neurones stables actifs/inactifs, puis les bornes [L_k^i, U_k^i] pour chaque neurone i. Utile pour analyser l'impact du pruning et comparer la qualité des bornes entre samples.
+                                                                                                                                                                                                                                                      
+---             
+### Sous-dossier MdSDP/ (ou LanSDP/)
+                                                                                                                                                                                                                                                      
+Contient les valeurs de solution détaillées par modèle SDP. Le nom du fichier encode les couches couvertes et les coupes actives :
+
+z_layers_0_1_RLT_triangularization_...csv          → blocs P_0, P_1 (couches 0-1)                                                                                                                                                                     
+z_layers_1_2_3_RLT_triangularization_...csv        → blocs P_1, P_2, P_3 (couches 1-3)                                                                                                                                                                
+z_layers_3_4_5_6_betas_RLT_triangularization_.csv  → blocs finaux + variables β
+
+Chaque fichier contient une matrice : une ligne par sample, une colonne par variable (neurones instables des couches concernées, éventuellement β_j). Ces valeurs correspondent à la solution primale z_k^* extraite de MOSEK — utiles pour analyser  
+ce que le solveur a trouvé comme pire perturbation adversariale.                                                                                                                                                                                      
+                                                                                                                                                                                                                                                      
+Les fichiers _solution.png sont des visualisations de cette solution (projection de l'entrée z_0^* dans l'espace image).
+---                                                                                                                                                                                                                                                   
+### Interprétation rapide d'un run
+                              
+- optimal_value > 0 → sample certifié robuste
+- optimal_value ≤ 0 → non certifié (le solveur a trouvé une perturbation admissible)                                                                                                                                                                  
+- optimal_value ≈ 0 avec status ≠ 0 → suspect (problème numérique ou timeout)                                                                                                                                                                         
+- dual_obj_value ≫ primal_obj_value → grand gap primal-dual → solution de mauvaise qualité    
 ```

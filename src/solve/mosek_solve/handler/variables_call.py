@@ -826,14 +826,16 @@ class VariablesCall:
             groups_layer_next = {g for g, _ in self.indexes_matrices._layer_to_groups.get(layer_next, [])}
 
             if groups_layer1 & groups_layer_next: # Produit présent, pas d'encadrement à faire
-                print("STUDY RELU : ", "Product of z_next and z_{layer1} is present in the variable matrices, adding product without bounding.")
+                if layer_next - layer1 > 2:
+                    print(f"STUDY RELU : ", f"Product of z_{layer_next} and z_{layer1} is PRESENT in the variable matrices, adding product without bounding.")
                 decomposed1, front1 = self.verify_variable_z(layer1, neuron1, None)
                 dict_layer1 = self.equivalent_neurons.get_equivalent(layer1, neuron1, front1, decomposed1)
                 decomposed_next, front_next = self.verify_variable_z(layer_next, neuron_next, front_of_matrix_next)
                 dict_layer_next = self.equivalent_neurons.get_equivalent(layer_next, neuron_next, front_next, decomposed_next)
                 self.add_var(dict1=dict_layer1, dict2=dict_layer_next, value=weight * coeff1)
             else:
-                print("STUDY RELU : ", "Product of z_next and z_{layer1} is not present in the variable matrices, adding product with bounding.")
+                # if (layer_next - layer1 > 2) and (layer1>0):
+                #     print(f"STUDY RELU : ", f"Product of z_{layer_next} and z_{layer1} is NOT present in the variable matrices, adding product with bounding.")
                 # Produit non présent, utilisation d'encadrement avec bornes de mccormick
                 if bound_type == "random":
                     bound_type_ = random.choice(["one_variable", "composed"])
