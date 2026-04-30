@@ -30,6 +30,7 @@ from ..common_handler_functions import (
     Matrices_Solutions,
     get_matrices_variables,
     compute_solutions,
+    save_beta_values,
     diagnose_infeasibility,
 )
 
@@ -49,6 +50,7 @@ logger_mosek = logging.getLogger("Mosek_logger")
     is_status_infeasible,
     is_status_unknown,
     compute_solutions,
+    save_beta_values,
     diagnose_infeasibility,
     print_index_variables_matrices,
     num_matrices_variables,
@@ -144,7 +146,7 @@ class MosekClassicHandler:
         if self.verbose:
             print("Adding callback to the task")
 
-        usercallback = makeUserCallback(maxtime=1000, task=self.task)
+        usercallback = makeUserCallback(maxtime=20000, task=self.task)
         self.task.set_InfoCallback(usercallback)
 
         self.adjust_solver_parameters()
@@ -188,7 +190,7 @@ class MosekClassicHandler:
         self.task.putintparam(mosek.iparam.num_threads, 4)
         
         # ===== OPTIONS OPTIONNELLES COMMENTÉES =====
-        # Décommenter si vous avez des problèmes numériques :
+        # Décommenter si vous avez des problèmes numériques :      
         # self.task.putintparam(mosek.iparam.presolve_use, mosek.presolvemode.off)
         # self.task.putdouparam(mosek.dparam.optimizer_max_time, 3600)  # Limite temps à 3600s
 

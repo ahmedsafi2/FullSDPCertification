@@ -177,7 +177,6 @@ def ReLU_constraint_Lan(
                 
 
             else:
-                print("TEST RELU SDPU : Adding normal ReLU constraint for layer", k, "neuron", j)
                 # print("Adding normal ReLU constraint for layer", k, "neuron", j)
                 if self.handler.Constraints.new_constraint(
                     f"ReLU - z_{k,j} * (z{k,j} - W_{k,j} z_{k-1} - b_{k,j}) = 0", label = "same_for_data"
@@ -224,7 +223,7 @@ def ReLU_constraint_Lan(
 
 
 def ReLU_triangularization(self):
-    for k in range(1, self.K + 1 if self.LAST_LAYER else self.K):
+    for k in range(1, self.K):
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons:
                 continue

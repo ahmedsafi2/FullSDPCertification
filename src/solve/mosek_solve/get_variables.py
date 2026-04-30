@@ -40,7 +40,7 @@ def get_results_width_model(self, cuts: List, verbose: bool = False):
         "Nb_constraints": nb_constraints,
         "Nb_variables": nb_variables,
     }
-    dic_benchmark.update({cut: True for cut in cuts})
+    dic_benchmark.update({cut: (cut in cuts) for cut in all_possible_cuts})
     if "RLT" in cuts:
         dic_benchmark.update({"RLT_prop": self.RLT_prop})
     if self.benchmark_dataframe is None:
@@ -90,7 +90,7 @@ def get_results(self, cuts: List, verbose: bool = False):
         "Nb_stable_actives": len(self.stable_actives_neurons),
         "Nb_constraints" : len(self.handler.Constraints.list_cstr)
     }
-    dic_benchmark.update({cut: True for cut in cuts})
+    dic_benchmark.update({cut: (cut in cuts) for cut in all_possible_cuts})
     if "RLT" in cuts:
         dic_benchmark.update({"RLT_prop": self.RLT_prop})
 

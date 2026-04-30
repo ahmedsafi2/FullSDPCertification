@@ -374,6 +374,8 @@ val(SDPa FP chordale) ≤ val(SDPa FP classique) = val(SDPa pruning-inactifs cla
 ## Commandes utiles
 
 ```bash
+conda activate certif  # Environnement d'exécution du modèle
+
 # Explorer la structure
 find . -name "*.py" | sort
 

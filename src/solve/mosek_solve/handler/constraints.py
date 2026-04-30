@@ -214,11 +214,11 @@ class CommonConstraints(VariablesCall):
         if self.verbose:
             pass
 
-        print(f"Formatted constraint {name} ")
-        print("i : ", i)
-        print("j : ", j)
-        print("num matrix : ", num_matrix)
-        print("value : ", val)
+        # print(f"Formatted constraint {name} ")
+        # print("i : ", i)
+        # print("j : ", j)
+        # print("num matrix : ", num_matrix)
+        # print("value : ", val)
       
             
         # i_ = np.array(self.list_cstr[self.current_num_constraint]["i"])
@@ -424,8 +424,6 @@ class CommonConstraints(VariablesCall):
         
         for cstr in self.list_cstr:
             if "ReLU Relaxed" in cstr["name"]:
-                print("STUDY COEFF : constraint selected : ", cstr["name"], 'with values : ', cstr)
-             
              
                 for k in range(self.K+1):
                     if f"Layer {k}" in cstr["name"]:
@@ -442,10 +440,6 @@ class CommonConstraints(VariablesCall):
 
                                 equals_zero += 1
                         break
-        print("STUDY COEFF median decimals : ", np.median(decimals_list))
-        print("STUDY COEFF mean decimals : ", np.mean(decimals_list))
-        print("STUDY COEFF number of coefficients equal to zero : ", equals_zero)
-  
 
     def reinitialize(self, verbose: bool):
         """

@@ -342,7 +342,7 @@ class Equivalent_Betas_Index:
 
 @numba.njit
 def add_dict_linear_to_elements(
-    elements: numba.typed.Dict, dict: numba.typed.Dict, value: float, nb_index: int
+    elements: numba.typed.Dict, dict: numba.typed.Dict, value: float, nb_index: int, dividing_non_diag: bool = True
 ):
     """
     Add a value to the elements dictionary for a given key.
@@ -356,12 +356,16 @@ def add_dict_linear_to_elements(
             nb_index=nb_index,
         )
 
-        if value == 0:
+        if dividing_non_diag and i != 0:
+            value_ = value/2
+        else:
+            value_ = value
+        if value_ == 0:
             continue
         if key_in_element in elements:
-            elements[key_in_element] += dict[key] * value
+            elements[key_in_element] += dict[key] * value_
         else:
-            elements[key_in_element] = dict[key] * value
+            elements[key_in_element] = dict[key] * value_
 
 
 @numba.njit
@@ -371,7 +375,7 @@ def add_dict_quad_to_elements(
     dict2: numba.typed.Dict,
     value: float,
     nb_index: int,
-    dividing_diag: bool = True,
+    dividing_non_diag: bool = True,
 ):
     """
     Add a value to the elements dictionary for a given key.
@@ -384,10 +388,10 @@ def add_dict_quad_to_elements(
             assert (
                 num_matrix1 == num_matrix2
             ), f"Matrix indices do not match: {num_matrix1} != {num_matrix2}"
-            if i1 == i2 and dividing_diag:
-                value_ = value / 2
+            if i1 != i2 and dividing_non_diag:
+                value_ = value/2 
             else:
-                value_ = value
+                value_ = value 
 
             if value_ == 0:
                 continue

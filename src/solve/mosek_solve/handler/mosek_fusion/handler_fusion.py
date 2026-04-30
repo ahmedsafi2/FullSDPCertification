@@ -18,6 +18,7 @@ from .results_fusion import (
     is_status_infeasible,
     is_status_unknown,
     add_all_infos_optimal_values_to_dic,
+    save_beta_values_fusion,
 )
 from ..common_handler_functions import (
     print_index_variables_matrices,
@@ -29,6 +30,7 @@ from ..common_handler_functions import (
     Matrices_Solutions,
     get_matrices_variables,
     compute_solutions,
+    save_beta_values,
     diagnose_infeasibility,
 )
 from solve.mosek_solve.run_benchmark import compute_cuts_str
@@ -63,6 +65,8 @@ class LoggerWriter:
     is_status_unknown,
     add_all_infos_optimal_values_to_dic,
     compute_solutions,
+    save_beta_values,
+    save_beta_values_fusion,
     diagnose_infeasibility,
     print_index_variables_matrices,
     num_matrices_variables,
@@ -367,7 +371,7 @@ class MosekFusionHandler:
         """
         Optimize the task.
         """
-        self.callback = makeUserCallback(model=self.model, maxtime=100)
+        self.callback = makeUserCallback(model=self.model, maxtime=20000)
         self.model.setDataCallbackHandler(self.callback)
         logger_mosek.info("Optimizing the model")
         self.model.solve()
@@ -438,10 +442,9 @@ class MosekFusionHandler:
             constraint_name = ctsr["name"]
             try:
                 dual_value = self.model.getConstraint(constraint_name).dual()
-
-                dual_value = round(dual_value[0], 6)
-                self.Constraints.list_cstr[ind]["dual_value"] = dual_value
-            except:
-                print(
-                    f"Impossible de récupérer la variable duale pour {constraint_name}"
-                )
+                if dual_value is None:
+                    print(f"Variable duale None (solution duale non disponible) pour {constraint_name}")
+                    continue
+                self.Constraints.list_cstr[ind]["dual_value"] = round(dual_value[0], 6)
+            except Exception as e:
+                print(f"Impossible de récupérer la variable duale pour {constraint_name}: {e}")

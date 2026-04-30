@@ -79,13 +79,14 @@ models :
 
 
   - certification_model_name : "MdSDP"
+    write_model: true
     cuts : 
     - "RLT"
-    - "triangularization"
-    - "McCormick_beta_z"
+    # - "triangularization"
+    # - "McCormick_beta_z"
     # - "beta_logits_comparaison"
-    - "beta_logits_comparaison_big_M"
-    - "sum_beta_logits_equal_logit"
+    # - "beta_logits_comparaison_big_M"
+    # - "sum_beta_logits_equal_logit"
     RLT_props : 
     - 1.
     all_combinations_cuts : false

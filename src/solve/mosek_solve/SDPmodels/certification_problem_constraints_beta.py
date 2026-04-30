@@ -5,7 +5,7 @@ from tools import infinity
 # *********************************************BETAS ***************************************************************
 def discrete_betas(self):
     """
-    Add the constraint betaj = betaj² for the beta variable (ensuring beta is in [0,1])
+    Add the constraint beta_j = beta_j² for the beta variable (ensuring beta is in [0,1])
     """
     assert self.BETAS
     for j in self.ytargets:
@@ -55,7 +55,8 @@ def McCormick_beta_z(self, layer: int):
         assert self.LAST_LAYER
         list_z = self.ytargets
     else :
-        list_z = range(self.n[layer])
+        list_z = [i for i in range(self.n[layer]) if (layer, i) not in self.stable_inactives_neurons
+                  and (layer, i) not in self.stable_actives_neurons]
     
     print("STUDY : list_z = ", list_z)
     
@@ -63,13 +64,6 @@ def McCormick_beta_z(self, layer: int):
         if j == self.ytrue:
             continue
         for i in list_z:
-            if (layer, i) in self.stable_inactives_neurons:
-                continue
-            elif (layer, i) in self.stable_actives_neurons and (
-                not self.keep_penultimate_actives or layer != self.K - 1
-            ):
-                continue  # Skip constraint
-
             front_of_matrix = (
                 False
                 if (
@@ -304,7 +298,7 @@ def betai_betaj(self):
 
 def z_j2_zj_big_m(self):
     """
-    Add the big M constraint z_j1 >= z_j2 - (1 - beta_j1) (L_j1 - U_j2)
+    Add the big M constraint z_j1 >= z_j2 + (1 - beta_j1) (L_j1 - U_j2)
     """
     assert self.BETAS
 
@@ -315,7 +309,7 @@ def z_j2_zj_big_m(self):
             if j1 == self.ytrue or j1 == j2:
                 continue
             if self.handler.Constraints.new_constraint(
-                f"z_{self.K, j1}  >= z_{self.K,j2} - (1 - beta_{j1}) (L_{j1} - U_{j2})", label="same_for_data"
+                f"z_{self.K, j1}  >= z_{self.K,j2} + (1 - beta_{j1}) (L_{j1} - U_{j2})", label="same_for_data"
             ):
                 continue
             big_M = self.handler.Constraints.L[self.K][j1] - self.handler.Constraints.U_above_zero[self.K][j2]
@@ -334,11 +328,11 @@ def z_j2_zj_big_m(self):
             self.handler.Constraints.add_linear_variable(
                 var="beta",
                 class_label=j1,
-                value=-big_M,
+                value=big_M,
             )
             self.handler.Constraints.add_bound(
                 bound_type=mosek.boundkey.lo,
-                bound=-big_M,
+                bound=big_M,
             )
 
 
@@ -416,7 +410,7 @@ def z_j2_beta_j2_less_than_zj(self):
                 var2="beta",
                 class_label=j2,
                 value=1,
-                front_of_matrix=False,
+                front_of_matrix1=False,
             )
             self.handler.Constraints.add_linear_variable(
                 var="z",
@@ -471,7 +465,10 @@ def sum_beta_j_z_i_equal_z_i(self):
     assert self.BETAS
     assert self.BETAS_Z
 
+    # Constraint sum(beta_j z_i for j in ytargets) <= z_i for every neuron i in the last layer (except the true class)
     for i in self.ytargets:
+        if i == self.ytrue:
+            continue
         if self.handler.Constraints.new_constraint(
                 f"sum(z_{i} beta_j for j in targets) == z_K^{i}",
                 label="same_for_data",
@@ -484,6 +481,8 @@ def sum_beta_j_z_i_equal_z_i(self):
             value = 1
         )
         for class_label in self.ytargets:
+            if class_label == self.ytrue:
+                continue
             self.handler.Constraints.add_quad_variable(
                 var1="beta",
                 class_label=class_label,
@@ -494,7 +493,39 @@ def sum_beta_j_z_i_equal_z_i(self):
                 front_of_matrix2=False,
             )
         self.handler.Constraints.add_bound(
-            bound_type=mosek.boundkey.fx,
+            bound_type=mosek.boundkey.up,
+            bound=0,
+        )
+
+    # COntraint sum(beta_j z_i for j in ytargets) >= z_i
+    for i in self.ytargets:
+        if i == self.ytrue:
+            continue
+        if self.handler.Constraints.new_constraint(
+                f"sum(z_{i} beta_j for j in targets) == z_K^{i} - partie >=",
+                label="same_for_data",
+            ):
+                continue
+        self.handler.Constraints.add_linear_variable(
+            var="z",
+            layer = self.K,
+            neuron = i,
+            value = 1
+        )
+        for class_label in self.ytargets:
+            if class_label == self.ytrue:
+                continue
+            self.handler.Constraints.add_quad_variable(
+                var1="beta",
+                class_label=class_label,
+                var2="z",
+                layer2=self.K,
+                neuron2=i,
+                value=-1,
+                front_of_matrix2=False,
+            )
+        self.handler.Constraints.add_bound(
+            bound_type=mosek.boundkey.lo,
             bound=0,
         )
         

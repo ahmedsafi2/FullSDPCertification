@@ -18,14 +18,12 @@ from tools import (
 logger_mosek = logging.getLogger("Mosek_logger")
 
 all_possible_cuts = [
-    "betaibetaj",
     "RLT",
     "triangularization",
-    "ReLU_active_ub_neurons",
-    "ReLU_active_lb_neurons",
-    "ReLU_active_ub_decomposed",
-    "ReLU_active_lb_decomposed",
+    "McCormick_beta_z",
     "beta_logits_comparaison",
+    "beta_logits_comparaison_big_M",
+    "sum_beta_logits_equal_logit",
 ]
 
 

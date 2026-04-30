@@ -79,7 +79,7 @@ class MosekSolver(Solver):
         self.alpha_1 = kwargs.get("alpha_1")
         self.alpha_2 = kwargs.get("alpha_2")
 
-        self.write_model = kwargs.get("write_model")
+        self.write_model_ptf = kwargs.get("write_model")
 
         logger_mosek.info(f"Model {self.__class__.__name__} initialized.")
 
@@ -295,7 +295,7 @@ class MosekSolver(Solver):
             self.handler.Constraints.add_to_task()
             if verbose :
                 print("STUDY : Constraints added to the task.")
-            if self.write_model : 
+            if self.write_model_ptf : 
                 self.handler.write_model(
                     cuts,
                     RLT_prop=self.RLT_prop,

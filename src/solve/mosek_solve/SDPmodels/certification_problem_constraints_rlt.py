@@ -21,9 +21,15 @@ def add_RLT_constraints(self, p: float = 0.5):
             if (k - 1, j) in self.stable_inactives_neurons
             or (k - 1, j) in self.stable_actives_neurons
         ]
+        if k == self.K and self.LAST_LAYER:
+            neurons_next = list(set([self.ytrue]).union(self.ytargets))
+        else:
+            neurons_next = [j for j in range(self.n[k]) 
+                            if (k, j) not in self.stable_actives_neurons 
+                            and (k, j) not in self.stable_inactives_neurons]
         print("Indexes pruned for layer", k, ":", indexes_pruned)
         study_ablation =  True
-        for neuron_next in range(self.n[k]):
+        for neuron_next in neurons_next:
             if (k, neuron_next) in self.stable_inactives_neurons:
                 print("RLT : neuron_next", neuron_next, "is stable, skipping")
                 continue
@@ -39,11 +45,7 @@ def add_RLT_constraints(self, p: float = 0.5):
             #     print(f"STUDY ABLATION for layer {k}: number of neurons selected : ", len(neurons_with_great_weights))
             #     study_ablation = False
             for neuron_prev in neurons_with_great_weights:
-                # if (k - 1, neuron_prev) in self.stable_inactives_neurons or (
-                #     k - 1,
-                #     neuron_prev,
-                # ) in self.stable_actives_neurons:
-                #     continue
+
                 assert (k - 1, neuron_prev) not in self.stable_inactives_neurons and (
                     k - 1,
                     neuron_prev,

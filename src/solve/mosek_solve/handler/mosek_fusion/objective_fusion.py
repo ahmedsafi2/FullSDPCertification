@@ -86,6 +86,7 @@ class ObjectiveFusion(Objective):
                 dict=dict1,
                 value=value,
                 nb_index=self.indexes_variables.max_index,
+                dividing_non_diag=False,
             )
         else:
             add_dict_quad_to_elements(
@@ -94,7 +95,7 @@ class ObjectiveFusion(Objective):
                 dict2=dict2,
                 value=value,
                 nb_index=self.indexes_variables.max_index,
-                dividing_diag=False,
+                dividing_non_diag=False,
             )
 
 

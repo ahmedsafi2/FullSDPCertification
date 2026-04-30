@@ -150,9 +150,6 @@ class Certification_Problem:
                 bounds_csv = pd.read_csv(solver_config.bounds_file)
 
         for i, (x, ytrue) in enumerate(dataloader):
-
-
-            # print("x  :", x)
             # if (i) % 10 != 0:
             #     print(
             #         f"Skipping sample {i + 1} with label {ytrue.item()} as it is not a multiple of 10."
@@ -165,12 +162,12 @@ class Certification_Problem:
             #     continue
             # assert ytrue == y, "ytrue should match the label y"
 
-            # # SHARE
-            # if (i >0) and (i < 56):
-            #     #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
-            #     # )
-            #     #print("Skipping data sample ", i + 1, "for testing purposes.")
-            #     continue
+            # SHARE
+            if i != 2  :
+                #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
+                # )
+                #print("Skipping data sample ", i + 1, "for testing purposes.")
+                continue
 
             print("i : ", i)
 
@@ -399,12 +396,47 @@ class Certification_Problem:
 
 
 
+class _Tee:
+    """Write to multiple streams simultaneously (e.g. stdout + log file)."""
+    def __init__(self, *streams):
+        self._streams = streams
+
+    def write(self, data):
+        for s in self._streams:
+            s.write(data)
+
+    def flush(self):
+        for s in self._streams:
+            s.flush()
+
+    def fileno(self):
+        return self._streams[0].fileno()
+
+
 def main(network : str, title_run : str):
     yaml_file = f"{network}.yaml"  # "mnist_one_data_benchmark.yaml"
     certif_problem = Certification_Problem.load_from_yaml(yaml_file)
 
     launch_date = datetime.datetime.now().strftime("%Y_%m_%d_%Hh%M_%Ss")
-    certif_problem.solve(launch_date + "_" + title_run)
+    title_run_full = launch_date + "_" + title_run
+
+    results_dir = get_project_path(
+        f"results/benchmark/{certif_problem.title}/{title_run_full}"
+    )
+    os.makedirs(results_dir, exist_ok=True)
+    log_path = os.path.join(results_dir, "run.log")
+
+    with open(log_path, "w") as log_file:
+        original_stdout, original_stderr = sys.stdout, sys.stderr
+        sys.stdout = _Tee(original_stdout, log_file)
+        sys.stderr = _Tee(original_stderr, log_file)
+        try:
+            certif_problem.solve(title_run_full)
+        finally:
+            sys.stdout = original_stdout
+            sys.stderr = original_stderr
+
+    print(f"Log saved → {log_path}")
 
 
 if __name__ == "__main__":

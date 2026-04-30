@@ -20,7 +20,7 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
 
     layer_groups = self.handler.indexes_matrices.layer_groups
 
-    # Clacul des couches qui sont présentes dans deux matrices consécutives 
+    # Calcul des couches qui sont présentes dans deux matrices consécutives 
     repetitive_layers = [
         layer_groups[i][-1]
         for i in range(len(layer_groups) - 1)

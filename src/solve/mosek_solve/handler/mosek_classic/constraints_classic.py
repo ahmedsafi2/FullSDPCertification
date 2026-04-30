@@ -119,6 +119,7 @@ class ConstraintsClassic(CommonConstraints):
                 dict=dict1,
                 value=value,
                 nb_index=self.indexes_variables.max_index,
+                dividing_non_diag=True,
             )
         else:
             add_dict_quad_to_elements(
@@ -129,7 +130,7 @@ class ConstraintsClassic(CommonConstraints):
                 dict2=dict2,
                 value=value,
                 nb_index=self.indexes_variables.max_index,
-                dividing_diag=True,
+                dividing_non_diag=True,
             )
 
     def add_task(self, task: mosek.Task):

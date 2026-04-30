@@ -44,18 +44,16 @@ def L2_ball_bounds(self):
 def quad_bounds(self):
     print("Adding quadratic bounds constraint")
 
-    for k in range(self.K + 1 if self.LAST_LAYER else self.K):
+    for k in range(self.K+1  if self.LAST_LAYER else self.K):
         print(f"Adding quadratic bounds constraint for layer {k}")
-        for j in range(self.n[k]):
-            if (k, j) in self.stable_inactives_neurons:
-                continue
-            elif (k, j) in self.stable_actives_neurons and (
-                not self.keep_penultimate_actives or k != self.K - 1
-            ):
-                continue
+        if k == self.K:
+            neurons_to_consider =  list(set([self.ytrue]).union(self.ytargets))
+        else : 
+            neurons_to_consider = [j for j in range(self.n[k]) 
+                                   if (k, j) not in self.stable_inactives_neurons and 
+                    (k, j) not in self.stable_actives_neurons]
+        for j in neurons_to_consider:
             # zk² - (U+L) + UL <= 0
-            if not self.use_inactive_neurons:
-                assert self.handler.Constraints.U[k][j] >= 0
             if self.handler.Constraints.new_constraint(
                 f"z_{k,j}^2 - (U+L) z_{k,j} + UL <= 0", label = "same_for_data"
             ):
@@ -131,11 +129,11 @@ def McCormick_inter_layers(self, k: int, neuron_prev: int, neuron_next : int):
     """
     # *************** Constraint (12b) in Lan **********************
 
-    if self.handler.Constraints.L[k - 1][neuron_prev] < 0:
+    if self.handler.Constraints.L[k - 1][neuron_prev] < 0 and (k-1) > 0:
         lb_prev = 0
     else :
         lb_prev = self.handler.Constraints.L[k - 1][neuron_prev]
-    if self.handler.Constraints.L[k][neuron_next] < 0:
+    if self.handler.Constraints.L[k][neuron_next] < 0 and k < self.K:
         lb_next = 0
     else :  
         lb_next = self.handler.Constraints.L[k][neuron_next]

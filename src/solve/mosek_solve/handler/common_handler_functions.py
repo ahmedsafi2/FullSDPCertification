@@ -53,6 +53,7 @@ def initialize_variables(self):
         # Dernier groupe : z + zbar (optionnel) + betas
         last_group = layer_groups[-1]
         base_dim = indexes._offset_end_of_last_group()
+        print("STUDY BASE : base_dim for last group (without betas/zbar) : ", base_dim)
         n_betas = len(indexes.ytargets)
 
         if self.ZBAR:
@@ -85,7 +86,6 @@ def initialize_variables(self):
         f"(BETAS_Z={self.BETAS_Z}, MATRIX_BY_LAYERS={self.MATRIX_BY_LAYERS}, "
         f"LAST_LAYER={self.LAST_LAYER}, BETAS={self.BETAS}, K={self.K})"                                                                                                                    
     ) 
-
 
 
 def print_index_variables_matrices(self):
@@ -204,7 +204,7 @@ def save_matrix_png(self, mat, name_solution, cuts: List):
 
 def save_matrix_csv(self, mat, name_solution, cuts: List):
     """
-    Save a the solution matrix as a CSV file with values rounded to two decimal places.
+    Save a the solution matrix as a CSV file with values rounded to five decimal places.
     """
 
     cuts_str = compute_cuts_str(cuts)
@@ -214,7 +214,7 @@ def save_matrix_csv(self, mat, name_solution, cuts: List):
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
-    mat = pd.DataFrame(np.round(mat, decimals=2))
+    mat = pd.DataFrame(np.round(mat, decimals=5))
 
     mat.to_csv(
         os.path.join(model_dir, f"{name_solution}_{cuts_str}.csv"),
@@ -368,10 +368,39 @@ def diagnose_infeasibility(self, gap_threshold: float = 0.01, max_constraints_fo
         for c, v in row.items():
             A[r, c] = v
 
-    # QR avec pivotage sur A^T : identifie les lignes (contraintes) redondantes
-    _, R, P = scipy_qr(A.T, pivoting=True)
+    # Normalisation par ligne : élimine les artefacts d'échelle avant le QR
+    row_norms = np.linalg.norm(A, axis=1, keepdims=True)
+    row_norms[row_norms == 0] = 1.0
+    A_normalized = A / row_norms
+
+    # QR avec pivotage sur A_normalized^T : identifie les lignes redondantes
+    _, R, P = scipy_qr(A_normalized.T, pivoting=True)
     diag = np.abs(np.diag(R))
-    rank = int(np.sum(diag > 1e-8 * diag[0])) if diag[0] > 0 else 0
+
+    # Distribution des valeurs singulières : distingue vraie redondance vs artefact numérique
+    if diag[0] > 0:
+        diag_rel = diag / diag[0]  # normalisé par la plus grande valeur
+        rank_strict  = int(np.sum(diag_rel > 1e-8))   # seuil strict  → redondance certaine
+        rank_loose   = int(np.sum(diag_rel > 1e-4))   # seuil lâche   → redondance probable
+        # Percentiles pour visualiser la distribution
+        pct = np.percentile(diag_rel, [25, 50, 75, 90, 99])
+        dist_msg = (
+            f"CALLBACK  Distribution diag(R)/max : "
+            f"p25={pct[0]:.2e}  p50={pct[1]:.2e}  p75={pct[2]:.2e}  "
+            f"p90={pct[3]:.2e}  p99={pct[4]:.2e}"
+        )
+        logger_mosek.warning(dist_msg)
+        print(dist_msg)
+        gap_msg = (
+            f"CALLBACK  Rang (seuil 1e-8) = {rank_strict}  |  "
+            f"Rang (seuil 1e-4) = {rank_loose}  "
+            f"→ {'saut net = vraie redondance' if rank_strict != rank_loose else 'décroissance graduelle = probablement numérique'}"
+        )
+        logger_mosek.warning(gap_msg)
+        print(gap_msg)
+        rank = rank_strict
+    else:
+        rank = 0
 
     label = " (tronqué)" if truncated else ""
     msg = f"CALLBACK  Matrice des contraintes : {n_rows}{label} × {n_cols} → rang={rank}"
@@ -379,14 +408,12 @@ def diagnose_infeasibility(self, gap_threshold: float = 0.01, max_constraints_fo
     print(msg)
 
     if rank < n_rows:
-        redundant_indices = P[rank:]  # indices dans `sample` des contraintes redondantes
+        redundant_indices = P[rank:]
 
-        # Extraire le type de chaque contrainte (préfixe avant le premier chiffre)
         def cstr_type(name: str) -> str:
             match = re.match(r'^(.*?)(?:_\d|$)', name)
             return match.group(1) if match else name
 
-        # Compter les redondantes par type
         counts: dict = {}
         for idx in redundant_indices:
             t = cstr_type(sample[idx]["name"])
@@ -452,3 +479,46 @@ def compute_solutions(self, cuts: List, print_sol: bool = False):
             list_cstr=self.Constraints.list_cstr, file_cb=file_cb
         )
         file_cb.close()
+
+    if self.BETAS and self.indexes_matrices.BETAS_Z:
+        save_beta_values(self, cuts)
+
+
+def save_beta_values(self, cuts: List):
+    """
+    Extrait les valeurs β_j de la matrice solution et les sauvegarde dans betas_{cuts_str}.txt.
+
+    La valeur de β_j est X[0, index_variable_beta(j)] dans la dernière matrice PSD
+    (ligne 0 = variable constante 1, donc X[0, i] = β_j · 1 = β_j).
+    """
+    cuts_str = compute_cuts_str(cuts)
+    model_dir = get_project_path(f"{self.folder_name}/{self.name}")
+    os.makedirs(model_dir, exist_ok=True)
+
+    # Trouver la matrice qui contient les betas (la dernière, dont le nom contient "betas")
+    beta_mat_info = next(
+        (m for m in self.indexes_matrices.current_matrices_variables if "betas" in m["name"]),
+        None,
+    )
+    if beta_mat_info is None:
+        logger_mosek.warning("save_beta_values : aucune matrice avec betas trouvée.")
+        return
+
+    ind = self.indexes_matrices.current_matrices_variables.index(beta_mat_info)
+    X = beta_mat_info["value"][cuts]  # matrice déjà calculée par compute_solutions
+
+    lines = []
+    for class_label in self.indexes_matrices.ytargets:
+        if class_label == self.indexes_matrices.ytrue:
+            continue
+        try:
+            idx = self.indexes_matrices.index_variable_beta(class_label)
+            beta_val = float(X[0, idx])
+            lines.append(f"beta_{class_label} = {beta_val:.8f}")
+        except Exception as e:
+            lines.append(f"beta_{class_label} = ERROR ({e})")
+
+    out_path = os.path.join(model_dir, f"betas_{cuts_str}.txt")
+    with open(out_path, "w") as f:
+        f.write("\n".join(lines) + "\n")
+    print(f"CALLBACK : Valeurs beta sauvegardées dans {out_path}")

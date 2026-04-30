@@ -134,16 +134,16 @@ class LayersValues:
             counts = Counter(coordinates)
 
         elif (layer, neuron) in self.stable_inactives_neurons:
-            print("Stable inactive neurons, pass ...")
+            #print("Stable inactive neurons, pass ...")
             pass
         elif layer == self.K and self.LAST_LAYER:
-            print("Last layer...")
+            #print("Last layer...")
             self.equivalent_values_layers[(layer, neuron)]["neurons_weight"] = {
                 (layer, neuron): 1
             }
 
         else:
-            print("Others ...")
+            #print("Others ...")
             self.equivalent_values_layers[(layer, neuron)]["neurons_weight"] = {
                 (layer, neuron): 1
             }
@@ -647,17 +647,6 @@ class VariablesCall:
             return
         assert var1 in ["z", "beta"], "var1 must be either 'z' or 'beta'."
         assert var2 in ["z", "beta"], "var2 must be either 'z' or 'beta'."
-        # Special case for product of two z unstable neurons variables
-        # print(
-        #     "Adding quad variable with var1:",
-        #     var1,
-        #     "var2:",
-        #     var2,
-        #     "value:",
-        #     value,
-        #     "kwargs : ",
-        #     kwargs,
-        # )
         if var1 == "z" and var2 == "beta":
             layer1 = kwargs.get("layer1", None)
             neuron1 = kwargs.get("neuron1", None)
@@ -754,7 +743,7 @@ class VariablesCall:
         
         v = weight * coeff1
         if (bound_sense == "upper" and v>=0) or (bound_sense == "lower" and v<0):
-            # Adding constraint z_next * z_{layer1} <= U_{layer1} * z_next + L_{layer1} * z_next - L_{layer1} * U_{layer1}
+            # Adding constraint z_next * z_{layer1} <= L_{layer1} * z_next + U_{next} * z_{layer1} - L_{layer1} * U_{next}
             if layer1 == 0: # L_layer1 is zero on all layer outputs (every variable except the one representing the input)
                 coeff_next = -v * self.L[layer1][neuron1]
                 cst        = v * self.L[layer1][neuron1] * U_next
@@ -832,7 +821,7 @@ class VariablesCall:
                 dict_layer1 = self.equivalent_neurons.get_equivalent(layer1, neuron1, front1, decomposed1)
                 decomposed_next, front_next = self.verify_variable_z(layer_next, neuron_next, front_of_matrix_next)
                 dict_layer_next = self.equivalent_neurons.get_equivalent(layer_next, neuron_next, front_next, decomposed_next)
-                self.add_var(dict1=dict_layer1, dict2=dict_layer_next, value=weight * coeff1)
+                self.add_var(dict1=dict_layer1, dict2=dict_layer_next, value=-weight * coeff1)
             else:
                 # if (layer_next - layer1 > 2) and (layer1>0):
                 #     print(f"STUDY RELU : ", f"Product of z_{layer_next} and z_{layer1} is NOT present in the variable matrices, adding product with bounding.")
