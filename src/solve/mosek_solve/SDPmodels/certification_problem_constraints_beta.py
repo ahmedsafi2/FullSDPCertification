@@ -74,6 +74,11 @@ def McCormick_beta_z(self, layer: int):
                 )
                 else True
             )
+
+            if layer == self.K or layer == 0  :
+                L_layer_i = self.handler.Constraints.L[layer][i]
+            else :
+                L_layer_i = 0
             # *************************************************
             if self.handler.Constraints.new_constraint(
                 f"T_{(layer, i),j}  <= U_{layer, i} beta_{j}", label="same_for_data"
@@ -97,10 +102,14 @@ def McCormick_beta_z(self, layer: int):
             self.handler.Constraints.add_bound(bound_type=mosek.boundkey.up, bound=0)
 
             # ****************************************************
+            name_cstr_2 = f"T_{(layer, i),j} <= z_{layer, i}"
+            if layer == self.K and self.LAST_LAYER or layer ==0 :
+                name_cstr_2 = f"T_{(layer, i),j} + {L_layer_i} (1 - beta_{j}) <= z_{layer, i}"
             if self.handler.Constraints.new_constraint(
-                f"T_{(layer, i),j} <= z__{layer, i}", label="same_for_data"
+                name_cstr_2, label="same_for_data"
             ):
                 continue
+            
             self.handler.Constraints.add_quad_variable(
                 var1="beta",
                 class_label=j,
@@ -115,6 +124,14 @@ def McCormick_beta_z(self, layer: int):
                 layer=layer,
                 neuron=i,
                 value=-1,
+            )
+            self.handler.Constraints.add_linear_variable(
+                var="beta",
+                class_label=j,
+                value=-L_layer_i,
+            )
+            self.handler.Constraints.add_constant(
+                value=L_layer_i
             )
             self.handler.Constraints.add_bound(bound_type=mosek.boundkey.up, bound=0)
 
@@ -150,8 +167,11 @@ def McCormick_beta_z(self, layer: int):
             )
 
             # ****************************************************
+            name_cstr_4 = f"T_{(layer, i),j}  >= 0"
+            if layer == self.K and self.LAST_LAYER or layer ==0 :
+                name_cstr_4 = f"T_{(layer, i),j} >= beta_{j} L_{layer, i}"
             if self.handler.Constraints.new_constraint(
-                f"T_{(layer, i),j}  >= 0", label="same_for_data"
+                name_cstr_4, label="same_for_data"
             ):
                 continue
             self.handler.Constraints.add_quad_variable(
@@ -162,6 +182,11 @@ def McCormick_beta_z(self, layer: int):
                 neuron2=i,
                 value=1,
                 front_of_matrix2=front_of_matrix,
+            )
+            self.handler.Constraints.add_linear_variable(
+                var="beta",
+                class_label=j,
+                value=-L_layer_i,
             )
             self.handler.Constraints.add_bound(bound_type=mosek.boundkey.lo, bound=0)
 
