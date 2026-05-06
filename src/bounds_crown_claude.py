@@ -9,8 +9,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def compute_bounds_data_crown(
     self,
     method="alpha-beta-crown",
-    crown_iters=20,
-    crown_lr=0.05,
 ):
     """
     Compute pre-activation bounds using alpha-beta-CROWN (modern API)
@@ -59,8 +57,6 @@ def compute_bounds_data_crown(
             method="CROWN-Optimized",
             bound_lower=True,
             bound_upper=True,
-            # Ces paramètres peuvent aider selon la version
-            # C=None,  # Compute bounds for all outputs
         )
         
         # Vérifier si les bornes sont bien calculées
@@ -103,13 +99,14 @@ def compute_bounds_data_crown(
                 
                 # Vérifier que les bornes existent
                 if lower is not None and upper is not None:
-                    preact_bounds[k] = (
-                        lower.squeeze().detach().cpu(),
-                        upper.squeeze().detach().cpu()
-                    )
-                    print(f"✓ {node.name}: lower ∈ [{lower.min():.4f}, {lower.max():.4f}], upper ∈ [{upper.min():.4f}, {upper.max():.4f}]")
-                    L.append(lower.squeeze().detach().cpu().tolist())
-                    U.append(upper.squeeze().detach().cpu().tolist())
+                    lower_cpu = lower.squeeze().detach().cpu()
+                    upper_cpu = upper.squeeze().detach().cpu()
+                    # if k == 0:
+                    #     lower_cpu = torch.clamp(lower_cpu, min=0)
+                    preact_bounds[k] = (lower_cpu, upper_cpu)
+                    print(f"✓ {node.name}: lower ∈ [{lower_cpu.min():.4f}, {lower_cpu.max():.4f}], upper ∈ [{upper_cpu.min():.4f}, {upper_cpu.max():.4f}]")
+                    L.append(lower_cpu.tolist())
+                    U.append(upper_cpu.tolist())
                 
                 elif lower is not None and upper is None:
                     print(f"✗ {node.name}: lower exists but upper is None")

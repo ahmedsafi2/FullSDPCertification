@@ -162,8 +162,7 @@ class Certification_Problem:
             #     continue
             # assert ytrue == y, "ytrue should match the label y"
 
-            # SHARE
-            if i != 2  :
+            if i > 0 :
                 #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
                 # )
                 #print("Skipping data sample ", i + 1, "for testing purposes.")

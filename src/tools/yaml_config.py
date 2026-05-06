@@ -227,11 +227,26 @@ class FullCertificationConfig(BaseModel):
     models: Optional[List[Union[MosekSolverConfig, GurobiSolverConfig]]] = None
     @validator('models')
     def process_bounds(cls, v, values):
+        input_ball = values.get("input_ball")
+        norm = input_ball.norm if input_ball is not None else None
+
         for model in v:
             if not(model.bounds_method in ["IBP", "alpha-CROWN", "GREAT_BOUNDS", "from_file"]):
                 raise ValueError("Bounds method must be one of 'IBP', 'alpha-CROWN', 'GREAT_BOUNDS', or 'from_file'.")
             elif model.bounds_method == "from_file" and model.bounds_file is None:
                 raise ValueError("Bounds file must be specified if bounds method is 'from_file'.")
+            elif model.bounds_method == "from_file" and norm is not None:
+                filename_lower = Path(model.bounds_file).name.lower()
+                if norm.lower() == "l2" and "l2" not in filename_lower:
+                    raise ValueError(
+                        f"norm='L2' but bounds file '{model.bounds_file}' does not contain 'l2' in its name. "
+                        f"The bounds must have been computed with the L2 norm."
+                    )
+                if norm.lower() == "linf" and "linf" not in filename_lower:
+                    raise ValueError(
+                        f"norm='Linf' but bounds file '{model.bounds_file}' does not contain 'linf' in its name. "
+                        f"The bounds must have been computed with the Linf norm."
+                    )
             elif model.bounds_method == "GREAT_BOUNDS":
                 L = [[model.L[k]] * model.n[k] for k in range(model.K + 1)]
                 U = [[model.U[k]] * model.n[k] for k in range(model.K + 1)]

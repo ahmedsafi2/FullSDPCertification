@@ -367,13 +367,6 @@ class MosekClassicHandler:
         """
         logger_mosek.info("Writing results to file...")
         cuts_str = compute_cuts_str(cuts)
-        file_cstr = open(
-            f"{self.folder_name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_classic.txt",
-            "w",
-        )
-        for cst in self.Constraints.list_cstr:
-            file_cstr.write(f"{cst['name']}\n")
-        file_cstr.close()
         print(
             "Writing results fo file : ",
             get_project_path(

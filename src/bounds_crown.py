@@ -8,8 +8,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def compute_bounds_data_crown(
     self,
     method="alpha-beta-CROWN",
-    crown_iters=20,
-    crown_lr=0.05,
 ):
     """
     Compute pre-activation bounds using alpha-beta-CROWN (modern API)

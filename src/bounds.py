@@ -331,8 +331,6 @@ def compute_bounds_(self, method: str = "IBP"):
         print("OULA bornes alpha claude")
         self.compute_bounds_data_crown(
                 method="alpha-beta-CROWN",
-                crown_iters=30,
-                crown_lr=0.05
             )
     else :
         L, U = compute_bounds_data(
