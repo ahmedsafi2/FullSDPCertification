@@ -122,6 +122,7 @@ class Solver:
 
  
 
+        self.INPUT_IN_VARIABLES = kwargs.get("INPUT_IN_VARIABLES", True)
         self.use_inactive_neurons = use_inactive_neurons
         self.use_active_neurons = use_active_neurons
         self.check_stability_neurons(

@@ -56,11 +56,13 @@ class MosekSolver(Solver):
         BETAS_Z: bool = False,
         ZBAR: bool = False,
         use_fusion: bool = False,
+        INPUT_IN_VARIABLES: bool = True,
         **kwargs,
     ):
-        super().__init__(LAST_LAYER=LAST_LAYER, **kwargs)
+        super().__init__(LAST_LAYER=LAST_LAYER, INPUT_IN_VARIABLES=INPUT_IN_VARIABLES, **kwargs)
 
         self.MATRIX_BY_LAYERS = MATRIX_BY_LAYERS
+        self.INPUT_IN_VARIABLES = INPUT_IN_VARIABLES
         assert self.keep_penultimate_actives is not None
 
         print("STUDY : penultimate actives in MosekSolver : ", self.keep_penultimate_actives)
@@ -143,6 +145,7 @@ class MosekSolver(Solver):
                 stable_actives_neurons=self.stable_actives_neurons,
                 folder_name=self.folder_name,
                 name=self.name,
+                INPUT_IN_VARIABLES=self.INPUT_IN_VARIABLES,
             )
         else:
             self.handler = MosekClassicHandler(
@@ -167,6 +170,7 @@ class MosekSolver(Solver):
                 stable_actives_neurons=self.stable_actives_neurons,
                 folder_name=self.folder_name,
                 name=self.name,
+                INPUT_IN_VARIABLES=self.INPUT_IN_VARIABLES,
             )
 
     def run_optimization(self, cuts: Dict, verbose: bool = False):

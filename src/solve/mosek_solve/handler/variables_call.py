@@ -337,6 +337,7 @@ class VariablesCall:
         self.LAST_LAYER = kwargs.get("LAST_LAYER", None)
         self.MATRIX_BY_LAYERS = kwargs.get("MATRIX_BY_LAYERS", None)
         self.BETAS = kwargs.get("BETAS", None)
+        self.INPUT_IN_VARIABLES = kwargs.get("INPUT_IN_VARIABLES", True)
         assert self.LAST_LAYER is not None, "LAST_LAYER must be specified."
         assert self.BETAS is not None, "BETAS must be specified."
 
@@ -357,6 +358,8 @@ class VariablesCall:
     def create_equivalent_indexes_matrices(self):
 
         for layer in range(self.K + 1):
+            if layer == 0 and not self.INPUT_IN_VARIABLES:
+                continue  # z_0 is not a SDP variable: no index to create
             for neuron in range(self.n[layer]):
                 #print(f'Creating equivalent for layer = {layer}, neuron = {neuron}')
                 equivalent_values_neurons, constant = (
@@ -576,6 +579,12 @@ class VariablesCall:
     def verify_variable_z(self, layer : int, neuron : int, front_of_matrix : bool= None):
         assert layer is not None, "Layer must be specified for z variable."
         assert neuron is not None, "Neuron must be specified for z variable."
+        if layer == 0 and not self.INPUT_IN_VARIABLES:
+            raise ValueError(
+                f"Cannot reference z_(0,{neuron}) as a SDP variable: "
+                "INPUT_IN_VARIABLES=False removes the input layer from the SDP. "
+                "Check that no constraint explicitly uses layer 0 variables."
+            )
         assert (layer, neuron) not in self.stable_inactives_neurons, "Stable inactive neurons should not be added as variables."
         if (layer, neuron) in self.stable_actives_neurons :
             decomposed_in_front_and_back_matrix = False

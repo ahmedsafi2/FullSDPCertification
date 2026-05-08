@@ -102,6 +102,7 @@ models :  # Models SDP ou LP ou QP pour résoudre le problème de certification
     keep_penultimate_actives : true # Whether to keep the penultimate layer active neurons in the certification problem
     bounds_file: "/share/homes/boyerma/FastSDPCertification/results/benchmark/6x100-0.026/Bornes/bornes_sdpu.csv"  # Folder where precomputed bounds are stored
     bounds_method: "from_file"   #"alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
+    INPUT_IN_VARIABLES: true  # Si false, z_0 (l'entrée) est retiré des variables SDP. Le premier bloc devient P_1=[1,z_1,z_2]. La boule L∞ est absorbée dans les bornes pré-calculées L_1,U_1. Non implémenté pour L2.
 
 ### Run sur les SDP classiques
 | `SDPT-IP` | SDP ciblé sans décomposition chordale (Raghunathan et al. 2018) |
@@ -325,6 +326,12 @@ Entraînés avec PGD adversarial training (Adam, lr=0.001, batch=128, 200 epochs
 ## Points mathématiques délicats à garder en tête
 
 1. **Pruning des neurones stables actifs** : pour chaque neurone stable actif `a` de la couche `k`, on exprime `z^a_k` comme combinaison linéaire des neurones instables de toutes les couches `l ≤ k-1`. Erreur facile : oublier la récursion sur les couches intermédiaires.
+
+6. **`INPUT_IN_VARIABLES=False`** : retire z_0 des variables SDP. C'est une relaxation supplémentaire — la boule L∞ n'est plus encodée explicitement mais implicitement via les bornes L_1, U_1 pré-calculées.
+   - **Propagation** : le paramètre doit remonter jusqu'à `generic_solver.__init__` (via `super().__init__(INPUT_IN_VARIABLES=..., ...)` dans `MosekSolver`) pour être disponible dès `check_stability_neurons`.
+   - **Piège : stables actifs à la couche 1**. Quand `INPUT_IN_VARIABLES=False`, les neurones stables actifs à k=1 ont une expansion qui remonte à z_0 (non-variable). Il faut les exclure du pruning dans `check_stability_neurons` (`bounds.py`), sinon `create_equivalent_indexes_matrices` plante avec "Layer 0 not found in any group".
+   - **Contraintes à skipper pour k=1** : `quad_bounds(k=0)`, `L2_ball_bounds`, sous-contraintes 2 et 3 de `ReLU_constraint_Lan(k=1)`, `ReLU_triangularization(k=1)`, coupes RLT pour k=1 (produits z_1*z_0 via `McCormick_inter_layers`).
+   - **Sémantique de `stable_actives_neurons`** : ces listes encodent une **décision de modélisation** (quels neurones le modèle SDP choisit de pruner), pas une propriété mathématique pure. Un stable actif absent de la liste est traité comme une variable instable — relaxation valide.
 
 2. **McCormick cross-layer** : les produits `z^j_{k+1} * z^u_l` pour `l ≤ k-1` ne sont pas dans les matrices Pk (décomposition chordale = seulement couches consécutives). Il faut les borner avec McCormick en utilisant `U^j_{k+1}` et `[L^u_l, U^u_l]` (avec `L^u_l = 0` pour `l ≥ 1`).
 

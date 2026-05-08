@@ -482,6 +482,48 @@ def z_j2_beta_j2_less_than_zj(self):
             )
 
 
+def sum_beta_j_z_i_equal_z_i_layer(self, layer: int):
+
+    if layer == self.K:
+        assert self.LAST_LAYER
+        list_z = self.ytargets
+    else :
+        list_z = [i for i in range(self.n[layer]) if (layer, i) not in self.stable_inactives_neurons
+                  and (layer, i) not in self.stable_actives_neurons]
+        
+    # Constraint sum(beta_j z_i for j in ytargets) <= z_i for every neuron i in layer
+    for i in list_z:
+        if self.handler.Constraints.new_constraint(
+                f"sum(z_{layer}^{i} beta_j for j in targets) == z_{layer}^{i}",
+                label="same_for_data",
+            ):
+                continue
+        self.handler.Constraints.add_linear_variable(
+            var="z",
+            layer = layer,
+            neuron = i,
+            value = 1
+        )
+        for class_label in self.ytargets:
+            if class_label == self.ytrue:
+                continue
+            self.handler.Constraints.add_quad_variable(
+                var1="beta",
+                class_label=class_label,
+                var2="z",
+                layer2=layer,
+                neuron2=i,
+                value=-1,
+            )
+        self.handler.Constraints.add_bound(
+            bound_type=mosek.boundkey.fx,
+            bound=0,
+        )
+
+
+    
+
+
 def sum_beta_j_z_i_equal_z_i(self):
     """
     Add the constraint sum(beta_j z_i for j in ytargets) = z_i
@@ -490,70 +532,11 @@ def sum_beta_j_z_i_equal_z_i(self):
     assert self.BETAS
     assert self.BETAS_Z
 
-    # Constraint sum(beta_j z_i for j in ytargets) <= z_i for every neuron i in the last layer (except the true class)
-    for i in self.ytargets:
-        if i == self.ytrue:
-            continue
-        if self.handler.Constraints.new_constraint(
-                f"sum(z_{i} beta_j for j in targets) == z_K^{i}",
-                label="same_for_data",
-            ):
-                continue
-        self.handler.Constraints.add_linear_variable(
-            var="z",
-            layer = self.K,
-            neuron = i,
-            value = 1
-        )
-        for class_label in self.ytargets:
-            if class_label == self.ytrue:
-                continue
-            self.handler.Constraints.add_quad_variable(
-                var1="beta",
-                class_label=class_label,
-                var2="z",
-                layer2=self.K,
-                neuron2=i,
-                value=-1,
-                front_of_matrix2=False,
-            )
-        self.handler.Constraints.add_bound(
-            bound_type=mosek.boundkey.up,
-            bound=0,
-        )
+    last_group = self.handler.indexes_matrices.layer_groups[-1]
+    for layer in last_group:
+        self.sum_beta_j_z_i_equal_z_i_layer(layer=layer)
 
-    # COntraint sum(beta_j z_i for j in ytargets) >= z_i
-    for i in self.ytargets:
-        if i == self.ytrue:
-            continue
-        if self.handler.Constraints.new_constraint(
-                f"sum(z_{i} beta_j for j in targets) == z_K^{i} - partie >=",
-                label="same_for_data",
-            ):
-                continue
-        self.handler.Constraints.add_linear_variable(
-            var="z",
-            layer = self.K,
-            neuron = i,
-            value = 1
-        )
-        for class_label in self.ytargets:
-            if class_label == self.ytrue:
-                continue
-            self.handler.Constraints.add_quad_variable(
-                var1="beta",
-                class_label=class_label,
-                var2="z",
-                layer2=self.K,
-                neuron2=i,
-                value=-1,
-                front_of_matrix2=False,
-            )
-        self.handler.Constraints.add_bound(
-            bound_type=mosek.boundkey.lo,
-            bound=0,
-        )
-        
+   
 
 
 # *****************************************************************************************************************

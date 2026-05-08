@@ -12,7 +12,8 @@ def add_RLT_constraints(self, p: float = 0.5):
     nb_rlt = 0
     
     print("Adding RLT constraint")
-    for k in range(1, self.K + 1 if self.LAST_LAYER else self.K):
+    start_k = 2 if not self.INPUT_IN_VARIABLES else 1
+    for k in range(start_k, self.K + 1 if self.LAST_LAYER else self.K):
         nb_cstr = int(p * self.n[k - 1])
         print("RLT : number of neurones seleceted for layer", k, ":", nb_cstr)
         indexes_pruned = [

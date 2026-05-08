@@ -96,7 +96,7 @@ class LanSDP(MosekSolver):
 
         # BOUNDS
         self.quad_bounds()
-        if self.norm == "L2":
+        if self.norm == "L2" and self.INPUT_IN_VARIABLES:
             self.L2_ball_bounds()
 
         # CUTS

@@ -39,7 +39,8 @@ from .certification_problem_constraints_beta import (
     z_j2_beta_j2_greater_than_zj,
     z_j2_beta_j2_less_than_zj,
     z_j2_zj_big_m,
-    sum_beta_j_z_i_equal_z_i
+    sum_beta_j_z_i_equal_z_i,
+    sum_beta_j_z_i_equal_z_i_layer
 )
 from .certification_problem_constraints_division_by_layers import (
     matrix_by_layers_rec,
@@ -74,7 +75,8 @@ logger_mosek = logging.getLogger("Mosek_logger")
     L2_ball_bounds,
     last_layer_linear_equality,
     z_j2_zj_big_m,
-    sum_beta_j_z_i_equal_z_i
+    sum_beta_j_z_i_equal_z_i,
+    sum_beta_j_z_i_equal_z_i_layer
 )
 class MdSDP(MosekSolver):
     def __init__(self, **kwargs):
@@ -111,7 +113,7 @@ class MdSDP(MosekSolver):
 
         # BOUNDS
         self.quad_bounds()
-        if self.norm == "L2":
+        if self.norm == "L2" and self.INPUT_IN_VARIABLES:
             self.L2_ball_bounds()
 
         # BETA

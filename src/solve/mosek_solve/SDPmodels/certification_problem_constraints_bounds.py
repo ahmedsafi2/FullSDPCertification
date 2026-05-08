@@ -44,7 +44,8 @@ def L2_ball_bounds(self):
 def quad_bounds(self):
     print("Adding quadratic bounds constraint")
 
-    for k in range(self.K+1  if self.LAST_LAYER else self.K):
+    start_k = 0 if self.INPUT_IN_VARIABLES else 1
+    for k in range(start_k, self.K+1  if self.LAST_LAYER else self.K):
         print(f"Adding quadratic bounds constraint for layer {k}")
         if k == self.K:
             neurons_to_consider =  list(set([self.ytrue]).union(self.ytargets))
@@ -429,7 +430,8 @@ def all_4_McCormick(self, layer1: int, neuron1: int, layer2: int, neuron2: int):
 
 
 def all_Mc_Cormick_all_layers(self):
-    for k in range(self.K + 1 if self.LAST_LAYER else self.K):
+    start_k = 0 if self.INPUT_IN_VARIABLES else 1
+    for k in range(start_k, self.K + 1 if self.LAST_LAYER else self.K):
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons:
                 continue

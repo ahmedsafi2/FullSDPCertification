@@ -177,11 +177,12 @@ class MosekSolverConfig(BaseModel):
         if v is False and values.get("use_active_neurons"):
             raise ValueError("Withdraw of active neurons on penultimate layer incompatible with use_active_neurons = True")
         return v
-    bounds_file: Optional[str] = None    
+    bounds_file: Optional[str] = None
     L: Optional[List[float]] = None
     U: Optional[List[float]] = None
     bounds_method: str = "alpha-CROWN"  # Method to compute bounds, options: "IBP", "alpha-CROWN", "GREAT_BOUNDS", "from_file"
     write_model : Optional[bool] = False
+    INPUT_IN_VARIABLES: bool = True  # If False, z_0 is removed from SDP variables; L∞ ball is absorbed into pre-computed bounds L_1,U_1
 
 
 class GurobiSolverConfig(BaseModel):

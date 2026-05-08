@@ -374,6 +374,8 @@ def check_stability_neurons(
             elif self.L[k][j] >= 0 and self.U[k][j] > 0 and not use_active_neurons:
                 if (k==self.K - 1 and self.keep_penultimate_actives) :
                     continue
+                if (k==1) and not self.INPUT_IN_VARIABLES :
+                    continue
                 if k > self.ultimate_layer_use_active_neurons: 
                     continue
                 else : 

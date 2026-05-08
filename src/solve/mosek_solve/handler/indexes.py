@@ -5,27 +5,38 @@ def resolve_layer_groups(
     MATRIX_BY_LAYERS: Union[bool, List[List[int]]],
     K: int,
     LAST_LAYER: bool = False,
+    INPUT_IN_VARIABLES: bool = True,
 ) -> List[List[int]]:
     """
     Résout MATRIX_BY_LAYERS en liste canonique de groupes de couches.
 
-    Exemples :
+    Exemples (INPUT_IN_VARIABLES=True) :
       True,  K=5 → [[0,1],[1,2],[2,3],[3,4]]
       False, K=5 → [[0,1,2,3,4]]
       [[0,1],[1,2,3,4],[4,5]] → tel quel (avec K=5, LAST_LAYER=True)
+
+    Exemples (INPUT_IN_VARIABLES=False) :
+      True,  K=5 → [[1,2],[2,3],[3,4]]
+      False, K=5 → [[1,2,3,4]]
+      Les groupes explicites doivent commencer à 1 et non 0.
     """
     print("LAST_LAYER in resolve_layer_groups : ", LAST_LAYER)
     print("K : ", K)
     last = K if LAST_LAYER else K - 1
+    start = 0 if INPUT_IN_VARIABLES else 1
     print("MATRIX_BY_LAYERS  in resolve layer groups: ", MATRIX_BY_LAYERS)
- 
+    print("INPUT_IN_VARIABLES in resolve_layer_groups : ", INPUT_IN_VARIABLES)
+
     if isinstance(MATRIX_BY_LAYERS, bool):
         if MATRIX_BY_LAYERS:
-            return [[k, k + 1] for k in range(last)]
+            return [[k, k + 1] for k in range(start, last)]
         else:
-            return [list(range(last + 1))]
+            return [list(range(start, last + 1))]
     else:
-        assert MATRIX_BY_LAYERS[0][0] == 0, "First group must start at layer 0"
+        assert MATRIX_BY_LAYERS[0][0] == start, (
+            f"First group must start at layer {start} "
+            f"(INPUT_IN_VARIABLES={INPUT_IN_VARIABLES})"
+        )
         print("MATRIX_LAYERS[-1][-1] : ", MATRIX_BY_LAYERS[-1][-1])
         print("last : ", last)
         assert MATRIX_BY_LAYERS[-1][-1] == last, (
@@ -57,6 +68,7 @@ class Indexes_Mosek_Solver:
         BETAS: bool = False,
         BETAS_Z: bool = False,
         ZBAR: bool = False,
+        INPUT_IN_VARIABLES: bool = True,
         **kwargs,
     ):
         """
@@ -78,6 +90,10 @@ class Indexes_Mosek_Solver:
             Si True, les betas sont embarquées dans la dernière matrice z.
         ZBAR : bool
             Active la variable zbar.
+        INPUT_IN_VARIABLES : bool
+            Si False, z_0 est retiré des variables SDP ; le premier bloc commence
+            à la couche 1. La boule L∞ est alors implicitement absorbée dans les
+            bornes pré-calculées L_1, U_1.
         **kwargs
             ytrue, ytargets, stable_inactives_neurons, stable_actives_neurons,
             keep_penultimate_actives.
@@ -89,6 +105,7 @@ class Indexes_Mosek_Solver:
         self.BETAS = BETAS
         self.BETAS_Z = BETAS_Z
         self.ZBAR = ZBAR
+        self.INPUT_IN_VARIABLES = INPUT_IN_VARIABLES
 
         self.ytrue = kwargs.get("ytrue")
         self.ytargets = kwargs.get("ytargets")
@@ -96,7 +113,7 @@ class Indexes_Mosek_Solver:
         self.stable_actives_neurons = kwargs.get("stable_actives_neurons")
         self.keep_penultimate_actives = kwargs.get("keep_penultimate_actives", False)
 
-        self.layer_groups = resolve_layer_groups(MATRIX_BY_LAYERS, K, LAST_LAYER)
+        self.layer_groups = resolve_layer_groups(MATRIX_BY_LAYERS, K, LAST_LAYER, INPUT_IN_VARIABLES)
         self._layer_to_groups = self._build_layer_to_groups()
         self._pruned_adv_before = self._build_pruned_adv_before()
 

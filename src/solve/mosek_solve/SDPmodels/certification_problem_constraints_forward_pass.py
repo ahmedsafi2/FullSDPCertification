@@ -116,6 +116,9 @@ def ReLU_constraint_Lan(
             )
 
             # zk >= Wk zk-1 + bk
+            if k == 1 and not self.INPUT_IN_VARIABLES:
+                # z_0 is not a variable: sub-constraints 2 and 3 (which reference z_0) are skipped
+                continue
             print(f"STUDY : Adding ReLU constraint for layer {k}, neuron {j} : z_{k,j}>= Wk zk-1 + bk")
             if self.handler.Constraints.new_constraint(
                 f"ReLU - z_{k,j} >= W_{k,j} z_{k-1} + b{k,j}", label = "same_for_data"
@@ -224,6 +227,9 @@ def ReLU_constraint_Lan(
 
 def ReLU_triangularization(self):
     for k in range(1, self.K):
+        if k == 1 and not self.INPUT_IN_VARIABLES:
+            # z_0 is not a variable: triangular constraint z_1 <= k_cst*(W_1*z_0+b_1-L_1)+... is skipped
+            continue
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons:
                 continue
