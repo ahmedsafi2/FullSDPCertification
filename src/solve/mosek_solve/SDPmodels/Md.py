@@ -33,6 +33,7 @@ from .certification_problem_constraints_forward_pass import (
 from .certification_problem_constraints_beta import (
     discrete_betas,
     sum_betas_equals_1,
+    sum_beta_i_beta_j_equal_beta_i,
     McCormick_beta_z,
     McCormick_beta_z_all_valid_layers,
     betai_betaj,
@@ -59,6 +60,7 @@ logger_mosek = logging.getLogger("Mosek_logger")
     quad_bounds,
     discrete_betas,
     sum_betas_equals_1,
+    sum_beta_i_beta_j_equal_beta_i,
     betai_betaj,
     ReLU_triangularization,
     matrix_by_layers_rec,
@@ -122,7 +124,7 @@ class MdSDP(MosekSolver):
         self.betai_betaj()
 
         if "McCormick_beta_z" in cuts:
-            self.McCormick_beta_z_all_valid_layers()
+            self.McCormick_beta_z_all_valid_layers(cuts=cuts)
 
         # # Some cuts comparing different logits
         if "beta_logits_comparaison" in cuts:
@@ -131,7 +133,7 @@ class MdSDP(MosekSolver):
         
         if "beta_logits_comparaison_big_M" in cuts : 
             self.z_j2_zj_big_m()
-        
+
         # RLT
         if "RLT" in cuts:
             self.add_RLT_constraints(p=self.RLT_prop)

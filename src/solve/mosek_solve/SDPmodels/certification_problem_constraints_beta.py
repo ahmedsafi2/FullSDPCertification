@@ -50,15 +50,43 @@ def sum_betas_equals_1(self):
     self.handler.Constraints.add_bound(bound_type=mosek.boundkey.fx, bound=1)
 
 
-def McCormick_beta_z(self, layer: int):
+
+def sum_beta_i_beta_j_equal_beta_i(self):
+    """
+    Add the constraint sum(betai*beta_j for all j) = beta_i for all i 
+    """
+    assert self.BETAS
+
+    for i in self.ytargets:
+        if self.handler.Constraints.new_constraint(f"sum(beta_{i} * beta_j for all j)=beta_{i}", label="same_for_data"):
+            continue
+        self.handler.Constraints.add_linear_variable(
+            var="beta",
+            class_label=i,
+            value=1,
+        )
+        for j in self.ytargets:
+            if j == self.ytrue:
+                continue
+            self.handler.Constraints.add_quad_variable(
+                var1="beta",
+                class_label=j,
+                var2="beta",
+                class_label2=i,
+                value=-1,
+            )
+        self.handler.Constraints.add_bound(bound_type=mosek.boundkey.fx, bound=0)
+
+
+
+
+def McCormick_beta_z(self, layer: int, cuts=None):
     if layer == self.K:
         assert self.LAST_LAYER
         list_z = self.ytargets
     else :
         list_z = [i for i in range(self.n[layer]) if (layer, i) not in self.stable_inactives_neurons
                   and (layer, i) not in self.stable_actives_neurons]
-    
-    print("STUDY : list_z = ", list_z)
     
     for j in self.ytargets:
         if j == self.ytrue:
@@ -102,69 +130,73 @@ def McCormick_beta_z(self, layer: int):
             self.handler.Constraints.add_bound(bound_type=mosek.boundkey.up, bound=0)
 
             # ****************************************************
-            name_cstr_2 = f"T_{(layer, i),j} <= z_{layer, i}"
-            if layer == self.K and self.LAST_LAYER or layer ==0 :
-                name_cstr_2 = f"T_{(layer, i),j} + {L_layer_i} (1 - beta_{j}) <= z_{layer, i}"
-            if self.handler.Constraints.new_constraint(
-                name_cstr_2, label="same_for_data"
-            ):
-                continue
-            
-            self.handler.Constraints.add_quad_variable(
-                var1="beta",
-                class_label=j,
-                var2="z",
-                layer2=layer,
-                neuron2=i,
-                value=1,
-                front_of_matrix2=front_of_matrix,
-            )
-            self.handler.Constraints.add_linear_variable(
-                var="z",
-                layer=layer,
-                neuron=i,
-                value=-1,
-            )
-            self.handler.Constraints.add_linear_variable(
-                var="beta",
-                class_label=j,
-                value=-L_layer_i,
-            )
-            self.handler.Constraints.add_constant(
-                value=L_layer_i
-            )
-            self.handler.Constraints.add_bound(bound_type=mosek.boundkey.up, bound=0)
+            if cuts is None or "sum_beta_logits_equal_logit" not in cuts:
+                # Constraint is redundant when we have the constraint sum_beta_j_z_i_equal_z_i, but it can help convergence when we don't have it
+                name_cstr_2 = f"T_{(layer, i),j} <= z_{layer, i}"
+                if layer == self.K and self.LAST_LAYER or layer ==0 :
+                    name_cstr_2 = f"T_{(layer, i),j} + {L_layer_i} (1 - beta_{j}) <= z_{layer, i}"
+                if self.handler.Constraints.new_constraint(
+                    name_cstr_2, label="same_for_data"
+                ):
+                    continue
+
+                self.handler.Constraints.add_quad_variable(
+                    var1="beta",
+                    class_label=j,
+                    var2="z",
+                    layer2=layer,
+                    neuron2=i,
+                    value=1,
+                    front_of_matrix2=front_of_matrix,
+                )
+                self.handler.Constraints.add_linear_variable(
+                    var="z",
+                    layer=layer,
+                    neuron=i,
+                    value=-1,
+                )
+                self.handler.Constraints.add_linear_variable(
+                    var="beta",
+                    class_label=j,
+                    value=-L_layer_i,
+                )
+                self.handler.Constraints.add_constant(
+                    value=L_layer_i
+                )
+                self.handler.Constraints.add_bound(bound_type=mosek.boundkey.up, bound=0)
 
             # ****************************************************
-            if self.handler.Constraints.new_constraint(
-                f"T_{(layer, i),j}  >= U_{layer, i} beta_{j} + z_{layer, i} - U_{layer, i}",
-                label="same_for_data",
-            ):
-                continue
-            self.handler.Constraints.add_quad_variable(
-                var1="beta",
-                class_label=j,
-                var2="z",
-                layer2=layer,
-                neuron2=i,
-                value=1,
-                front_of_matrix2=front_of_matrix,
-            )
-            self.handler.Constraints.add_linear_variable(
-                var="z",
-                layer=layer,
-                neuron=i,
-                value=-1,
-            )
-            self.handler.Constraints.add_linear_variable(
-                var="beta",
-                class_label=j,
-                value=-self.handler.Constraints.U_above_zero[layer][i],
-            )
-            self.handler.Constraints.add_bound(
-                bound_type=mosek.boundkey.lo,
-                bound=-self.handler.Constraints.U_above_zero[layer][i],
-            )
+            if cuts is None or "sum_beta_logits_equal_logit" not in cuts:
+                # Constraint is redundant when we have the constraint sum_beta_j_z_i_equal_z_i, but it can help convergence when we don't have it
+                if self.handler.Constraints.new_constraint(
+                    f"T_{(layer, i),j}  >= U_{layer, i} beta_{j} + z_{layer, i} - U_{layer, i}",
+                    label="same_for_data",
+                ):
+                    continue
+                self.handler.Constraints.add_quad_variable(
+                    var1="beta",
+                    class_label=j,
+                    var2="z",
+                    layer2=layer,
+                    neuron2=i,
+                    value=1,
+                    front_of_matrix2=front_of_matrix,
+                )
+                self.handler.Constraints.add_linear_variable(
+                    var="z",
+                    layer=layer,
+                    neuron=i,
+                    value=-1,
+                )
+                self.handler.Constraints.add_linear_variable(
+                    var="beta",
+                    class_label=j,
+                    value=-self.handler.Constraints.U_above_zero[layer][i],
+                )
+                self.handler.Constraints.add_bound(
+                    bound_type=mosek.boundkey.lo,
+                    bound=-self.handler.Constraints.U_above_zero[layer][i],
+                )
 
             # ****************************************************
             name_cstr_4 = f"T_{(layer, i),j}  >= 0"
@@ -191,7 +223,7 @@ def McCormick_beta_z(self, layer: int):
             self.handler.Constraints.add_bound(bound_type=mosek.boundkey.lo, bound=0)
 
 
-def McCormick_beta_z_all_valid_layers(self):
+def McCormick_beta_z_all_valid_layers(self, cuts=None):
     """
     Call McCormick_beta_z for every layer that shares the last PSD matrix with beta.
     Beta lives in the last chordal group; the valid layers are exactly the layers
@@ -199,7 +231,7 @@ def McCormick_beta_z_all_valid_layers(self):
     """
     last_group = self.handler.indexes_matrices.layer_groups[-1]
     for layer in last_group:
-        self.McCormick_beta_z(layer=layer)
+        self.McCormick_beta_z(layer=layer, cuts=cuts)
 
 
 

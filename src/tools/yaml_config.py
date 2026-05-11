@@ -123,7 +123,8 @@ class MosekSolverConfig(BaseModel):
         if v is None:
             return []
         for cut in v :
-            if cut not in ["RLT", "triangularization", "McCormick_beta_z", "beta_logits_comparaison", "beta_logits_comparaison_big_M", "sum_beta_logits_equal_logit"]:
+            if cut not in ["RLT", "triangularization", "McCormick_beta_z", "beta_logits_comparaison", 
+                           "beta_logits_comparaison_big_M", "sum_beta_logits_equal_logit"]:
                 raise ValueError(f"cut {cut} not valid.")
         return v
 
