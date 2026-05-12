@@ -36,9 +36,16 @@ for folder in "${FOLDERS_TO_SYNC[@]}"; do
     fi
 done
 
-# Test de connexion SSH
+# SSH ControlMaster : une seule connexion TCP réutilisée pour tous les appels
+SSH_CONTROL="/tmp/ssh_cm_jz_$$"
+SSH_OPTS="-o ControlMaster=auto -o ControlPath=$SSH_CONTROL -o ControlPersist=120 -o BatchMode=yes"
+ssh_jz() { ssh $SSH_OPTS "$JEAN_ZAY_USER@$JEAN_ZAY_HOST" "$@"; }
+cleanup_ssh() { ssh -O exit -o ControlPath=$SSH_CONTROL "$JEAN_ZAY_USER@$JEAN_ZAY_HOST" 2>/dev/null; }
+trap cleanup_ssh EXIT
+
+# Test de connexion SSH (ouvre la connexion maître)
 log_info "Test de connexion à Jean-Zay..."
-if ! ssh -o BatchMode=yes -o ConnectTimeout=5 "$JEAN_ZAY_USER@$JEAN_ZAY_HOST" exit 2>/dev/null; then
+if ! ssh_jz -o ConnectTimeout=5 exit 2>/dev/null; then
     log_error "Impossible de se connecter à Jean-Zay. Vérifie tes clés SSH et ta connexion."
     exit 1
 fi
@@ -75,42 +82,40 @@ echo "Projet bien reçu avec les paramètres :"
 log_info "Synchronisation du projet vers Jean-Zay..."
 for folder in "${FOLDERS_TO_SYNC[@]}"; do
     if [ -d "$LOCAL_PROJECT_DIR/$folder" ]; then
-        rsync -az "$LOCAL_PROJECT_DIR/$folder" "$JEAN_ZAY_USER@$JEAN_ZAY_HOST:$REMOTE_PROJECT_DIR"
+        rsync -az -e "ssh $SSH_OPTS" "$LOCAL_PROJECT_DIR/$folder" "$JEAN_ZAY_USER@$JEAN_ZAY_HOST:$REMOTE_PROJECT_DIR"
     fi
 done
 
-echo "Entré dans le dir"
-
-DATE=$(date +%Y_%m_%d_%Hh%M_%Ss)
-LOG_DIR="results/benchmark/${NETWORK_NAME}-${EPSILON}/${DATE}_${NAME_RUN}"
-mkdir -p "$LOG_DIR"
-
-# Redirige stdout et stderr
-exec > >(tee -a "$LOG_DIR/slurm-${SLURM_JOB_ID}.out")
-exec 2> >(tee -a "$LOG_DIR/slurm-${SLURM_JOB_ID}.err" >&2)
-
-echo "Network: $NETWORK_NAME"
-echo "Run name: $NAME_RUN"
-echo "Job ID: $SLURM_JOB_ID"# Crée le répertoire de logs si besoin
-DATE=$(date +%Y_%m_%d_%Hh%M_%Ss)
-LOG_DIR="results/benchmark/${NETWORK_NAME}-${EPSILON}/${DATE}_${NAME_RUN}"
-mkdir -p "$LOG_DIR"
-
-# Redirige stdout et stderr
-# exec > >(tee -a "$LOG_DIR/slurm-${SLURM_JOB_ID}.out")
-# exec 2> >(tee -a "$LOG_DIR/slurm-${SLURM_JOB_ID}.err" >&2)
-
-# echo "Network: $NETWORK_NAME"
-# echo "Run name: $NAME_RUN"
-# echo "Job ID: $SLURM_JOB_ID"
-# done
-rsync -az "$LOCAL_PROJECT_DIR/scripts" "$JEAN_ZAY_USER@$JEAN_ZAY_HOST:$REMOTE_PROJECT_DIR"
+rsync -az -e "ssh $SSH_OPTS" "$LOCAL_PROJECT_DIR/scripts" "$JEAN_ZAY_USER@$JEAN_ZAY_HOST:$REMOTE_PROJECT_DIR"
 
 log_success "Synchronisation terminée."
 
-# Création d'une commande distante pour lancer le job sur Jean-Zay via sbatch
-REMOTE_COMMAND="cd $REMOTE_PROJECT_DIR && sbatch --export=NETWORK_NAME=$NETWORK_NAME,NAME_RUN=$NAME_RUN scripts/run_fastsdp_job.slurm"
+YAML_PATH="$LOCAL_PROJECT_DIR/config/${NETWORK_NAME}.yaml"
+DIVIDE_RUN=$(python -c "import yaml; c=yaml.safe_load(open('$YAML_PATH')); print(c.get('divide_run', 1))" 2>/dev/null || echo 1)
 
-log_info "Soumission du job SLURM à Jean-Zay..."
-ssh "$JEAN_ZAY_USER@$JEAN_ZAY_HOST" "$REMOTE_COMMAND"
-log_success "Job soumis à Jean-Zay."
+if [ "$DIVIDE_RUN" -gt 1 ]; then
+    NUM_SAMPLES=$(python -c "import yaml; c=yaml.safe_load(open('$YAML_PATH')); print(c['data']['num_samples'])")
+    DATE_PREFIX=$(date +%Y_%m_%d_%Hh%M_%Ss)
+    NAME_RUN_FULL="${DATE_PREFIX}_${NAME_RUN}"
+    CHUNK_SIZE=$(( (NUM_SAMPLES + DIVIDE_RUN - 1) / DIVIDE_RUN ))
+
+    log_info "Découpage : $DIVIDE_RUN chunks de ~$CHUNK_SIZE samples sur $NUM_SAMPLES total"
+    log_info "Run partagé : $NAME_RUN_FULL"
+
+    for ((chunk=0; chunk<DIVIDE_RUN; chunk++)); do
+        START=$((chunk * CHUNK_SIZE))
+        END=$(( (chunk + 1) * CHUNK_SIZE ))
+        if [ "$END" -gt "$NUM_SAMPLES" ]; then END=$NUM_SAMPLES; fi
+        if [ "$START" -ge "$NUM_SAMPLES" ]; then break; fi
+
+        log_info "Soumission chunk $chunk: samples [$START, $END)"
+        REMOTE_COMMAND="cd $REMOTE_PROJECT_DIR && sbatch --export=NETWORK_NAME=$NETWORK_NAME,NAME_RUN=$NAME_RUN_FULL,EPSILON=$EPSILON,START=$START,END=$END scripts/run_fastsdp_job.slurm"
+        ssh_jz "$REMOTE_COMMAND"
+    done
+    log_success "$DIVIDE_RUN jobs soumis à Jean-Zay."
+else
+    REMOTE_COMMAND="cd $REMOTE_PROJECT_DIR && sbatch --export=NETWORK_NAME=$NETWORK_NAME,NAME_RUN=$NAME_RUN,EPSILON=$EPSILON scripts/run_fastsdp_job.slurm"
+    log_info "Soumission du job SLURM à Jean-Zay..."
+    ssh_jz "$REMOTE_COMMAND"
+    log_success "Job soumis à Jean-Zay."
+fi

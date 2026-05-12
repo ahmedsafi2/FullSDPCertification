@@ -124,8 +124,13 @@ def get_results(self, cuts: List, verbose: bool = False):
             )
         print(f"CALLBACK : Variables duales sauvegardées dans {dual_path}")
     elif self.handler.is_status_unknown():
-        print ("CALLBACK : unknown status")
-        logger_mosek.debug("Unknown solution status")
+        if self.handler.is_time_limit():
+            print("CALLBACK : time limit reached")
+            logger_mosek.warning("MOSEK terminated: time limit reached")
+            dic_benchmark["status"] = "time_limit"
+        else:
+            print("CALLBACK : unknown status")
+            logger_mosek.debug("Unknown solution status")
         try:
             dic_info_optimal_values = self.handler.add_all_infos_optimal_values_to_dic(
                 cuts,

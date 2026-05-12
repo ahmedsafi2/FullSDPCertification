@@ -52,7 +52,10 @@ class DataConfig(BaseModel):
             path = Path(get_project_path(x.replace("\\", "/")))
             if not path.exists():
                 raise ValueError(f"Dataset file not found: {path}")
-            examples = torch.load(path, weights_only=False)
+            try:
+                examples = torch.load(path, weights_only=False)
+            except TypeError:
+                examples = torch.load(path)
 
             y = values.get("y")
             if y in examples.keys():
@@ -184,6 +187,7 @@ class MosekSolverConfig(BaseModel):
     bounds_method: str = "alpha-CROWN"  # Method to compute bounds, options: "IBP", "alpha-CROWN", "GREAT_BOUNDS", "from_file"
     write_model : Optional[bool] = False
     INPUT_IN_VARIABLES: bool = True  # If False, z_0 is removed from SDP variables; L∞ ball is absorbed into pre-computed bounds L_1,U_1
+    solver_time_limit: Optional[int] = None  # Time limit in seconds for MOSEK solver (None = no limit)
 
 
 class GurobiSolverConfig(BaseModel):
@@ -227,6 +231,7 @@ class FullCertificationConfig(BaseModel):
     data: Union[DataConfig, DatasetConfig]
     network: NetworkConfig
     models: Optional[List[Union[MosekSolverConfig, GurobiSolverConfig]]] = None
+    divide_run: int = 1
     @validator('models')
     def process_bounds(cls, v, values):
         input_ball = values.get("input_ball")

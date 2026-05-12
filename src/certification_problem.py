@@ -56,6 +56,7 @@ class Certification_Problem:
         self.network_name = kwargs.get("network_name", network.name)
         self.dataset_name = kwargs.get("dataset_name")
         self.yaml_file = kwargs.get("yaml_file", None)
+        self.divide_run = kwargs.get("divide_run", 1)
         print("Data name in certification problem:", self.dataset_name)
 
         print("dataset in certification problem:", self.dataset)
@@ -112,6 +113,7 @@ class Certification_Problem:
             network_name=validated_config.network.name,
             dataset_name=validated_config.data.name,
             yaml_file=yaml_file,
+            divide_run=validated_config.divide_run,
         )
 
     def __str__(self):
@@ -120,9 +122,11 @@ class Certification_Problem:
         """
         return f"Certification Problem with epsilon: {self.epsilon}, dataset size: {len(self.dataset)}"
 
-    def run(self, solver_config: BaseModel, title_run: str = "") -> None:
+    def run(self, solver_config: BaseModel, title_run: str = "", start: int = None, end: int = None) -> None:
         """
         Run the certification problem.
+
+        If start/end are provided, only samples with raw dataset index in [start, end) are processed.
         """
         model_class = getattr(solve, solver_config.certification_model_name)
         print(
@@ -147,9 +151,16 @@ class Certification_Problem:
         coefficient_values = {k : [] for k in range(1, self.network.K + 1)}
 
         if solver_config.bounds_method == "from_file":
-                bounds_csv = pd.read_csv(solver_config.bounds_file)
+                bounds_path = solver_config.bounds_file
+                if not os.path.isabs(bounds_path):
+                    bounds_path = get_project_path(bounds_path)
+                bounds_csv = pd.read_csv(bounds_path)
 
         for i, (x, ytrue) in enumerate(dataloader):
+            if start is not None and i < start:
+                continue
+            if end is not None and i >= end:
+                break
             # if (i) % 10 != 0:
             #     print(
             #         f"Skipping sample {i + 1} with label {ytrue.item()} as it is not a multiple of 10."
@@ -361,7 +372,7 @@ class Certification_Problem:
             )
             plt.close()
 
-    def solve(self, title_run: str = "") -> None:
+    def solve(self, title_run: str = "", start: int = None, end: int = None) -> None:
         print("Starting certification problem solving ...")
         print("self.models:", self.models)
 
@@ -391,7 +402,7 @@ class Certification_Problem:
 
             print("Solving with model:", model_config.certification_model_name)
             print("model dict :", model_config)
-            self.run(model_config, title_run)
+            self.run(model_config, title_run, start=start, end=end)
 
 
 
@@ -412,17 +423,81 @@ class _Tee:
         return self._streams[0].fileno()
 
 
-def main(network : str, title_run : str):
-    yaml_file = f"{network}.yaml"  # "mnist_one_data_benchmark.yaml"
-    certif_problem = Certification_Problem.load_from_yaml(yaml_file)
+def _run_orchestrator(certif_problem, network, title_run_full):
+    """Fork N subprocess (one per chunk) and wait for them to complete."""
+    import subprocess
 
-    launch_date = datetime.datetime.now().strftime("%Y_%m_%d_%Hh%M_%Ss")
-    title_run_full = launch_date + "_" + title_run
-
-    results_dir = get_project_path(
+    parent_dir = get_project_path(
         f"results/benchmark/{certif_problem.title}/{title_run_full}"
     )
+    os.makedirs(parent_dir, exist_ok=True)
+
+    if certif_problem.yaml_file is not None:
+        shutil.copyfile(
+            get_project_path(f"config/{certif_problem.yaml_file}"),
+            os.path.join(parent_dir, certif_problem.yaml_file),
+        )
+
+    num_samples = len(certif_problem.dataset)
+    n_chunks = certif_problem.divide_run
+    chunk_size = -(-num_samples // n_chunks)  # ceil division
+
+    print(f"Orchestrator: {n_chunks} chunks of ~{chunk_size} samples from {num_samples} total")
+
+    processes = []
+    for chunk_idx in range(n_chunks):
+        chunk_start = chunk_idx * chunk_size
+        chunk_end = min((chunk_idx + 1) * chunk_size, num_samples)
+        if chunk_start >= num_samples:
+            break
+        cmd = [
+            sys.executable, os.path.abspath(__file__),
+            network, title_run_full,
+            "--start", str(chunk_start),
+            "--end", str(chunk_end),
+        ]
+        print(f"  → chunk {chunk_idx}: samples [{chunk_start}, {chunk_end})")
+        processes.append(subprocess.Popen(cmd))
+
+    print(f"Waiting for {len(processes)} subprocesses…")
+    exit_codes = [p.wait() for p in processes]
+    print(f"All chunks done. Exit codes: {exit_codes}")
+
+
+def main(network: str, title_run: str, start: int = None, end: int = None):
+    yaml_file = f"{network}.yaml"
+    certif_problem = Certification_Problem.load_from_yaml(yaml_file)
+
+    is_worker = start is not None and end is not None
+
+    if is_worker:
+        # The orchestrator (or SLURM launcher) already set the date prefix; use as-is.
+        title_run_full = title_run
+        title_run_for_solve = f"{title_run_full}/part_{start}_{end}"
+    else:
+        launch_date = datetime.datetime.now().strftime("%Y_%m_%d_%Hh%M_%Ss")
+        title_run_full = f"{launch_date}_{title_run}"
+        title_run_for_solve = title_run_full
+
+        if certif_problem.divide_run > 1:
+            _run_orchestrator(certif_problem, network, title_run_full)
+            return
+
+    results_dir = get_project_path(
+        f"results/benchmark/{certif_problem.title}/{title_run_for_solve}"
+    )
     os.makedirs(results_dir, exist_ok=True)
+
+    if is_worker and certif_problem.yaml_file is not None:
+        parent_yaml = get_project_path(
+            f"results/benchmark/{certif_problem.title}/{title_run_full}/{certif_problem.yaml_file}"
+        )
+        if not os.path.exists(parent_yaml):
+            shutil.copyfile(
+                get_project_path(f"config/{certif_problem.yaml_file}"),
+                parent_yaml,
+            )
+
     log_path = os.path.join(results_dir, "run.log")
 
     with open(log_path, "w") as log_file:
@@ -430,7 +505,7 @@ def main(network : str, title_run : str):
         sys.stdout = _Tee(original_stdout, log_file)
         sys.stderr = _Tee(original_stderr, log_file)
         try:
-            certif_problem.solve(title_run_full)
+            certif_problem.solve(title_run_for_solve, start=start, end=end)
         finally:
             sys.stdout = original_stdout
             sys.stderr = original_stderr
@@ -443,9 +518,13 @@ if __name__ == "__main__":
 
     parser.add_argument("network", type=str, help="Network to test", default="6x100")
     parser.add_argument("title_run", type=str, help="Description-run", default="")
+    parser.add_argument("--start", type=int, default=None,
+                        help="Worker mode: start index (inclusive) for sample slice")
+    parser.add_argument("--end", type=int, default=None,
+                        help="Worker mode: end index (exclusive) for sample slice")
     args = parser.parse_args()
 
     print("Number of CPU : ", mp.cpu_count())
-    main(network = args.network, title_run = args.title_run)
+    main(network=args.network, title_run=args.title_run, start=args.start, end=args.end)
 
     

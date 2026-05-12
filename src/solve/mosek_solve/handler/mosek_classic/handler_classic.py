@@ -104,6 +104,8 @@ class MosekClassicHandler:
         self.name = kwargs.pop("name", None)
 
         self.epsilon = kwargs.pop("epsilon", None)
+        self.solver_time_limit = kwargs.pop("solver_time_limit", None)
+        self.rescode = None
 
         self.ytrue = kwargs.get("ytrue", None)
         self.ytarget = kwargs.get("ytarget", None)
@@ -186,9 +188,14 @@ class MosekClassicHandler:
         self.task.putintparam(mosek.iparam.intpnt_scaling, mosek.scalingtype.free)
         
         # ===== THREADS =====
-        print("STUDY : 4 threads used for MOSEK solver")
-        self.task.putintparam(mosek.iparam.num_threads, 4)
-        
+        num_threads = int(os.environ.get("SLURM_CPUS_PER_TASK", 4))
+        self.task.putintparam(mosek.iparam.num_threads, num_threads)
+
+        # ===== TIME LIMIT =====
+        if self.solver_time_limit is not None:
+            self.task.putdouparam(mosek.dparam.optimizer_max_time, float(self.solver_time_limit))
+            print(f"MOSEK time limit set to {self.solver_time_limit}s")
+
         # ===== OPTIONS OPTIONNELLES COMMENTÉES =====
         # Décommenter si vous avez des problèmes numériques :      
         # self.task.putintparam(mosek.iparam.presolve_use, mosek.presolvemode.off)
@@ -353,7 +360,10 @@ class MosekClassicHandler:
         Optimize the task.
         """
         logger_mosek.info("Optimizing the task")
-        self.task.optimize()
+        self.rescode = self.task.optimize()
+
+    def is_time_limit(self):
+        return self.rescode == mosek.rescode.trm_max_time
 
     def write_model(
         self,

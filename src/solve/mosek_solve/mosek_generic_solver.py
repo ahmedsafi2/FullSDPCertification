@@ -57,9 +57,11 @@ class MosekSolver(Solver):
         ZBAR: bool = False,
         use_fusion: bool = False,
         INPUT_IN_VARIABLES: bool = True,
+        solver_time_limit: int = None,
         **kwargs,
     ):
         super().__init__(LAST_LAYER=LAST_LAYER, INPUT_IN_VARIABLES=INPUT_IN_VARIABLES, **kwargs)
+        self.solver_time_limit = solver_time_limit
 
         self.MATRIX_BY_LAYERS = MATRIX_BY_LAYERS
         self.INPUT_IN_VARIABLES = INPUT_IN_VARIABLES
@@ -146,6 +148,7 @@ class MosekSolver(Solver):
                 folder_name=self.folder_name,
                 name=self.name,
                 INPUT_IN_VARIABLES=self.INPUT_IN_VARIABLES,
+                solver_time_limit=self.solver_time_limit,
             )
         else:
             self.handler = MosekClassicHandler(
@@ -171,6 +174,7 @@ class MosekSolver(Solver):
                 folder_name=self.folder_name,
                 name=self.name,
                 INPUT_IN_VARIABLES=self.INPUT_IN_VARIABLES,
+                solver_time_limit=self.solver_time_limit,
             )
 
     def run_optimization(self, cuts: Dict, verbose: bool = False):

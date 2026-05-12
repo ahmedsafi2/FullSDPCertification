@@ -4,6 +4,8 @@ data :
   num_classes : 10
   num_samples : 100
 
+divide_run : 100
+
 input_ball : 
   norm : "Linf"
   epsilon : 0.026  # 0.026
@@ -101,8 +103,9 @@ models :
     #ultimate_layer_use_active_neurons: 5 # Whether to use active neurons in the ultimate layer in the certification problem as variables
     use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
     keep_penultimate_actives : true # Whether to keep the penultimate layer active neurons in the certification problem
-    bounds_file: "/share/homes/boyerma/FastSDPCertification/results/benchmark/6x100-0.026/Bornes/bornes_sdpt.csv"  # Folder where precomputed bounds are stored
+    bounds_file: "data/bounds/6x100-0.026_linf_sdpt.csv"  # Folder where precomputed bounds are stored
     bounds_method: "from_file"   #"alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
+    solver_time_limit : 5400 # Time limit for MOSEK in seconds, set to None for no limit
 
 
 
@@ -111,8 +114,6 @@ models :
   #   use_active_neurons: true # Whether to use active neurons in the certification problem as variables
   #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
   #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
-
-
 
   # - certification_model_name : "LPBoundLayer"
   #   LAST_LAYER: false

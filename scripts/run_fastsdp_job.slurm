@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=fast_sdp
-#SBATCH -A llc@v100                     # Compte GPU
-#SBATCH --partition=gpu_p13            # Partition GPU
-#SBATCH --gres=gpu:1                   # 1 GPU
-#SBATCH --cpus-per-task=40             # CPUs dispo
-#SBATCH --time=4:00:00                # Temps max
-#SBATCH --output=logs/slurm-%x-%j.out  # Log SLURM standard
-#SBATCH --error=logs/slurm-%x-%j.err   # Log SLURM erreur
+#SBATCH -A llc@cpu                      # Compte CPU (MOSEK est CPU-only)
+#SBATCH --partition=cpu_p1              # Partition CPU
+#SBATCH --cpus-per-task=4              # CPUs dispo (MOSEK utilise 4 threads)
+#SBATCH --time=2:00:00                 # Temps max par job (1h30 solver + 30min marge)
+#SBATCH --chdir=/lustre/fswork/projects/rech/llc/uvq13au/FastSDPCertification
+#SBATCH --output=slurm-%x-%j.out       # Log SLURM standard (à la racine du projet)
+#SBATCH --error=slurm-%x-%j.err        # Log SLURM erreur
 
 # Charge les modules nécessaires
 module purge
@@ -32,10 +32,8 @@ echo "Run name: $NAME_RUN"
 echo "Job ID: $SLURM_JOB_ID"
 
 # Appel du script métier avec les arguments du SLURM
-python -c "import torch; print(torch.cuda.is_available())"
-
-echo "Network: $NETWORK_NAME"
-echo "Run name: $NAME_RUN"
-
-python src/certification_problem.py "$NETWORK_NAME" "$NAME_RUN"
-#sbatch --export=NETWORK_NAME=$NETWORK_NAME,NAME_RUN=$NAME_RUN scripts/run_fastsdp_job.slurm
+if [ -n "$START" ] && [ -n "$END" ]; then
+    python src/certification_problem.py "$NETWORK_NAME" "$NAME_RUN" --start "$START" --end "$END"
+else
+    python src/certification_problem.py "$NETWORK_NAME" "$NAME_RUN"
+fi
