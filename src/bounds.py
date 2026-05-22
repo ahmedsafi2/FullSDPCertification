@@ -278,10 +278,7 @@ def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : s
             min_tensor = torch.clamp(min_tensor, min=0).view(-1)
             max_tensor = max_tensor.view(-1)
 
-        print(
-            f"STUDY : Adding layer : {layer_name} : {layers_name[layer_name]}, min = {min_tensor.min().item()}, max = {max_tensor.max().item()}"
-        )
-
+       
         L[layers_name[layer_name]] = (
             min_tensor.squeeze().detach().cpu().numpy().tolist()
         )
@@ -374,8 +371,8 @@ def check_stability_neurons(
             elif self.L[k][j] >= 0 and self.U[k][j] > 0 and not use_active_neurons:
                 if (k==self.K - 1 and self.keep_penultimate_actives) :
                     continue
-                if (k==1) and not self.INPUT_IN_VARIABLES :
-                    continue
+                if (k==1) and len(self.pruned_input_neurons) > 0:
+                    continue  # expansion of stable actives at k=1 may reference pruned z_0 neurons
                 if k > self.ultimate_layer_use_active_neurons: 
                     continue
                 else : 

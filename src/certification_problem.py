@@ -273,7 +273,7 @@ class Certification_Problem:
             print("STUDY : output_bounds_U:", output_bounds_U)
             print("STUDY : output_bounds_L:", output_bounds_L)
 
-            model_instance.solve(verbose=True, only_bounds=False)
+            model_instance.solve(verbose=False, only_bounds=False)
             print("STUDY : Model instance solved")
             print("STUDY : model_instance.benchmark_dataframe :", model_instance.benchmark_dataframe)
             

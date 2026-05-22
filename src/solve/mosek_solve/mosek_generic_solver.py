@@ -56,7 +56,7 @@ class MosekSolver(Solver):
         BETAS_Z: bool = False,
         ZBAR: bool = False,
         use_fusion: bool = False,
-        INPUT_IN_VARIABLES: bool = True,
+        INPUT_IN_VARIABLES = True,  # Union[bool, float]: 0.0=no input vars, 1.0=all, 0<p<1=partial
         solver_time_limit: int = None,
         **kwargs,
     ):
@@ -64,7 +64,7 @@ class MosekSolver(Solver):
         self.solver_time_limit = solver_time_limit
 
         self.MATRIX_BY_LAYERS = MATRIX_BY_LAYERS
-        self.INPUT_IN_VARIABLES = INPUT_IN_VARIABLES
+        # INPUT_IN_VARIABLES normalized to bool by generic_solver.__init__; do not override here
         assert self.keep_penultimate_actives is not None
 
         print("STUDY : penultimate actives in MosekSolver : ", self.keep_penultimate_actives)
@@ -148,6 +148,8 @@ class MosekSolver(Solver):
                 folder_name=self.folder_name,
                 name=self.name,
                 INPUT_IN_VARIABLES=self.INPUT_IN_VARIABLES,
+                kept_input_neurons=self.kept_input_neurons,
+                pruned_input_neurons=self.pruned_input_neurons,
                 solver_time_limit=self.solver_time_limit,
             )
         else:
@@ -174,6 +176,8 @@ class MosekSolver(Solver):
                 folder_name=self.folder_name,
                 name=self.name,
                 INPUT_IN_VARIABLES=self.INPUT_IN_VARIABLES,
+                kept_input_neurons=self.kept_input_neurons,
+                pruned_input_neurons=self.pruned_input_neurons,
                 solver_time_limit=self.solver_time_limit,
             )
 

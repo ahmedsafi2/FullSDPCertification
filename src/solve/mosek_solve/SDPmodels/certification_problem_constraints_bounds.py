@@ -49,9 +49,11 @@ def quad_bounds(self):
         print(f"Adding quadratic bounds constraint for layer {k}")
         if k == self.K:
             neurons_to_consider =  list(set([self.ytrue]).union(self.ytargets))
-        else : 
-            neurons_to_consider = [j for j in range(self.n[k]) 
-                                   if (k, j) not in self.stable_inactives_neurons and 
+        elif k == 0:
+            neurons_to_consider = [j for j in range(self.n[0]) if j in self.kept_input_neurons]
+        else :
+            neurons_to_consider = [j for j in range(self.n[k])
+                                   if (k, j) not in self.stable_inactives_neurons and
                     (k, j) not in self.stable_actives_neurons]
         for j in neurons_to_consider:
             # zk² - (U+L) + UL <= 0
@@ -439,6 +441,8 @@ def all_Mc_Cormick_all_layers(self):
                 not self.keep_penultimate_actives or k != self.K - 1
             ):
                 continue
+            if k == 0 and j not in self.kept_input_neurons:
+                continue  # pruned input neuron: not a SDP variable
             if k == 0:
                 k2_list = [0]
             else:

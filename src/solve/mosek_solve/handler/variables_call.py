@@ -338,6 +338,8 @@ class VariablesCall:
         self.MATRIX_BY_LAYERS = kwargs.get("MATRIX_BY_LAYERS", None)
         self.BETAS = kwargs.get("BETAS", None)
         self.INPUT_IN_VARIABLES = kwargs.get("INPUT_IN_VARIABLES", True)
+        self.kept_input_neurons = kwargs.get("kept_input_neurons", set(range(int(self.n[0]))))
+        self.pruned_input_neurons = kwargs.get("pruned_input_neurons", set())
         assert self.LAST_LAYER is not None, "LAST_LAYER must be specified."
         assert self.BETAS is not None, "BETAS must be specified."
 
@@ -359,8 +361,10 @@ class VariablesCall:
 
         for layer in range(self.K + 1):
             if layer == 0 and not self.INPUT_IN_VARIABLES:
-                continue  # z_0 is not a SDP variable: no index to create
+                continue  # z_0 entirely removed from SDP
             for neuron in range(self.n[layer]):
+                if layer == 0 and neuron in self.pruned_input_neurons:
+                    continue  # partial input pruning: z_0[neuron] not a SDP variable
                 #print(f'Creating equivalent for layer = {layer}, neuron = {neuron}')
                 equivalent_values_neurons, constant = (
                     self.layers_values.get_equivalent_values(layer, neuron)
@@ -579,11 +583,11 @@ class VariablesCall:
     def verify_variable_z(self, layer : int, neuron : int, front_of_matrix : bool= None):
         assert layer is not None, "Layer must be specified for z variable."
         assert neuron is not None, "Neuron must be specified for z variable."
-        if layer == 0 and not self.INPUT_IN_VARIABLES:
+        if layer == 0 and (not self.INPUT_IN_VARIABLES or neuron in self.pruned_input_neurons):
             raise ValueError(
                 f"Cannot reference z_(0,{neuron}) as a SDP variable: "
-                "INPUT_IN_VARIABLES=False removes the input layer from the SDP. "
-                "Check that no constraint explicitly uses layer 0 variables."
+                "this input neuron was removed from the SDP (INPUT_IN_VARIABLES=False or partial pruning). "
+                "Check that no constraint explicitly uses this layer-0 variable."
             )
         assert (layer, neuron) not in self.stable_inactives_neurons, "Stable inactive neurons should not be added as variables."
         if (layer, neuron) in self.stable_actives_neurons :

@@ -21,6 +21,7 @@ def add_RLT_constraints(self, p: float = 0.5):
             for j in range(self.n[k - 1])
             if (k - 1, j) in self.stable_inactives_neurons
             or (k - 1, j) in self.stable_actives_neurons
+            or (k == 1 and j in self.pruned_input_neurons)
         ]
         if k == self.K and self.LAST_LAYER:
             neurons_next = list(set([self.ytrue]).union(self.ytargets))

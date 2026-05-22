@@ -122,7 +122,30 @@ class Solver:
 
  
 
-        self.INPUT_IN_VARIABLES = kwargs.get("INPUT_IN_VARIABLES", True)
+        raw_iiv = kwargs.get("INPUT_IN_VARIABLES", True)
+        if isinstance(raw_iiv, bool):
+            self.input_proportion = 1.0 if raw_iiv else 0.0
+        else:
+            self.input_proportion = float(raw_iiv)
+
+        if self.input_proportion <= 0.0:
+            self.INPUT_IN_VARIABLES = False
+            self.kept_input_neurons = set()
+            self.pruned_input_neurons = set(range(int(self.n[0])))
+        elif self.input_proportion >= 1.0:
+            self.INPUT_IN_VARIABLES = True
+            self.kept_input_neurons = set(range(int(self.n[0])))
+            self.pruned_input_neurons = set()
+        else:
+            self.INPUT_IN_VARIABLES = True
+            col_norms = np.sum(np.abs(self.W[0]), axis=0)  # shape (n[0],)
+            n_keep = max(1, int(np.ceil(self.input_proportion * self.n[0])))
+            top_indices = np.argsort(col_norms)[-n_keep:]
+            self.kept_input_neurons = set(top_indices.tolist())
+            self.pruned_input_neurons = set(range(int(self.n[0]))) - self.kept_input_neurons
+            print(f"INPUT_IN_VARIABLES: keeping {n_keep}/{self.n[0]} input neurons "
+                  f"(proportion={self.input_proportion:.2f})")
+
         self.use_inactive_neurons = use_inactive_neurons
         self.use_active_neurons = use_active_neurons
         self.check_stability_neurons(

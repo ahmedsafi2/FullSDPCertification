@@ -186,7 +186,7 @@ class MosekSolverConfig(BaseModel):
     U: Optional[List[float]] = None
     bounds_method: str = "alpha-CROWN"  # Method to compute bounds, options: "IBP", "alpha-CROWN", "GREAT_BOUNDS", "from_file"
     write_model : Optional[bool] = False
-    INPUT_IN_VARIABLES: bool = True  # If False, z_0 is removed from SDP variables; L∞ ball is absorbed into pre-computed bounds L_1,U_1
+    INPUT_IN_VARIABLES: Union[bool, float] = True  # If False/0.0, z_0 removed from SDP; if 0<p<1, keep top p*n_0 input neurons by W_1 column norm
     solver_time_limit: Optional[int] = None  # Time limit in seconds for MOSEK solver (None = no limit)
 
 

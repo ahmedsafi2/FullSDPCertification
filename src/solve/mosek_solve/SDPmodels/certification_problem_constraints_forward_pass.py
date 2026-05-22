@@ -21,7 +21,7 @@ def ReLU_constraint_stable_active_relaxation(
     ):
         return
 
-    print(f"    STUDY NEW SUBCONSTRAINT  RELU k = {k} j = {j}, bound_sense = {bound_sense}; bound_type = {bound_type}")
+    # print(f"    STUDY NEW SUBCONSTRAINT  RELU k = {k} j = {j}, bound_sense = {bound_sense}; bound_type = {bound_type}")
     self.handler.Constraints.add_quad_variable(
         var1="z",
         layer1=k,
@@ -33,7 +33,6 @@ def ReLU_constraint_stable_active_relaxation(
         front_of_matrix1=False,
         front_of_matrix2=False,
     )
-    print("     add_quad_variable : OK")
 
     self.handler.Constraints.add_linear_variable(
         "z",
@@ -86,8 +85,8 @@ def ReLU_constraint_stable_active_relaxation(
 def ReLU_constraint_Lan(
     self, relu_quadratic_random : bool = False
 ):
-    print("Adding quadratic RELU constraint")
-    print(f"STUDY NEW CONSTRAINT RELU")
+    # print("Adding quadratic RELU constraint")
+    # print(f"STUDY NEW CONSTRAINT RELU")
 
     for k in range(1, self.K):
         print(f"Adding ReLU constraints for layer {k}")
@@ -100,7 +99,7 @@ def ReLU_constraint_Lan(
             ):
                 # print(f"Skipping stable active neuron ({k}, {j})")
                 continue
-            print(f"STUDY : Adding ReLU constraint for layer {k}, neuron {j} : z_{k,j}>=0")
+            # print(f"STUDY : Adding ReLU constraint for layer {k}, neuron {j} : z_{k,j}>=0")
             # zk >= 0
             if self.handler.Constraints.new_constraint(f"ReLU - z_{k,j}>=0", label = "same_for_data"):
                 continue
@@ -117,9 +116,9 @@ def ReLU_constraint_Lan(
 
             # zk >= Wk zk-1 + bk
             if k == 1 and not self.INPUT_IN_VARIABLES:
-                # z_0 is not a variable: sub-constraints 2 and 3 (which reference z_0) are skipped
+                # z_0 entirely removed: sub-constraints 2 and 3 skipped
                 continue
-            print(f"STUDY : Adding ReLU constraint for layer {k}, neuron {j} : z_{k,j}>= Wk zk-1 + bk")
+            # print(f"STUDY : Adding ReLU constraint for layer {k}, neuron {j} : z_{k,j}>= Wk zk-1 + bk")
             if self.handler.Constraints.new_constraint(
                 f"ReLU - z_{k,j} >= W_{k,j} z_{k-1} + b{k,j}", label = "same_for_data"
             ):
@@ -133,8 +132,17 @@ def ReLU_constraint_Lan(
                 front_of_matrix=False,
             )
 
+            relu_bound_adj = 0.0
             for i in range(self.n[k - 1]):
                 if (k - 1, i) in self.stable_inactives_neurons:
+                    continue
+                if k == 1 and i in self.pruned_input_neurons:
+                    # Pruned z_0[i]: replace by M_0[i] = L_0[i] if W>=0 else U_0[i] (valid lower bound)
+                    W_ji = float(self.network.W[k - 1][j][i])
+                    L_i = self.handler.Constraints.L[0][i]
+                    U_i = self.handler.Constraints.U[0][i]
+                    M_i = L_i if W_ji >= 0 else U_i
+                    relu_bound_adj += W_ji * M_i
                     continue
                 self.handler.Constraints.add_linear_variable(
                     "z",
@@ -146,14 +154,19 @@ def ReLU_constraint_Lan(
 
             self.handler.Constraints.add_bound(
                 bound_type=mosek.boundkey.lo,
-                bound=self.b[k - 1][j],
+                bound=self.b[k - 1][j] + relu_bound_adj,
             )
 
             # zk * (zk - Wk zk-1 - bk) = 0
-            if self.MATRIX_BY_LAYERS and any(
-                (k - 1, i) in self.stable_actives_neurons for i in range(self.n[k - 1])):
+            has_pruned_at_prev = (k == 1 and len(self.pruned_input_neurons) > 0)
+            if has_pruned_at_prev:
+                # z_0[pruned] not SDP variables: quadratic terms z_1[j]*z_0[i] unavailable.
+                # Skip this sub-constraint (valid relaxation: feasible set enlarges).
+                continue
+            if self.MATRIX_BY_LAYERS and (
+                any((k - 1, i) in self.stable_actives_neurons for i in range(self.n[k - 1]))):
                 # The constraint cannot be added as it links products of variables from different matrices : a relaxation is needed
-                print("STUDY COEFF Relaxation of ReLU constraint for layer", k, "neuron", j)
+                # print("STUDY COEFF Relaxation of ReLU constraint for layer", k, "neuron", j)
                 if relu_quadratic_random :
                     for i in range(8):
                         self.ReLU_constraint_stable_active_relaxation(
@@ -228,7 +241,7 @@ def ReLU_constraint_Lan(
 def ReLU_triangularization(self):
     for k in range(1, self.K):
         if k == 1 and not self.INPUT_IN_VARIABLES:
-            # z_0 is not a variable: triangular constraint z_1 <= k_cst*(W_1*z_0+b_1-L_1)+... is skipped
+            # z_0 entirely removed: triangular constraint skipped
             continue
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons:
@@ -278,8 +291,17 @@ def ReLU_triangularization(self):
                 neuron=j,
                 front_of_matrix=False,
             )
+            tri_bound_adj = 0.0
             for i in range(self.n[k - 1]):
                 if (k - 1, i) in self.stable_inactives_neurons:
+                    continue
+                if k == 1 and i in self.pruned_input_neurons:
+                    # Pruned z_0[i]: replace by M_0[i] = U_0[i] if W>=0 else L_0[i] (valid upper bound)
+                    W_ji = float(self.network.W[k - 1][j][i])
+                    L_i = self.handler.Constraints.L[0][i]
+                    U_i = self.handler.Constraints.U[0][i]
+                    M_i = U_i if W_ji >= 0 else L_i
+                    tri_bound_adj += k_cst * W_ji * M_i
                     continue
                 self.handler.Constraints.add_linear_variable(
                     "z",
@@ -292,7 +314,8 @@ def ReLU_triangularization(self):
             self.handler.Constraints.add_bound(
                 bound_type=mosek.boundkey.up,
                 bound=rel_l
-                + k_cst * (self.network.b[k - 1][j] - self.handler.Constraints.L[k][j]),
+                + k_cst * (self.network.b[k - 1][j] - self.handler.Constraints.L[k][j])
+                + tri_bound_adj,
             )
 
             # self.handler.Constraints.print_current_constraint()
