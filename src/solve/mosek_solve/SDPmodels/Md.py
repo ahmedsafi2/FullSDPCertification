@@ -100,51 +100,71 @@ class MdSDP(MosekSolver):
         """
         Add constraints to the task.
         """
-        # RELU
+        self._cut_constraint_counts = {}
 
-        if "sum_beta_logits_equal_logit" in cuts :
+        def _snap():
+            return len(self.handler.Constraints.list_cstr)
+
+        # sum_beta_logits_equal_logit
+        _n = _snap()
+        if "sum_beta_logits_equal_logit" in cuts:
             self.sum_beta_j_z_i_equal_z_i()
+        self._cut_constraint_counts["sum_beta_logits_equal_logit"] = _snap() - _n
 
-
+        # RELU + BOUNDS (baseline)
         print("STUDY : Adding ReLU constraints...")
+        _n = _snap()
         self.ReLU_constraint_Lan()
         print("STUDY : ReLU constraints added.")
+        self._cut_constraint_counts["baseline_relu"] = _snap() - _n
 
+        _n = _snap()
         if "triangularization" in cuts:
             self.ReLU_triangularization()
+        self._cut_constraint_counts["triangularization"] = _snap() - _n
 
-        # BOUNDS
+        _n = _snap()
         self.quad_bounds()
         if self.norm == "L2" and self.INPUT_IN_VARIABLES and len(self.pruned_input_neurons) == 0:
             self.L2_ball_bounds()
+        self._cut_constraint_counts["baseline_bounds"] = _snap() - _n
 
-        # BETA
+        # BETA (base)
+        _n = _snap()
         self.discrete_betas()
         self.sum_betas_equals_1()
         self.betai_betaj()
+        self._cut_constraint_counts["baseline_beta"] = _snap() - _n
 
+        _n = _snap()
         if "McCormick_beta_z" in cuts:
             self.McCormick_beta_z_all_valid_layers(cuts=cuts)
+        self._cut_constraint_counts["McCormick_beta_z"] = _snap() - _n
 
-        # # Some cuts comparing different logits
+        _n = _snap()
         if "beta_logits_comparaison" in cuts:
             self.z_j2_beta_j2_greater_than_zj()
             self.z_j2_beta_j2_less_than_zj()
-        
-        if "beta_logits_comparaison_big_M" in cuts : 
+        self._cut_constraint_counts["beta_logits_comparaison"] = _snap() - _n
+
+        _n = _snap()
+        if "beta_logits_comparaison_big_M" in cuts:
             self.z_j2_zj_big_m()
+        self._cut_constraint_counts["beta_logits_comparaison_big_M"] = _snap() - _n
 
         # RLT
+        _n = _snap()
         if "RLT" in cuts:
             self.add_RLT_constraints(p=self.RLT_prop)
+        self._cut_constraint_counts["RLT"] = _snap() - _n
 
+        # Finalisation (first_term, décomposition chordale, last_layer)
+        _n = _snap()
         self.first_term_equal_zero()
-
-        # MATRIX BY LAYERS
         if self.MATRIX_BY_LAYERS:
             self.matrix_by_layers_rec(only_linear_constraints=True)
-
         if self.LAST_LAYER:
             self.last_layer_linear_equality()
+        self._cut_constraint_counts["baseline_other"] = _snap() - _n
 
         self.handler.Constraints.end_constraints()

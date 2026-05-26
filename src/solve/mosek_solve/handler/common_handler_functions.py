@@ -53,7 +53,6 @@ def initialize_variables(self):
         # Dernier groupe : z + zbar (optionnel) + betas
         last_group = layer_groups[-1]
         base_dim = indexes._offset_end_of_last_group()
-        print("STUDY BASE : base_dim for last group (without betas/zbar) : ", base_dim)
         n_betas = len(indexes.ytargets)
 
         if self.ZBAR:

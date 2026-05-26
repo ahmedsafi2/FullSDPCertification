@@ -1,5 +1,7 @@
 from typing import List, Union
 
+from .variable_elements import big_M_cst
+
 
 def resolve_layer_groups(
     MATRIX_BY_LAYERS: Union[bool, List[List[int]]],
@@ -117,6 +119,7 @@ class Indexes_Mosek_Solver:
         self._layer_to_groups = self._build_layer_to_groups()
         self._pruned_adv_before = self._build_pruned_adv_before()
 
+
         self.check_conformity()
 
         self.current_matrices_variables = []
@@ -162,6 +165,11 @@ class Indexes_Mosek_Solver:
         self.nb_matrices = len(self.layer_groups)
         if not self.BETAS_Z and self.BETAS:
             self.nb_matrices += 1  # matrice dédiée aux betas
+        assert self.nb_matrices < big_M_cst, (
+            f"nb_matrices={self.nb_matrices} >= big_M_cst={big_M_cst}: "
+            f"the hash-key encoding in variable_elements.py would overflow silently. "
+            f"Increase big_M_cst in variable_elements.py before proceeding."
+        )
 
     def count_max_indexes(self):
         """
@@ -194,7 +202,6 @@ class Indexes_Mosek_Solver:
         instables dans chaque groupe.
         """
         assert self.K == len(self.n) - 1
-
         if len(self.layer_groups) > 1:
             for group_idx, group in enumerate(self.layer_groups):
                 unstable_count = sum(

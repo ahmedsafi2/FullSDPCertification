@@ -99,7 +99,6 @@ class ConstraintsFusion(CommonConstraints):
         time_start = time.time()
         for ind_cstr in range(len(self.list_cstr)):
             
-            print("Adding constraint ", self.list_cstr[ind_cstr]["name"])
             # if ind_cstr % 10 == 0:
             #     print(f"CALLBACK : Adding constraint {ind_cstr}/{len(self.list_cstr)}")
             #     time_stop = time.time()

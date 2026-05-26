@@ -66,7 +66,6 @@ class LayersValues:
             self.keep_actives_penultimate is not None
         ), "keep_penultimate_actives must be specified."
 
-        print("STUDY in Layers Values : keeep_penultimate_actives : ", self.keep_actives_penultimate)
         self.equivalent_values_layers = {
             (layer, neuron): {"neurons_weight": {}, "constant": 0}
             for layer in range(K + 1)
@@ -345,16 +344,12 @@ class VariablesCall:
 
         self.equivalent_neurons = Equivalent_Neurons_Index(K = self.K, LAST_LAYER=self.LAST_LAYER)
         self.equivalent_indexes_betas = Equivalent_Betas_Index(ytargets=self.ytargets)
-        print("EQUIVALENT INDEX OK")
-       
+
         self.create_equivalent_indexes_matrices()
-        print("CREATE EQUIVALENT OK")
-       
+
         #self._print_equivalent_indexes_()
-        print("PRINT EQUIVALENT OK")
-        
         self.study_indexes_equivalent_neurons() # Check errors
-        print("STUDY INDEX OK")
+
        
 
     def create_equivalent_indexes_matrices(self):
@@ -461,8 +456,8 @@ class VariablesCall:
                                 num_matrix=ind_num_matrix_back,
                                 value=val,
                             )
-                    print()
-                    
+
+
 
                 self.equivalent_neurons.add_constant(
                     layer=layer,

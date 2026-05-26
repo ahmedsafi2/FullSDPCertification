@@ -11,6 +11,12 @@ from .benchmark import (
     create_subfolder_benchmark,
 )
 
+from .resume_utils import (
+    find_run_yaml,
+    find_processed_indices,
+    load_existing_results,
+)
+
 from .utils import (
     get_project_path,
     add_functions_to_class,
@@ -32,6 +38,9 @@ from .utils import (
 )
 
 __all__ = [
+    "find_run_yaml",
+    "find_processed_indices",
+    "load_existing_results",
     "FullCertificationConfig",
     "DataConfig",
     "NetworkConfig",

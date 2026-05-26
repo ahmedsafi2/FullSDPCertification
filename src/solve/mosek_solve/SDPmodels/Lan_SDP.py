@@ -85,33 +85,41 @@ class LanSDP(MosekSolver):
         """
         Add constraints to the task.
         """
+        self._cut_constraint_counts = {}
 
-        # print("L before adding constraints  :   ", self.L)
-        # print("U before adding constraints  :   ", self.U)
-        # RELU
+        def _snap():
+            return len(self.handler.Constraints.list_cstr)
 
+        _n = _snap()
         self.ReLU_constraint_Lan()
+        self._cut_constraint_counts["baseline_relu"] = _snap() - _n
 
+        _n = _snap()
         self.ReLU_triangularization()
+        self._cut_constraint_counts["triangularization"] = _snap() - _n
 
-        # BOUNDS
+        _n = _snap()
         self.quad_bounds()
         if self.norm == "L2" and self.INPUT_IN_VARIABLES and len(self.pruned_input_neurons) == 0:
             self.L2_ball_bounds()
+        self._cut_constraint_counts["baseline_bounds"] = _snap() - _n
 
-        # CUTS
+        _n = _snap()
         if "RLT" in cuts:
             self.add_RLT_constraints(p=self.RLT_prop)
+        self._cut_constraint_counts["RLT"] = _snap() - _n
 
+        _n = _snap()
         if "allMC" in cuts:
             self.all_Mc_Cormick_all_layers()
+        self._cut_constraint_counts["allMC"] = _snap() - _n
 
+        _n = _snap()
         if self.MATRIX_BY_LAYERS:
             self.matrix_by_layers_rec(only_linear_constraints=True)
-
         if self.LAST_LAYER:
             self.last_layer_linear_equality()
-
         self.first_term_equal_zero()
+        self._cut_constraint_counts["baseline_other"] = _snap() - _n
 
         self.handler.Constraints.end_constraints()

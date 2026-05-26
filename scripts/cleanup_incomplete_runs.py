@@ -108,7 +108,6 @@ def main():
         print("Suppression annulée.")
         return
 
-    print()
     deleted, errors = 0, 0
     for run_dir in to_delete:
         try:

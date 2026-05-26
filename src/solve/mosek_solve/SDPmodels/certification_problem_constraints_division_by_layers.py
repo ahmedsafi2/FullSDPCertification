@@ -15,8 +15,6 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
     front_of_matrix=True  → groupe droit  (k est le premier élément du groupe)
     """
     print("Adding rec matrices constraint")
-    print("STUDY : inactive neurons in rec constraints : ", self.stable_inactives_neurons)
-    print("STUDY : active neurons in rec constraints : ", self.stable_actives_neurons)
 
     layer_groups = self.handler.indexes_matrices.layer_groups
 

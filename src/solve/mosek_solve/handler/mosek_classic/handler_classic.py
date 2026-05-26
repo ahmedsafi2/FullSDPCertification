@@ -173,11 +173,11 @@ class MosekClassicHandler:
         
         # ===== TOLÉRANCES STRICTES pour réduire le gap primal-dual =====
         # Réduire le gap relatif entre primal et dual
-        self.task.putdouparam(mosek.dparam.intpnt_tol_rel_gap, 1e-8)  # 1e-6 → 1e-8 : plus strict
+        self.task.putdouparam(mosek.dparam.intpnt_tol_rel_gap, 1e-6)  # 1e-6 → 1e-8 : plus strict
         
         # Faisabilité primale et duale plus stricte
-        self.task.putdouparam(mosek.dparam.intpnt_tol_pfeas, 1e-8)    # Gap primal plus petit
-        self.task.putdouparam(mosek.dparam.intpnt_tol_dfeas, 1e-8)    # Gap dual plus petit
+        self.task.putdouparam(mosek.dparam.intpnt_tol_pfeas, 1e-6)    # Gap primal plus petit
+        self.task.putdouparam(mosek.dparam.intpnt_tol_dfeas, 1e-6)    # Gap dual plus petit
         
         # ===== AUGMENTER LES ITÉRATIONS =====
         # Par défaut ~300, vous pouvez l'augmenter pour forcer la convergence

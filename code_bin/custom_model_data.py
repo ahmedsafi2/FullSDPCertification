@@ -316,8 +316,7 @@ def simple_fc_model_margot(K : int, n, in_dim=784, out_dim=10):
 
 def simple_cifar100(spec):
     """(Fait par Margot) Example dataloader. For MNIST and CIFAR you can actually use existing ones in utils.py."""
-    print("STUDY : simplecifar100 before")
-    print('STUDY : spec=', spec)
+
     eps = spec["epsilon"]
     assert eps is not None
     database_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets')
@@ -330,7 +329,6 @@ def simple_cifar100(spec):
     # Load entire dataset.
     testloader = torch.utils.data.DataLoader(test_data,\
             batch_size=10000, shuffle=False, num_workers=4)
-    print("STUDY : simplecifar100 after")
     X, labels = next(iter(testloader))
     # Set data_max and data_min to be None if no clip. For CIFAR-10 we clip to [0,1].
     data_max = torch.reshape((1. - mean) / std, (1, -1, 1, 1))
@@ -339,27 +337,26 @@ def simple_cifar100(spec):
         raise ValueError('You must specify an epsilon')
     # Rescale epsilon.
     ret_eps = torch.reshape(eps / std, (1, -1, 1, 1))
-    print("STUDY : simplecifar100 before return")
     return X, labels, data_max, data_min, ret_eps
 
 
 def concatmnist67(spec):
     """(Fait par Margot) Example dataloader."""
-    print("STUDY : concatmnist67 before")
-    print('STUDY : spec=', spec)
+
+
     eps = spec["epsilon"]
     assert eps is not None
     database_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'datasets')
     
     test_data = torch.load(os.path.join(database_path, 'ConcatMnist/concatmnist_subset_1_per_class.pth'))['dataset']
-    print("STUDY : concatmnist67 loaded data")
+
     # Load entire dataset.
     testloader = torch.utils.data.DataLoader(test_data,\
             batch_size=10000, shuffle=False, num_workers=4)
-    print("STUDY : concatmnist67 created dataloader")
+    
     data_max = torch.reshape(torch.tensor(1.), (1, -1, 1, 1))
     data_min = torch.reshape(torch.tensor(0.), (1, -1, 1, 1))
-    print("STUDY : concatmnist67 after")
+
     X, labels = next(iter(testloader))
     if eps is None:
         raise ValueError('You must specify an epsilon')

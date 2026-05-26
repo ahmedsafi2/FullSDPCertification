@@ -2,6 +2,7 @@ import numpy as np
 import yaml
 import sys
 import os
+from pathlib import Path
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -18,6 +19,7 @@ import multiprocessing as mp
 from adversarial_attacks import PGDAttack
  
 from tools import create_folder_benchmark, get_project_path
+from tools.resume_utils import find_run_yaml, find_processed_indices, load_existing_results, log_run_history
 from solve.mosek_solve import concat_dataframes_with_missing_columns
 
 
@@ -122,7 +124,7 @@ class Certification_Problem:
         """
         return f"Certification Problem with epsilon: {self.epsilon}, dataset size: {len(self.dataset)}"
 
-    def run(self, solver_config: BaseModel, title_run: str = "", start: int = None, end: int = None) -> None:
+    def run(self, solver_config: BaseModel, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None) -> None:
         """
         Run the certification problem.
 
@@ -161,6 +163,9 @@ class Certification_Problem:
                 continue
             if end is not None and i >= end:
                 break
+            if skip_indices and i in skip_indices:
+                print(f"Skipping sample {i} (already processed).")
+                continue
             # if (i) % 10 != 0:
             #     print(
             #         f"Skipping sample {i + 1} with label {ytrue.item()} as it is not a multiple of 10."
@@ -372,15 +377,12 @@ class Certification_Problem:
             )
             plt.close()
 
-    def solve(self, title_run: str = "", start: int = None, end: int = None) -> None:
+    def solve(self, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None, resume: bool = False) -> None:
         print("Starting certification problem solving ...")
         print("self.models:", self.models)
 
-        # title_run = (
-        #     datetime.datetime.now().strftime("%m_%d_%Hh%M_%Ss") + "_" + title_run
-        # )
-
-        self.benchmark = pd.DataFrame()
+        if not resume:
+            self.benchmark = pd.DataFrame()
 
         if not os.path.exists(
             get_project_path(f"results/benchmark/{self.title}/{title_run}")
@@ -402,7 +404,7 @@ class Certification_Problem:
 
             print("Solving with model:", model_config.certification_model_name)
             print("model dict :", model_config)
-            self.run(model_config, title_run, start=start, end=end)
+            self.run(model_config, title_run, start=start, end=end, skip_indices=skip_indices)
 
 
 
@@ -480,13 +482,23 @@ def main(network: str, title_run: str, start: int = None, end: int = None):
         title_run_for_solve = title_run_full
 
         if certif_problem.divide_run > 1:
-            _run_orchestrator(certif_problem, network, title_run_full)
+            parent_dir = Path(get_project_path(f"results/benchmark/{certif_problem.title}/{title_run_full}"))
+            parent_dir.mkdir(parents=True, exist_ok=True)
+            start_time = datetime.datetime.now()
+            try:
+                _run_orchestrator(certif_problem, network, title_run_full)
+            finally:
+                processed = find_processed_indices(parent_dir)
+                log_run_history(parent_dir, "initial", start_time, processed)
             return
 
     results_dir = get_project_path(
         f"results/benchmark/{certif_problem.title}/{title_run_for_solve}"
     )
     os.makedirs(results_dir, exist_ok=True)
+
+    if not is_worker:
+        start_time = datetime.datetime.now()
 
     if is_worker and certif_problem.yaml_file is not None:
         parent_yaml = get_project_path(
@@ -500,31 +512,83 @@ def main(network: str, title_run: str, start: int = None, end: int = None):
 
     log_path = os.path.join(results_dir, "run.log")
 
-    with open(log_path, "w") as log_file:
-        original_stdout, original_stderr = sys.stdout, sys.stderr
-        sys.stdout = _Tee(original_stdout, log_file)
-        sys.stderr = _Tee(original_stderr, log_file)
-        try:
-            certif_problem.solve(title_run_for_solve, start=start, end=end)
-        finally:
-            sys.stdout = original_stdout
-            sys.stderr = original_stderr
+    try:
+        with open(log_path, "w") as log_file:
+            original_stdout, original_stderr = sys.stdout, sys.stderr
+            sys.stdout = _Tee(original_stdout, log_file)
+            sys.stderr = _Tee(original_stderr, log_file)
+            try:
+                certif_problem.solve(title_run_for_solve, start=start, end=end)
+            finally:
+                sys.stdout = original_stdout
+                sys.stderr = original_stderr
+        print(f"Log saved → {log_path}")
+    finally:
+        if not is_worker:
+            processed = find_processed_indices(Path(results_dir))
+            log_run_history(Path(results_dir), "initial", start_time, processed)
 
-    print(f"Log saved → {log_path}")
+
+def main_resume(run_folder: str):
+    """Resume a partially completed run by skipping already-processed samples."""
+    run_folder = Path(run_folder).resolve()
+    if not run_folder.exists():
+        raise FileNotFoundError(f"Run folder not found: {run_folder}")
+
+    yaml_path = find_run_yaml(run_folder)
+    network = yaml_path.stem
+
+    skip_indices = find_processed_indices(run_folder)
+    print(f"Already processed: {len(skip_indices)} samples — {sorted(skip_indices)}")
+
+    existing_results = load_existing_results(run_folder)
+    print(f"Loaded {len(existing_results)} existing result rows.")
+
+    certif_problem = Certification_Problem.load_from_yaml(f"{network}.yaml")
+    certif_problem.benchmark = existing_results
+
+    results_base = get_project_path(f"results/benchmark/{certif_problem.title}")
+    title_run = str(run_folder.relative_to(results_base))
+
+    start_time = datetime.datetime.now()
+
+    log_path = run_folder / "resume.log"
+    try:
+        with open(log_path, "w") as log_file:
+            original_stdout, original_stderr = sys.stdout, sys.stderr
+            sys.stdout = _Tee(original_stdout, log_file)
+            sys.stderr = _Tee(original_stderr, log_file)
+            try:
+                certif_problem.solve(title_run, skip_indices=skip_indices, resume=True)
+            finally:
+                sys.stdout = original_stdout
+                sys.stderr = original_stderr
+        print(f"Resume log saved → {log_path}")
+    finally:
+        new_indices = find_processed_indices(run_folder) - skip_indices
+        log_run_history(run_folder, "resume", start_time, new_indices)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Training Network Parser")
 
-    parser.add_argument("network", type=str, help="Network to test", default="6x100")
-    parser.add_argument("title_run", type=str, help="Description-run", default="")
+    parser.add_argument("network", type=str, nargs="?", help="Network to test", default=None)
+    parser.add_argument("title_run", type=str, nargs="?", help="Description-run", default="")
     parser.add_argument("--start", type=int, default=None,
                         help="Worker mode: start index (inclusive) for sample slice")
     parser.add_argument("--end", type=int, default=None,
                         help="Worker mode: end index (exclusive) for sample slice")
+    parser.add_argument("--resume", type=str, default=None,
+                        help="Resume an existing run: path to the run folder")
     args = parser.parse_args()
 
     print("Number of CPU : ", mp.cpu_count())
-    main(network=args.network, title_run=args.title_run, start=args.start, end=args.end)
+
+    if args.resume:
+        main_resume(args.resume)
+    else:
+        if args.network is None:
+            parser.error("network is required when not using --resume")
+        main(network=args.network, title_run=args.title_run, start=args.start, end=args.end)
 
     

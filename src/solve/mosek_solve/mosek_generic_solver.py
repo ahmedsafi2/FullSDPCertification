@@ -67,8 +67,6 @@ class MosekSolver(Solver):
         # INPUT_IN_VARIABLES normalized to bool by generic_solver.__init__; do not override here
         assert self.keep_penultimate_actives is not None
 
-        print("STUDY : penultimate actives in MosekSolver : ", self.keep_penultimate_actives)
-        print("use fusion in MosekGenericSolver: ", use_fusion)
         self.cuts = kwargs.get("cuts")
         self.all_combinations_cuts = kwargs.get("all_combinations_cuts", False)
         self.create_all_cuts_to_test()
@@ -87,11 +85,8 @@ class MosekSolver(Solver):
 
         logger_mosek.info(f"Model {self.__class__.__name__} initialized.")
 
-        print("STUDY : init in Mosek Solver presque done")
-
         self.initiate_solver()
         self.only_width_model = False
-        print("STUDY : init in Mosek Solver tout done")
 
 
     @staticmethod
@@ -181,6 +176,84 @@ class MosekSolver(Solver):
                 solver_time_limit=self.solver_time_limit,
             )
 
+    def _write_presolve_row(self, cuts: Dict, nb_variables: int):
+        """Write a pre-solve row to results.csv right after constraints are built, before MOSEK runs."""
+        from .run_benchmark import all_possible_cuts
+        nb_constraints = len(self.handler.Constraints.list_cstr)
+        dic = {
+            "network": self.network_name,
+            "model": self.name,
+            "dataset": self.dataset_name,
+            "data_index": self.data_index,
+            "label": self.ytrue,
+            "label_predicted": self.network.label(self.x),
+            "target": getattr(self, "ytarget", None),
+            "epsilon": self.epsilon,
+            "status": "pre-solve",
+            "MATRIX_BY_LAYERS": str(self.MATRIX_BY_LAYERS),
+            "LAST_LAYER": self.LAST_LAYER,
+            "USE_STABLE_ACTIVES": self.use_active_neurons,
+            "USE_STABLE_INACTIVES": self.use_inactive_neurons,
+            "Nb_stable_inactives": len(self.stable_inactives_neurons),
+            "Nb_stable_actives": len(self.stable_actives_neurons),
+            "Nb_constraints": nb_constraints,
+            "Nb_variables": nb_variables,
+        }
+        dic.update({cut: (cut in cuts) for cut in all_possible_cuts})
+        if "RLT" in cuts:
+            dic["RLT_prop"] = self.RLT_prop
+        path = get_project_path(f"{self.folder_name}/results.csv")
+        row_df = pd.DataFrame(dic, index=[0])
+        if os.path.exists(path):
+            existing = pd.read_csv(path)
+            merged = pd.concat([existing, row_df], ignore_index=True)
+        else:
+            merged = row_df
+        merged.to_csv(path, index=False)
+        print(f"STUDY : Pre-solve row written — Nb_constraints={nb_constraints}, Nb_variables={nb_variables}")
+        self._write_model_size_csv(cuts, nb_variables)
+
+    
+    _TRACKED_CUTS = [
+        "RLT",
+        "triangularization",
+        "McCormick_beta_z",
+        "beta_logits_comparaison",
+        "beta_logits_comparaison_big_M",
+        "sum_beta_logits_equal_logit",
+    ]
+
+    def _write_model_size_csv(self, cuts: Dict, nb_variables: int):
+        """Append one row to taille_modele.csv with per-cut constraint counts."""
+        counts = getattr(self, "_cut_constraint_counts", {})
+        baseline = (
+            counts.get("baseline_relu", 0)
+            + counts.get("baseline_bounds", 0)
+            + counts.get("baseline_beta", 0)
+            + counts.get("baseline_other", 0)
+        )
+        row = {
+            "data_index": self.data_index,
+            "Nb_constraints_total": len(self.handler.Constraints.list_cstr),
+            "Nb_variables": nb_variables,
+            "Nb_constraints_baseline": baseline,
+        }
+        for cut in self._TRACKED_CUTS:
+            row[f"Nb_constraints_{cut}"] = counts.get(cut, 0)
+            row[cut] = cut in cuts
+        if "RLT" in cuts:
+            row["RLT_prop"] = self.RLT_prop
+
+        path = get_project_path(f"{self.folder_name}/taille_modele.csv")
+        row_df = pd.DataFrame(row, index=[0])
+        if os.path.exists(path):
+            existing = pd.read_csv(path)
+            merged = pd.concat([existing, row_df], ignore_index=True)
+        else:
+            merged = row_df
+        merged.to_csv(path, index=False)
+        print(f"STUDY : taille_modele.csv updated — data_index={self.data_index}")
+
     def run_optimization(self, cuts: Dict, verbose: bool = False):
         try:
             self.handler.is_robust = False
@@ -217,16 +290,16 @@ class MosekSolver(Solver):
             if verbose : 
                 print("STUDY ; Objective created.")
             self.handler.initialize_variables()
-            self.handler.print_num_variables()
-            if verbose : 
+            nb_variables = self.handler.print_num_variables()
+            if verbose :
                 print("STUDY : Variables initialized.")
                 print("Adding constraints to the task...")
             time_1 = time.time()
             self.adapt_number_RLT()
             self.add_constraints(cuts)  # Constraints must be added after variables
             self.handler.Constraints.get_histogram_of_coefficients_name_constraint("ReLU Relaxed")
-            
-            if verbose: 
+            self._write_presolve_row(cuts, nb_variables)
+            if verbose:
                 print("STUDY : Constraints added.")
             if self.only_width_model:
                 print("STUDY : Only width model, getting results without optimization...")
