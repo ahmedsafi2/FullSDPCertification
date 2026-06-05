@@ -10,7 +10,7 @@ import time
 
 from solve.gurobi_solve import ClassicLP
 from bounds import compute_bounds_data
-from tools import round_list_depth_2, round_list_depth_3
+from fastsdp_tools import round_list_depth_2, round_list_depth_3
 
 
 class LPAttack:

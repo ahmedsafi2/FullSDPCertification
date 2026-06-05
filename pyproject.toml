@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "FastSDPCertification"
 version = "0.1"
-description = "Ton projet"
+description = "SDP relaxation of the certification problem for adversarial robustness"
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = []

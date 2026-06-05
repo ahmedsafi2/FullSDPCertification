@@ -5,7 +5,7 @@ from ..gurobi_generic_solver import GurobiSolver
 from ..objective import add_objective_Lan
 from ..constraints import RELU_triangular_constraint, quad_bounds
 from ..variables import add_variable_z, _add_variable_z
-from tools.utils import add_functions_to_class
+from fastsdp_tools.utils import add_functions_to_class
 from ..callback import NonConvexQuadraticProgramCallback
 
 logger_gurobi = logging.getLogger("Gurobi_logger")

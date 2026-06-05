@@ -34,13 +34,13 @@ from ..common_handler_functions import (
     diagnose_infeasibility,
 )
 from solve.mosek_solve.run_benchmark import compute_cuts_str
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 
 
 from mosek.fusion import Model, Domain
 
 
-from tools.utils import count_calls, add_functions_to_class
+from fastsdp_tools.utils import count_calls, add_functions_to_class
 
 logger_mosek = logging.getLogger("Mosek_logger")
 

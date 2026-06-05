@@ -4,7 +4,7 @@ import yaml
 import os
 import sys
 
-from tools.utils import infinity, add_functions_to_class
+from fastsdp_tools.utils import infinity, add_functions_to_class
 import logging
 from typing import List
 
@@ -57,7 +57,7 @@ class LanSDP(MosekSolver):
         # print("kwargs in LanSDP: ", kwargs)
         super().__init__(certification_model_name="LanSDP", **kwargs)
 
-        print("STUDY : beginning LanSDP init")
+        logger_mosek.debug("beginning LanSDP init")
         self.BETAS = False
         self.BETAS_Z = False
 
@@ -73,7 +73,7 @@ class LanSDP(MosekSolver):
         print("Neurones stables inactives: ", self.stable_inactives_neurons)
 
         logger_mosek.debug(f"Bounds for the network :  {self.L} and {self.U}")
-        print("STUDY : ending LanSDP init")
+        logger_mosek.debug("ending LanSDP init")
 
     def add_objective(self):
         """
@@ -86,9 +86,10 @@ class LanSDP(MosekSolver):
         Add constraints to the task.
         """
         self._cut_constraint_counts = {}
+        self.handler.Constraints._skipped_count = 0
 
         def _snap():
-            return len(self.handler.Constraints.list_cstr)
+            return len(self.handler.Constraints.list_cstr) + self.handler.Constraints._skipped_count
 
         _n = _snap()
         self.ReLU_constraint_Lan()

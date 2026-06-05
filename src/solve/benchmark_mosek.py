@@ -1,4 +1,4 @@
-# from tools import (
+# from fastsdp_tools import (
 #     FullCertificationConfig,
 #     create_folder_benchmark,
 #     create_subfolder_benchmark,
@@ -7,7 +7,7 @@
 
 # import yaml
 # from networks import ReLUNN
-# from tools import get_project_path
+# from fastsdp_tools import get_project_path
 # import datetime
 # import os
 # import solve

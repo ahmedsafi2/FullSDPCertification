@@ -17,7 +17,7 @@ from functools import partial
 
 
 from ..generic_solver import Solver
-from tools import get_project_path, add_row_from_dict
+from fastsdp_tools import get_project_path, add_row_from_dict
 from .callback import SolutionCallback, CallbackData, mycallback
 from .analyser import analyze_model
 
@@ -37,7 +37,7 @@ class GurobiSolver(Solver):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        print("STUDY : Initializing GurobiSolver...")
+        logger_gurobi.debug("Initializing GurobiSolver...")
 
         self.LAST_LAYER = LAST_LAYER
         self.BETAS = BETAS
@@ -48,7 +48,7 @@ class GurobiSolver(Solver):
         self.b = self.network.b
 
         self.constant = 0
-        print("STUDY : GurobiSolver initialized.")
+        logger_gurobi.debug("GurobiSolver initialized.")
 
 
         if self.__class__.__name__ != "LPBoundLayer":
@@ -76,27 +76,27 @@ class GurobiSolver(Solver):
 
     def run_optimization(self, verbose: bool = False):
         assert self.max_layer_z is not None, "max_layer_z must be specified to run optimization"
-        print("STUDY : Running optimization...")
+        logger_gurobi.debug("Running optimization...")
         self.initiate_solver()
-        print("STUDY : Solver initiated.")
+        logger_gurobi.debug("Solver initiated.")
         self.add_variables()
-        print("STUDY : Variables added.")
+        logger_gurobi.debug("Variables added.")
         self.add_objective()
-        print("STUDY : Objective added.")
+        logger_gurobi.debug("Objective added.")
         self.add_constraints()
-        print("STUDY : Constraints added.")
+        logger_gurobi.debug("Constraints added.")
         # Ensure the model is updated so NumConstrs and NumVars reflect added elements
         self.m.update()
         print(f"Nombre de contraints avant optimisation : {self.m.NumConstrs}")
         print(f"Nombre de variables avant optimisation : {self.m.NumVars}")
         self.write_model()
         self.print_solver_info(verbose)
-        print("STUDY : Starting optimization...")
+        logger_gurobi.debug("Starting optimization...")
         callback_data = CallbackData(self.m.getVars())
         callback_func = partial(
             mycallback, cbdata=callback_data, logfile=f"gurobi_{self.name}.log"
         )
-        print("STUDY : Callback function prepared.")
+        logger_gurobi.debug("Callback function prepared.")
       
         self.m.optimize()  # self.callback
 
@@ -144,14 +144,14 @@ class GurobiSolver(Solver):
         self.opt = None
         if self.m.Status == GRB.OPTIMAL:
             opt = self.m.ObjVal
-            print("STUDY : Optimal objective value: ", opt)
+            logger_gurobi.debug("Optimal objective value: ", opt)
             print("Constant to add : ", self.constant)
             self.opt = opt + self.constant
             logger_gurobi.debug(
                 f"Optimal objective value (with added constant) for model {self.name}: %s",
                 self.opt,
             )
-            print("STUDY : Optimal objective value (with added constant): ", self.opt)
+            logger_gurobi.debug("Optimal objective value (with added constant): ", self.opt)
             z_values = self.retrieve_z()
             dict_json = {layer : {neuron : float(z_values[(layer, neuron)]) for neuron in range(self.n[layer]) if (layer, neuron) not in self.stable_inactives_neurons} for layer in range(self.max_layer_z)}
             with open(f"{self.folder_name}/solutions.json", "w") as f :
@@ -167,7 +167,7 @@ class GurobiSolver(Solver):
             # analyze_model(self.m)
         else:
             opt = self.m.ObjVal
-            print("STUDY : UNKNOWN STATUS : Optimal objective value: ", opt)
+            logger_gurobi.debug("UNKNOWN STATUS : Optimal objective value: ", opt)
         print("compute bound time in get result de : ", self.__class__.__name__)
         print("compute bounds : ", self.compute_bounds_time)
         dic_benchmark = {
@@ -206,7 +206,7 @@ class GurobiSolver(Solver):
         Write the model to a file.
         """
         if self.folder_name is not None:
-            print("STUDY : Writing model to file...")
+            logger_gurobi.debug("Writing model to file...")
             self.m.write(
                 get_project_path(f"{self.folder_name}/{self.name}/{self.name}.lp")
             )
@@ -219,7 +219,7 @@ class GurobiSolver(Solver):
                 get_project_path(f"{self.folder_name}/{self.name}/{self.name}.log"),
             )
         else :
-            print("STUDY : Folder name not specified, model not written to file.")
+            logger_gurobi.debug("Folder name not specified, model not written to file.")
 
     def initiate_solver(self, **parameters):
         """
@@ -260,7 +260,7 @@ class GurobiSolver(Solver):
         """
         if self.is_trivially_solved :
             if verbose : 
-                print("STUDY : Trivially solved problem, no need to run optimization.")
+                logger_gurobi.debug("Trivially solved problem, no need to run optimization.")
             self.get_results_trivially_solved()
             return True
         else :

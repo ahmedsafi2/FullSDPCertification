@@ -3,7 +3,7 @@
 #SBATCH -A llc@cpu                      # Compte CPU (MOSEK est CPU-only)
 #SBATCH --partition=cpu_p1              # Partition CPU
 #SBATCH --cpus-per-task=4              # CPUs dispo (MOSEK utilise 4 threads)
-#SBATCH --time=2:00:00                 # Temps max par job (1h30 solver + 30min marge)
+#SBATCH --time=20:00:00                 # Temps max par job (limite cpu_p1 sur Jean-Zay)
 #SBATCH --chdir=/lustre/fswork/projects/rech/llc/uvq13au/FastSDPCertification
 #SBATCH --output=slurm-%x-%j.out       # Log SLURM standard (à la racine du projet)
 #SBATCH --error=slurm-%x-%j.err        # Log SLURM erreur
@@ -14,6 +14,7 @@ source ~/.bashrc
 module load pytorch-gpu/py3/2.0.0
 module unload openmpi
 module load openmpi/4.1.1
+
 
 # Active ton venv
 source /lustre/fswork/projects/rech/llc/uvq13au/venvs/fastsdp/bin/activate

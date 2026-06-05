@@ -1,5 +1,5 @@
 import mosek
-from tools.utils import infinity
+from fastsdp_tools.utils import infinity
 import logging
 
 logger_mosek = logging.getLogger("Mosek_logger")

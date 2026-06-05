@@ -3,7 +3,7 @@ import mosek
 import logging
 import numpy as np
 
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 from solve.mosek_solve.get_variables import print_solution_to_file_for_cb_solver
 
 

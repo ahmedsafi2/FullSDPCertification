@@ -1,5 +1,5 @@
 from ast import Set
-from tools import exists_two_similar_pairs_in_three_lists, deduct_two_lists
+from fastsdp_tools import exists_two_similar_pairs_in_three_lists, deduct_two_lists
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,7 +7,7 @@ import mosek
 from numba.typed import Dict
 import numba
 import decimal
-from tools import infinity, deduplicate_and_sum, get_project_path
+from fastsdp_tools import infinity, deduplicate_and_sum, get_project_path
 
 from .indexes_matrices import Indexes_Matrixes_for_Mosek_Solver
 from .indexes_variables import Indexes_Variables_for_Mosek_Solver
@@ -51,6 +51,7 @@ class CommonConstraints(VariablesCall):
         self.current_num_constraint = -1
         self.list_cstr = []
         self.cstr_names = set()
+        self._skipped_count = 0
 
     def add_constant(self, value: float):
         """
@@ -276,6 +277,7 @@ class CommonConstraints(VariablesCall):
             logger_mosek.debug(
                 f"CONSTRAINT CALLBACK : Constraint '{name}' already exists (same_for_data). Skipping."
             )
+            self._skipped_count += 1
             return True
         # else :
         #     print(f"CALLBACK Adding constraint {name}.")

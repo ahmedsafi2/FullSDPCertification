@@ -5,6 +5,6 @@ bounds_crown_claude
 certification_problem
 conic_bundle
 data
+fastsdp_tools
 networks
 solve
-tools

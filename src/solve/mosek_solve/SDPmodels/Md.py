@@ -7,7 +7,7 @@ import logging
 from typing import List
 
 
-from tools.utils import infinity, add_functions_to_class
+from fastsdp_tools.utils import infinity, add_functions_to_class
 
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -101,9 +101,10 @@ class MdSDP(MosekSolver):
         Add constraints to the task.
         """
         self._cut_constraint_counts = {}
+        self.handler.Constraints._skipped_count = 0
 
         def _snap():
-            return len(self.handler.Constraints.list_cstr)
+            return len(self.handler.Constraints.list_cstr) + self.handler.Constraints._skipped_count
 
         # sum_beta_logits_equal_logit
         _n = _snap()
@@ -112,10 +113,10 @@ class MdSDP(MosekSolver):
         self._cut_constraint_counts["sum_beta_logits_equal_logit"] = _snap() - _n
 
         # RELU + BOUNDS (baseline)
-        print("STUDY : Adding ReLU constraints...")
+        logger_mosek.debug("Adding ReLU constraints...")
         _n = _snap()
         self.ReLU_constraint_Lan()
-        print("STUDY : ReLU constraints added.")
+        logger_mosek.debug("ReLU constraints added.")
         self._cut_constraint_counts["baseline_relu"] = _snap() - _n
 
         _n = _snap()

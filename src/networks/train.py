@@ -1,3 +1,4 @@
+import logging
 import torch
 import torch.nn as nn
 import torch.optim.lr_scheduler as lr_scheduler
@@ -25,9 +26,11 @@ from data import (
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from tools.utils import str_to_list
-from tools import get_project_path, Adversarial_Network_Training
+from fastsdp_tools.utils import str_to_list
+from fastsdp_tools import get_project_path, Adversarial_Network_Training
 import data
+
+logger = logging.getLogger(__name__)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -120,8 +123,8 @@ if __name__ == "__main__":
         get_project_path(config["evaluate_robustness_path"]), weights_only=False
     )["dataset"]
 
-    print("STUDY : len =", len(train_dataset))
-    print("STUDY : dataset[0] =", train_dataset[0])  # <--- teste l'accès
+    logger.debug("len =", len(train_dataset))
+    logger.debug("dataset[0] = %s", train_dataset[0])
 
     attack = config["adversarial_attack"]
 
@@ -170,8 +173,8 @@ if __name__ == "__main__":
     n = config["n"]
     K = config["K"]
 
-    print("STUDY : n : ", n)
-    print("STUDY : K : ", K)
+    logger.debug("n : ", n)
+    logger.debug("K : ", K)
 
     model = ReLUNN(
         K,

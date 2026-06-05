@@ -197,4 +197,4 @@ class ConstraintsClassic(CommonConstraints):
             #     )
             
            
-        print("STUDY : All constraints added to the task.")
+        logger_mosek.debug("All constraints added to the task.")

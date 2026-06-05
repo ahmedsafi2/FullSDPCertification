@@ -17,7 +17,7 @@ from ..variables import (
     add_variable_zbar,
 )
 from ..callback import NonConvexQuadraticProgramCallback
-from tools.utils import add_functions_to_class
+from fastsdp_tools.utils import add_functions_to_class
 
 logger_gurobi = logging.getLogger("Gurobi_logger")
 

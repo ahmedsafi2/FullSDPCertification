@@ -4,7 +4,7 @@ import yaml
 import os
 import sys
 
-from tools.utils import infinity, add_functions_to_class
+from fastsdp_tools.utils import infinity, add_functions_to_class
 import logging
 from typing import List
 

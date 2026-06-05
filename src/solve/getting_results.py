@@ -1,5 +1,6 @@
+import os
 import pandas as pd
-from tools import add_row_from_dict
+from fastsdp_tools import add_row_from_dict, get_project_path
 
 def get_results_trivially_solved(self):
     """
@@ -35,3 +36,12 @@ def get_results_trivially_solved(self):
             self.benchmark_dataframe, dic_benchmark
         )
     print("\n \n self.benchmark_dataframe   : ", self.benchmark_dataframe)
+    path = get_project_path(f"{self.folder_name}/results.csv")
+    row_df = pd.DataFrame(dic_benchmark, index=[0])
+    if os.path.exists(path):
+        existing = pd.read_csv(path)
+        existing = existing[existing.get("status", pd.Series(dtype=str)) != "pre-solve"]
+        merged = pd.concat([existing, row_df], ignore_index=True)
+    else:
+        merged = row_df
+    merged.to_csv(path, index=False)

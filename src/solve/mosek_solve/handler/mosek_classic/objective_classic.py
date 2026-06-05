@@ -19,7 +19,7 @@ import logging
 import time
 import numba
 
-from tools import divide_list_by
+from fastsdp_tools import divide_list_by
 
 
 logger_mosek = logging.getLogger("Mosek_logger")

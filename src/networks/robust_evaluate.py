@@ -3,7 +3,7 @@ import data
 from network import ReLUNN
 import argparse
 from torch.utils.data import DataLoader
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 import torch
 from train import evaluate
 from adv_train import evaluate_robust

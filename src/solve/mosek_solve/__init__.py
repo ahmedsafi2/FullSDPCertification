@@ -6,7 +6,7 @@ from .SDPmodels.Md import MdSDP
 from .SDPmodels.Mzbar import MzbarSDP
 from .SDPmodels.SDP_attack import SDP_attack
 import os
-from tools.utils import get_project_path
+from fastsdp_tools.utils import get_project_path
 from handler.variables_call import LayersValues
 from run_benchmark import concat_dataframes_with_missing_columns
 

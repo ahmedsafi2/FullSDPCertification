@@ -34,7 +34,7 @@ from ..common_handler_functions import (
     diagnose_infeasibility,
 )
 
-from tools.utils import count_calls, add_functions_to_class, get_project_path
+from fastsdp_tools.utils import count_calls, add_functions_to_class, get_project_path
 
 logger_mosek = logging.getLogger("Mosek_logger")
 
@@ -173,19 +173,19 @@ class MosekClassicHandler:
         
         # ===== TOLÉRANCES STRICTES pour réduire le gap primal-dual =====
         # Réduire le gap relatif entre primal et dual
-        self.task.putdouparam(mosek.dparam.intpnt_tol_rel_gap, 1e-6)  # 1e-6 → 1e-8 : plus strict
+        self.task.putdouparam(mosek.dparam.intpnt_tol_rel_gap, 1e-3)  # 1e-6 → 1e-8 : plus strict
         
         # Faisabilité primale et duale plus stricte
-        self.task.putdouparam(mosek.dparam.intpnt_tol_pfeas, 1e-6)    # Gap primal plus petit
-        self.task.putdouparam(mosek.dparam.intpnt_tol_dfeas, 1e-6)    # Gap dual plus petit
+        self.task.putdouparam(mosek.dparam.intpnt_tol_pfeas, 1e-3)    # Gap primal plus petit
+        self.task.putdouparam(mosek.dparam.intpnt_tol_dfeas, 1e-3)    # Gap dual plus petit
         
         # ===== AUGMENTER LES ITÉRATIONS =====
         # Par défaut ~300, vous pouvez l'augmenter pour forcer la convergence
-        self.task.putintparam(mosek.iparam.intpnt_max_iterations, 300)
+        self.task.putintparam(mosek.iparam.intpnt_max_iterations, 400)
         
         # ===== SCALING (pour les problèmes mal conditionnés) =====
         # Aide à réduire les problèmes numériques
-        self.task.putintparam(mosek.iparam.intpnt_scaling, mosek.scalingtype.free)
+        # self.task.putintparam(mosek.iparam.intpnt_scaling, mosek.scalingtype.free)
         
         # ===== THREADS =====
         num_threads = int(os.environ.get("SLURM_CPUS_PER_TASK", 4))

@@ -155,10 +155,7 @@ def compute_bounds_data_crown(
             print(f"Layer {k:2d} | lower: [{l.min():.4f}, {l.max():.4f}], upper: [{u.min():.4f}, {u.max():.4f}]")
     else:
         print("\n⚠ Warning: No intermediate bounds extracted!")
-
-    print("L : ", L)
-    print("U : ", U)
-
+        
     self.L = L
     self.U = U
 

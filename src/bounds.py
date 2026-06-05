@@ -1,10 +1,13 @@
+import logging
 import torch
 import numpy as np
 from auto_LiRPA import BoundedModule, BoundedTensor
 from auto_LiRPA.perturbations import PerturbationLpNorm
 import time
 
-from tools import round_list_depth_2, change_to_zero_negative_values
+from fastsdp_tools import round_list_depth_2, change_to_zero_negative_values
+
+logger = logging.getLogger(__name__)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -17,7 +20,7 @@ def compute_bounds_data_new(network, x, epsilon, n, K, method: str = "IBP", norm
     Args:
         method (str): The method to compute the bounds (CROWN, IBP, Linear, etc.).
     """
-    print(f"STUDY : Computing bounds with method: {method} ...")
+    logger.debug(f"Computing bounds with method: {method} ...")
     print("epsilon : ", epsilon)
     L = [[-np.inf] * n[k] for k in range(K + 1)]
     U = [[np.inf] * n[k] for k in range(K + 1)]
@@ -41,7 +44,7 @@ def compute_bounds_data_new(network, x, epsilon, n, K, method: str = "IBP", norm
     zeros = torch.zeros_like(x).to(device)
     print("zeros device : ", zeros.device)
 
-    print("STUDY : creating BoundedModule ...")
+    logger.debug("creating BoundedModule ...")
     try:
 
         print("About to create BoundedModule on device:", device)
@@ -58,13 +61,13 @@ def compute_bounds_data_new(network, x, epsilon, n, K, method: str = "IBP", norm
 
 
     bounded_model.eval()
-    print("STUDY : bounded_model device : ", next(bounded_model.parameters()).device)
+    logger.debug("bounded_model device : ", next(bounded_model.parameters()).device)
 
     if norm == "Linf":
-        print("STUDY : Using Linf norm for perturbation.")
+        logger.debug("Using Linf norm for perturbation.")
         ptb = PerturbationLpNorm(norm=np.inf, eps=epsilon)
     elif norm == "L2":
-        print("STUDY : pertubation L2 used")
+        logger.debug("pertubation L2 used")
         ptb = PerturbationLpNorm(norm=2, eps=epsilon)
         #ptb = PerturbationLpNorm(norm=np.inf, eps=epsilon**2)  # comparer les deux versions
     else:
@@ -87,19 +90,19 @@ def compute_bounds_data_new(network, x, epsilon, n, K, method: str = "IBP", norm
 
     intermediate_bounds_list = list(intermediate_bounds.keys())
 
-    print("STUDY : Intermediate bounds list : ", intermediate_bounds_list)
+    logger.debug("Intermediate bounds list : ", intermediate_bounds_list)
 
     layers_name = {}
     layers_name[intermediate_bounds_list[0]] = 0
 
-    print("STUDY : Preparing to create bounds...")
+    logger.debug("Preparing to create bounds...")
     print('Intermediate_bounds_list : ', intermediate_bounds_list )
     for k in range(1, K + 1):
         print(f"Adding layer for k = {k}, num_layer = {1 + (k - 1) * 2}")
         layers_name[intermediate_bounds_list[1 + (k - 1) * 2]] = k    ### !!!!  Before *3 because of the dropout layer  !!!!
-    print("STUDY : Layers name mapping : ", layers_name)
+    logger.debug("Layers name mapping : ", layers_name)
 
-    print("STUDY : Intermediate bounds list final values : ", intermediate_bounds_list[-1])
+    logger.debug("Intermediate bounds list final values : ", intermediate_bounds_list[-1])
     layers_name[intermediate_bounds_list[-1]] = K
 
     for layer_name, (min_tensor, max_tensor) in intermediate_bounds.items():
@@ -138,7 +141,7 @@ def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : s
     Args:
         method (str): The method to compute the bounds (CROWN, IBP, Linear, etc.).
     """
-    print(f"STUDY : Computing bounds with method: {method} ...")
+    logger.debug(f"Computing bounds with method: {method} ...")
     print("epsilon : ", epsilon)
     L = [[-np.inf] * n[k] for k in range(K + 1)]
     U = [[np.inf] * n[k] for k in range(K + 1)]
@@ -162,7 +165,7 @@ def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : s
     zeros = torch.zeros_like(x).to(device)
     print("zeros device : ", zeros.device)
 
-    print("STUDY : creating BoundedModule ...")
+    logger.debug("creating BoundedModule ...")
     try:
 
         # # Vérif optional : assure que tout est bien sur cuda
@@ -211,13 +214,13 @@ def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : s
     # )
 
     bounded_model.eval()
-    print("STUDY : bounded_model device : ", next(bounded_model.parameters()).device)
+    logger.debug("bounded_model device : ", next(bounded_model.parameters()).device)
 
     if norm == "Linf":
-        print("STUDY : Using Linf norm for perturbation.")
+        logger.debug("Using Linf norm for perturbation.")
         ptb = PerturbationLpNorm(norm=np.inf, eps=epsilon)
     elif norm == "L2":
-        print("STUDY : pertubation L2 used")
+        logger.debug("pertubation L2 used")
         ptb = PerturbationLpNorm(norm=2, eps=epsilon)
         #ptb = PerturbationLpNorm(norm=np.inf, eps=epsilon**2)  # comparer les deux versions
     else:
@@ -233,34 +236,34 @@ def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : s
 
     intermediate_bounds_list = list(intermediate_bounds.keys())
 
-    print("STUDY : Intermediate bounds list : ", intermediate_bounds_list)
+    logger.debug("Intermediate bounds list : ", intermediate_bounds_list)
 
     for layer_name, (min_tensor, max_tensor) in intermediate_bounds.items():
-        print(f"STUDY : {layer_name}")
-        print(f"STUDY : shape = {max_tensor.squeeze().detach().cpu().numpy().shape}")
+        logger.debug(f"{layer_name}")
+        logger.debug(f"shape = {max_tensor.squeeze().detach().cpu().numpy().shape}")
         
         # if self.data_modele == "blob":
         #     print(f"  Min: {min_tensor.squeeze().cpu().numpy()}")
         #     print(f"  Max: {max_tensor.squeeze().cpu().numpy()}")
         # else:
         # print(f"  Min SHAPE: {min_tensor.squeeze().cpu().numpy().shape}")
-        print("STUDY : Min min : ", min_tensor.min())
+        logger.debug("Min min : ", min_tensor.min())
         # print("Min max : ", min_tensor.max())
         # print(f"  Max SHAPE: {max_tensor.squeeze().cpu().numpy().shape}")
         # print("Max min : ", max_tensor.min())
-        print("STUDY : Max max : ", max_tensor.max())
+        logger.debug("Max max : ", max_tensor.max())
 
     layers_name = {}
     layers_name[intermediate_bounds_list[0]] = 0
 
-    print("STUDY : Preparing to create bounds...")
+    logger.debug("Preparing to create bounds...")
     print('Intermediate_bounds_list : ', intermediate_bounds_list )
     for k in range(1, K + 1):
         print(f"Adding layer for k = {k}, num_layer = {1 + (k - 1) * 2}")
         layers_name[intermediate_bounds_list[1 + (k - 1) * 2]] = k    ### !!!!  Before *3 because of the dropout layer  !!!!
-    print("STUDY : Layers name mapping : ", layers_name)
+    logger.debug("Layers name mapping : ", layers_name)
 
-    print("STUDY : Intermediate bounds list final values : ", intermediate_bounds_list[-1])
+    logger.debug("Intermediate bounds list final values : ", intermediate_bounds_list[-1])
     layers_name[intermediate_bounds_list[-1]] = K
 
     for layer_name, (min_tensor, max_tensor) in intermediate_bounds.items():
@@ -320,7 +323,7 @@ def compute_bounds_(self, method: str = "IBP"):
     Args:
         method (str): The method to compute the bounds (CROWN, IBP, Linear, etc.).
     """
-    print("STUDY : Computing bounds with norm: ", self.norm, " ...")
+    logger.debug("Computing bounds with norm: ", self.norm, " ...")
     start_compute_bd_time = time.time()
     if method == "IBP":
         self.compute_IBP()
@@ -347,9 +350,9 @@ def check_stability_neurons(
     """
     Check the stability of neurons in the network.
     """
-    print("STUDY : Checking stability of neurons ...")
-    print("STUDY : stable use_active_neurons: ", use_active_neurons)
-    print("STUDY : stable use_inactive_neurons: ", use_inactive_neurons)
+    logger.debug("Checking stability of neurons ...")
+    logger.debug("stable use_active_neurons: ", use_active_neurons)
+    logger.debug("stable use_inactive_neurons: ", use_inactive_neurons)
     self.stable_inactives_neurons = []
     self.stable_actives_neurons = []
     # Check if the neurons are stable
@@ -383,8 +386,8 @@ def check_stability_neurons(
         "STUDY : Nb Stable neurons : ",
         len(self.stable_active_neurons) + len(self.stable_inactive_neurons),
     )
-    print("STUDY : stable active neurons : ", self.stable_active_neurons)
-    print("STUDY : stable inactive neurons : ", self.stable_inactive_neurons)
+    logger.debug("stable active neurons : ", self.stable_active_neurons)
+    logger.debug("stable inactive neurons : ", self.stable_inactive_neurons)
 
 
 def prune_adversarial_targets(self):

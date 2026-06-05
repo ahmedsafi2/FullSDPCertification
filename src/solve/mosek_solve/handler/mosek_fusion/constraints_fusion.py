@@ -14,7 +14,7 @@ from ..constraints import CommonConstraints
 import os
 import sys
 import logging
-from tools import (
+from fastsdp_tools import (
     infinity,
     sort_lists_by_first,
     deduplicate_and_sum,

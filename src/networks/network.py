@@ -3,7 +3,7 @@ import torch
 import sys
 import os
 import yaml
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -13,7 +13,6 @@ class ReLUNN(nn.Module):
     def __init__(self, K, n, W=None, b=None, dropout_prob: float = 0, name="ReLUNN"):
 
         super(ReLUNN, self).__init__()
-        print("dropout prob debut : ", dropout_prob)
         self.name = name
         self.K = K
         self.W = W
@@ -41,7 +40,6 @@ class ReLUNN(nn.Module):
                 layer_relu = nn.ReLU(inplace=True)
                 layer_relu_name = f"Layer_{k}_ReLU"
                 self.layers[layer_relu_name] = layer_relu
-                print("Dropout prob : ", dropout_prob)
                 if dropout_prob > 0:
                     self.layers[f"Layer_{k}_Dropout"] = nn.Dropout(p=dropout_prob)
                 

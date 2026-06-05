@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import json
 
 
-from tools import (
+from fastsdp_tools import (
     get_project_path,
     create_folder,
     FullCertificationConfig,
@@ -34,7 +34,7 @@ from .run_benchmark import (
 from .get_variables import get_results, get_results_width_model
 
 
-from tools import change_to_zero_negative_values
+from fastsdp_tools import change_to_zero_negative_values
 
 
 logger_mosek = logging.getLogger("Mosek_logger")
@@ -186,7 +186,7 @@ class MosekSolver(Solver):
             "dataset": self.dataset_name,
             "data_index": self.data_index,
             "label": self.ytrue,
-            "label_predicted": self.network.label(self.x),
+            "label_predicted": self.network.label(self.x.to(next(self.network.parameters()).device)),
             "target": getattr(self, "ytarget", None),
             "epsilon": self.epsilon,
             "status": "pre-solve",
@@ -210,7 +210,7 @@ class MosekSolver(Solver):
         else:
             merged = row_df
         merged.to_csv(path, index=False)
-        print(f"STUDY : Pre-solve row written — Nb_constraints={nb_constraints}, Nb_variables={nb_variables}")
+        logger_mosek.debug(f"Pre-solve row written — Nb_constraints={nb_constraints}, Nb_variables={nb_variables}")
         self._write_model_size_csv(cuts, nb_variables)
 
     
@@ -252,14 +252,14 @@ class MosekSolver(Solver):
         else:
             merged = row_df
         merged.to_csv(path, index=False)
-        print(f"STUDY : taille_modele.csv updated — data_index={self.data_index}")
+        logger_mosek.debug(f"taille_modele.csv updated — data_index={self.data_index}")
 
     def run_optimization(self, cuts: Dict, verbose: bool = False):
         try:
             self.handler.is_robust = False
             if verbose : 
-                print("STUDY : RLT_prop in run_optimization: ", self.RLT_prop)
-                print("STUDY : Beginnning of run_optimization with cuts: ", cuts)
+                logger_mosek.debug("RLT_prop in run_optimization: %s", self.RLT_prop)
+                logger_mosek.debug("Beginnning of run_optimization with cuts: %s", cuts)
             # self.handler.renew_solver()
             start_pretreatment_time = time.time()
             if verbose : 
@@ -269,7 +269,7 @@ class MosekSolver(Solver):
                 print("Intializing ENV : DONE.")
             self.handler.print_solver_info(verbose)
             if verbose :
-                print("STUDY : Handler initialized.")
+                logger_mosek.debug("Handler initialized.")
             self.add_objective()
             # print(
             #     "Objective indexes matrices: ",
@@ -288,11 +288,11 @@ class MosekSolver(Solver):
             #     self.handler.Objective.list_values,
             # )
             if verbose : 
-                print("STUDY ; Objective created.")
+                logger_mosek.debug("; Objective created.")
             self.handler.initialize_variables()
             nb_variables = self.handler.print_num_variables()
             if verbose :
-                print("STUDY : Variables initialized.")
+                logger_mosek.debug("Variables initialized.")
                 print("Adding constraints to the task...")
             time_1 = time.time()
             self.adapt_number_RLT()
@@ -300,20 +300,20 @@ class MosekSolver(Solver):
             self.handler.Constraints.get_histogram_of_coefficients_name_constraint("ReLU Relaxed")
             self._write_presolve_row(cuts, nb_variables)
             if verbose:
-                print("STUDY : Constraints added.")
+                logger_mosek.debug("Constraints added.")
             if self.only_width_model:
-                print("STUDY : Only width model, getting results without optimization...")
+                logger_mosek.debug("Only width model, getting results without optimization...")
                 self.get_results(cuts, verbose)
                 return False
-            print("STUDY : not only width model, proceeding to optimization...")
+            logger_mosek.debug("not only width model, proceeding to optimization...")
             time_2 = time.time()
 
             # print(self.Constraints)
             
             self.handler.initialize_constraints()
             if verbose :
-                print("STUDY : Constraints initialized.")
-                print("STUDY: Number of constraints: ", len(self.handler.Constraints.list_cstr))
+                logger_mosek.debug("Constraints initialized.")
+                logger_mosek.debug("Number of constraints: %s", len(self.handler.Constraints.list_cstr))
             # # STATISTICS ON PARAMETER VALUES
             # (
             #     histogram_coeff,
@@ -376,10 +376,10 @@ class MosekSolver(Solver):
 
             self.handler.Objective.add_to_task()
             if verbose : 
-                print("STUDY : Objective added to the task.")
+                logger_mosek.debug("Objective added to the task.")
             self.handler.Constraints.add_to_task()
             if verbose :
-                print("STUDY : Constraints added to the task.")
+                logger_mosek.debug("Constraints added to the task.")
             if self.write_model_ptf : 
                 self.handler.write_model(
                     cuts,
@@ -389,7 +389,7 @@ class MosekSolver(Solver):
                 )
             self.handler.define_objective_sense()
             if verbose :
-                print("STUDY : Objective sense defined.")
+                logger_mosek.debug("Objective sense defined.")
 
             end_pretreatment_time = time.time()
             self.handler.time_pretreatment = (
@@ -415,7 +415,7 @@ class MosekSolver(Solver):
 
             results = self.get_results(cuts, verbose)
             time_results_end = time.time()
-            print("STUDY : Results obtained.")
+            logger_mosek.debug("Results obtained.")
             if verbose :
                 print(
                     "Time taken to get results: %s seconds",
@@ -438,11 +438,14 @@ class MosekSolver(Solver):
                 print("is robust in run_optimization: ", self.handler.is_robust)
             
         except Exception as e:
-            if verbose : 
+            if verbose :
                 print("ERROR : An error occurred during optimization:", str(e))
             logger_mosek.error("An error occurred during optimization: %s", str(e))
             self.handler.is_robust = False
-            self.get_results(cuts, verbose)
+            try:
+                self.get_results(cuts, verbose)
+            except Exception as e2:
+                logger_mosek.error("Could not retrieve results after exception: %s", str(e2))
         finally:
             self.handler.cleanup_mosek()
 
@@ -453,7 +456,7 @@ class MosekSolver(Solver):
         print("VERBOSE IN SOLVE : ", verbose)
         if self.is_trivially_solved or only_bounds:
             if verbose : 
-                print("STUDY : Trivially solved problem, no need to run optimization.")
+                logger_mosek.debug("Trivially solved problem, no need to run optimization.")
             self.get_results_trivially_solved()
             return True
         for cuts in self.cuts_to_test:
@@ -478,6 +481,8 @@ class MosekSolver(Solver):
                             break
                         else:
                             print("No robust solution found for ytarget:", ytarget)
+                    
+                    exit()
             else:
                 for RLT_prop in self.RLT_props:
                     if verbose :

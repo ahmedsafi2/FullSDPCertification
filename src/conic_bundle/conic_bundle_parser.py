@@ -3,8 +3,8 @@ import sys
 from pydantic import ValidationError
 import yaml
 
-from tools.yaml_config import FullCertificationConfig
-from tools.utils import get_project_path
+from fastsdp_tools.yaml_config import FullCertificationConfig
+from fastsdp_tools.utils import get_project_path
 from .constraint import LinearEquality, LinearInequality, QuadEquality, QuadInequality
 from .objective import Objective
 from networks import ReLUNN

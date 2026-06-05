@@ -1,4 +1,4 @@
-from tools import (
+from fastsdp_tools import (
     get_m_indexes_of_higher_values_in_list,
     get_project_path, 
     create_folder, 
@@ -360,6 +360,19 @@ def diagnose_infeasibility(self, gap_threshold: float = 0.01, max_constraints_fo
     n_rows, n_cols = len(rows), col_counter
     if n_cols == 0 or n_rows == 0:
         logger_mosek.warning("  Matrice des contraintes vide — impossible de calculer le rang.")
+        return
+
+    # Garde mémoire : matrice dense n_rows × n_cols peut dépasser plusieurs GB pour grandes matrices PSD.
+    # Seuil : 2 GB (float64 = 8 octets).
+    max_dense_elements = 250_000_000  # 2 GB
+    if n_rows * n_cols > max_dense_elements:
+        skip_msg = (
+            f"CALLBACK  Étape 2 ignorée : matrice {n_rows} × {n_cols} trop grande "
+            f"({n_rows * n_cols * 8 / 1e9:.1f} GB). Augmenter max_constraints_for_rank "
+            f"ou réduire la taille du problème pour activer l'analyse de rang."
+        )
+        logger_mosek.warning(skip_msg)
+        print(skip_msg)
         return
 
     A = np.zeros((n_rows, n_cols))

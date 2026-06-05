@@ -39,7 +39,7 @@ from conic_bundle.run_on_server.screen_utils import (
     executer_commande_dans_screen,
 )
 
-from tools import parse_string_list, parse_float_list
+from fastsdp_tools import parse_string_list, parse_float_list
 
 
 def se_connecter_ssh(hostname="cedric2-ro"):

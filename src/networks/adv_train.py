@@ -16,7 +16,7 @@ from adversarial_attacks import (
     LPAttack3Parallel,
     CrownIBP_Attack,
 )
-from tools import Adversarial_Network_Training, get_project_path
+from fastsdp_tools import Adversarial_Network_Training, get_project_path
 
 
 def evaluate_clean(model, testloader, device):

@@ -4,7 +4,7 @@ import mosek
 import logging
 import os
 
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 from solve.mosek_solve.run_benchmark import compute_cuts_str
 
 

@@ -24,7 +24,7 @@ from numba.typed import Dict
 
 logger_mosek = logging.getLogger("Mosek_logger")
 
-from tools import summing_values_two_dicts, change_to_zero_negative_values
+from fastsdp_tools import summing_values_two_dicts, change_to_zero_negative_values
 
 
 def get_only_one_variable_kwargs(index: int = 1, **kwargs):
@@ -493,7 +493,7 @@ class VariablesCall:
                     layer == k and neuron == j
                 ), f"ERROR in STUDY1: layer = {layer}, neuron = {neuron}, k = {k}, j = {j}"
         for num_matrix in range(self.indexes_matrices.nb_matrices):
-            print(f"STUDY in study_indexes_equivalent_neurons: num_matrix = {num_matrix}")
+            logger_mosek.debug(f"in study_indexes_equivalent_neurons: num_matrix = {num_matrix}")
             try:
                 for i in range(self.indexes_variables.max_index):
 
@@ -824,7 +824,7 @@ class VariablesCall:
 
             if groups_layer1 & groups_layer_next: # Produit présent, pas d'encadrement à faire
                 if layer_next - layer1 > 2:
-                    print(f"STUDY RELU : ", f"Product of z_{layer_next} and z_{layer1} is PRESENT in the variable matrices, adding product without bounding.")
+                    logger_mosek.debug(f"RELU : ", f"Product of z_{layer_next} and z_{layer1} is PRESENT in the variable matrices, adding product without bounding.")
                 decomposed1, front1 = self.verify_variable_z(layer1, neuron1, None)
                 dict_layer1 = self.equivalent_neurons.get_equivalent(layer1, neuron1, front1, decomposed1)
                 decomposed_next, front_next = self.verify_variable_z(layer_next, neuron_next, front_of_matrix_next)

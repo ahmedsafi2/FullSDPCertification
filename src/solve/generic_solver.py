@@ -1,8 +1,9 @@
+import logging
 from typing import List
 import torch
 import numpy as np
 import yaml
-from tools.yaml_config import FullCertificationConfig
+from fastsdp_tools.yaml_config import FullCertificationConfig
 from networks import ReLUNN
 from pydantic import ValidationError
 import datetime
@@ -17,7 +18,7 @@ from bounds import (
 from bounds_crown_claude import (
     compute_bounds_data_crown
 )
-from tools import (
+from fastsdp_tools import (
     add_functions_to_class,
     get_project_path,
     create_folder,
@@ -25,6 +26,8 @@ from tools import (
     round_list_depth_3,
     change_to_zero_negative_values,
 )
+
+logger = logging.getLogger(__name__)
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -53,7 +56,7 @@ class Solver:
         **kwargs,
     ):
         print(f"Initializing {self.__class__.__name__}...")
-        self.network = network.to(device)
+        self.network = network.cpu()  # MOSEK runs on CPU; keep network on CPU to match self.x
         self.K = network.K
         self.n = network.n
         # self.W = round_list_depth_3(network.W, decimal = 12)  ### remettre à 6 par defaut
@@ -69,11 +72,12 @@ class Solver:
         self.dataset = kwargs.get("dataset")
         self.epsilon = epsilon
         self.norm = kwargs.get("norm", "Linf")
-        print("STUDY : Norm used in Solver: ", self.norm)
-        self.x = x
+        logger.debug("Norm used in Solver: ", self.norm)
+        network_device = next(network.parameters()).device
+        self.x = x.to(network_device)
         
         self.ytrue = ytrue
-        print("STUDY ytrue = ", self.ytrue)
+        logger.debug("ytrue = ", self.ytrue)
 
         self.ytarget = kwargs.get("ytarget", None)
 
@@ -85,12 +89,12 @@ class Solver:
         else:
             self.ytargets = [j for j in range(self.n[self.K]) if j != self.ytrue]
 
-        print("STUDY ytargets : ", self.ytargets)
+        logger.debug("ytargets : ", self.ytargets)
         
         self.bounds_method = kwargs.get("bounds_method")
         self.keep_penultimate_actives = kwargs.get("keep_penultimate_actives", None)
         self.ultimate_layer_use_active_neurons = kwargs.get("ultimate_layer_use_active_neurons", self.K+1)
-        print("STUDY COEFF : self ultimate_layer_use_active_neurons : ", self.ultimate_layer_use_active_neurons)
+        logger.debug("COEFF : self ultimate_layer_use_active_neurons : ", self.ultimate_layer_use_active_neurons)
         print("Getting to compute bounds...")
      
         
@@ -154,9 +158,9 @@ class Solver:
         )
 
         
-        print("STUDY COEFF ACTIVES  after checking stable active neurons:", self.stable_actives_neurons)
+        logger.debug("COEFF ACTIVES  after checking stable active neurons:", self.stable_actives_neurons)
 
-        print("STUDY COEFF  after checking stable inactive neurons:", self.stable_inactives_neurons)
+        logger.debug("COEFF  after checking stable inactive neurons:", self.stable_inactives_neurons)
 
         # print('STUDY in generic solver: stable inactive neurons: ', self.stable_inactives_neurons)
         # print('STUDY in generic solver: stable active neurons: ', self.stable_actives_neurons)
@@ -193,10 +197,10 @@ class Solver:
         self.data_index = kwargs.get("data_index", 0)
         self.network_name = kwargs.get("network_name", "ReLUNN")
         self.dataset_name = kwargs.get("dataset_name")
-        print("STUDY : everything good in init")
+        logger.debug("everything good in init")
 
-        print("STUDY : n : ", self.n)
-        print("STUDY : K ⁼ ", self.K)
+        logger.debug("n : ", self.n)
+        logger.debug("K ⁼ ", self.K)
         with open("weights_nn.txt", "w") as f:
             f.write(f"K = {self.K}, n = {self.n}")
             for k in range(1, self.K + 1):
@@ -211,17 +215,17 @@ class Solver:
         for k in range(1, self.K + 1):
             for j in range(self.n[k]):
                 if self.U[k][j] <= 0:
-                    print(f"STUDY : Neuron {j} in layer {k} is stable inactive with U = {self.U[k][j]} and L = {self.L[k][j]}")
+                    logger.debug(f"Neuron {j} in layer {k} is stable inactive with U = {self.U[k][j]} and L = {self.L[k][j]}")
                 elif self.L[k][j] >= 0:
-                    print(f"STUDY : Neuron {j} in layer {k} is stable active with U = {self.U[k][j]} and L = {self.L[k][j]}")
+                    logger.debug(f"Neuron {j} in layer {k} is stable active with U = {self.U[k][j]} and L = {self.L[k][j]}")
                 else:
-                    print(f"STUDY : Neuron {j} in layer {k} is unstable with U = {self.U[k][j]} and L = {self.L[k][j]}")
+                    logger.debug(f"Neuron {j} in layer {k} is unstable with U = {self.U[k][j]} and L = {self.L[k][j]}")
 
 
         #self.ytargets = [0,1]
 
         self.is_trivially_solved = self.ytargets == []
-        print("STUDY: is trivially solved: ", self.is_trivially_solved)
+        logger.debug("is trivially solved: ", self.is_trivially_solved)
 
     @staticmethod
     def parse_yaml(yaml_file):

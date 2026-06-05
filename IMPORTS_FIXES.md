@@ -13,7 +13,7 @@ from auto_LiRPA.perturbations import PerturbationLpNorm
 import time
 
 from networks import network  # ❌ ERREUR: 'network' n'existe pas
-from tools import round_list_depth_2, change_to_zero_negative_values
+from fastsdp_tools import round_list_depth_2, change_to_zero_negative_values
 ```
 
 **APRÈS**:
@@ -24,7 +24,7 @@ from auto_LiRPA import BoundedModule, BoundedTensor
 from auto_LiRPA.perturbations import PerturbationLpNorm
 import time
 
-from tools import round_list_depth_2, change_to_zero_negative_values
+from fastsdp_tools import round_list_depth_2, change_to_zero_negative_values
 ```
 
 **Raison**: 
@@ -43,7 +43,7 @@ import torch
 import sys
 import os
 import yaml
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 
 import data  # ❌ Import non utilisé
 
@@ -57,7 +57,7 @@ import torch
 import sys
 import os
 import yaml
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ```
@@ -77,7 +77,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import networks        # Import générique (tout le module)
 import data            # Import générique (tout le module)
 
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 ```
 
 **APRÈS**:
@@ -86,7 +86,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from networks import ReLUNN        # ✅ Import explicite
 from data import load_dataset      # ✅ Import explicite
 
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 ```
 
 **Avantages**:
@@ -127,7 +127,7 @@ certification_problem.py
 **Après les corrections** ✅:
 ```
 bounds.py
-├── from tools import ...
+├── from fastsdp_tools import ...
 └── [OK - pas d'import circulaire]
 
 certification_problem.py

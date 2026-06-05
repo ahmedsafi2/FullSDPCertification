@@ -6,7 +6,7 @@ import os
 import pandas as pd
 from typing import List
 
-from tools import get_project_path, create_folder, add_row_from_dict
+from fastsdp_tools import get_project_path, create_folder, add_row_from_dict
 from .run_benchmark import (
     compute_cuts_str,
     all_possible_cuts,
@@ -17,9 +17,21 @@ from .run_benchmark import (
 logger_mosek = logging.getLogger("Mosek_logger")
 
 
+def _append_row_to_results_csv(self, dic_benchmark: dict):
+    """Write one result row to results.csv immediately (without waiting for the full sample loop)."""
+    path = get_project_path(f"{self.folder_name}/results.csv")
+    row_df = pd.DataFrame(dic_benchmark, index=[0])
+    if os.path.exists(path):
+        existing = pd.read_csv(path)
+        existing = existing[existing.get("status", pd.Series(dtype=str)) != "pre-solve"]
+        merged = pd.concat([existing, row_df], ignore_index=True)
+    else:
+        merged = row_df
+    merged.to_csv(path, index=False)
+
 
 def get_results_width_model(self, cuts: List, verbose: bool = False):  
-    print("STUDY : Recuperation of optimization results for width model...") 
+    logger_mosek.debug("Recuperation of optimization results for width model...")
     nb_constraints = len(self.handler.Constraints.list_cstr)
     nb_variables = self.handler.print_num_variables()
     dic_benchmark = {
@@ -28,7 +40,7 @@ def get_results_width_model(self, cuts: List, verbose: bool = False):
         "dataset": self.dataset_name,
         "data_index": self.data_index,
         "label": self.ytrue,
-        "label_predicted": self.network.label(self.x),
+        "label_predicted": self.network.label(self.x.to(next(self.network.parameters()).device)),
         "target": self.ytarget if "Lan" in self.__class__.__name__ else None,
         "epsilon": self.epsilon,
         "MATRIX_BY_LAYERS": str(self.MATRIX_BY_LAYERS),
@@ -49,7 +61,7 @@ def get_results_width_model(self, cuts: List, verbose: bool = False):
         self.benchmark_dataframe = add_row_from_dict(
             self.benchmark_dataframe, dic_benchmark
         )
-    print("STUDY at the end of get_results_width_model: benchmark_dataframe   : ", self.benchmark_dataframe)
+    logger_mosek.debug("at the end of get_results_width_model: benchmark_dataframe   : ", self.benchmark_dataframe)
 
 
 def get_results(self, cuts: List, verbose: bool = False):
@@ -59,7 +71,7 @@ def get_results(self, cuts: List, verbose: bool = False):
     logger_mosek.info("Recuperation of optimization results...")
     logger_mosek.info("Verbose in get_results : %s", verbose)
     if self.only_width_model:
-        print("STUDY : Only width model, getting width model results...")
+        logger_mosek.debug("Only width model, getting width model results...")
         self.get_results_width_model(cuts, verbose)
         return
     status = self.handler.get_solution_status()
@@ -74,7 +86,7 @@ def get_results(self, cuts: List, verbose: bool = False):
         "dataset": self.dataset_name,
         "data_index": self.data_index,
         "label": self.ytrue,
-        "label_predicted": self.network.label(self.x),
+        "label_predicted": self.network.label(self.x.to(next(self.network.parameters()).device)),
         "target": self.ytarget if "Lan" in self.__class__.__name__ else None,
         "epsilon": self.epsilon,
         "status": status,
@@ -148,11 +160,12 @@ def get_results(self, cuts: List, verbose: bool = False):
 
     print("dic benchmark keys : ", dic_benchmark)
     if self.benchmark_dataframe is None:
-        print("STUDY : self.benchmark is None ")
+        logger_mosek.debug("self.benchmark is None ")
         self.benchmark_dataframe = pd.DataFrame(dic_benchmark, index=[0])
     else:
-        print("STUDY : self.benchmark is not None ", self.benchmark_dataframe)
+        logger_mosek.debug("self.benchmark is not None")
         self.benchmark_dataframe = add_row_from_dict(
             self.benchmark_dataframe, dic_benchmark
         )
     print("benchmark_dataframe   : ", self.benchmark_dataframe)
+    _append_row_to_results_csv(self, dic_benchmark)

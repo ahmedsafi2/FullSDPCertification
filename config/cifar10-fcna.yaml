@@ -4,6 +4,9 @@ data :
   num_classes : 10
   num_samples : 100
 
+divide_run : 1
+
+
 input_ball :
   epsilon : 0.03137  
   norm : "Linf" 
@@ -53,82 +56,58 @@ models :
   #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
   #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
 
-  # SDPt
-  - certification_model_name : "LanSDP"
+  # # SDPt
+  # - certification_model_name : "LanSDP"
+  #   cuts : 
+  #   - "RLT"
+  #   - "triangularization"
+  #   RLT_props : 
+  #   # - 0.
+  #   # - 0.1
+  #   # - 0.005
+  #   - 0.1
+  #   #- 0.2
+  #   # - 0.3
+  #   # - 0.1
+  #   # - 0.15
+  #   all_combinations_cuts : false
+  #   MATRIX_BY_LAYERS: true
+  #   LAST_LAYER: false
+  #   use_fusion: false  # Whether to use the fusion API for MOSEK
+  #   use_callback : false # Whether to use the callback for MOSEK
+  #   use_active_neurons: true # Whether to use active neurons in the certification problem as variables
+  #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
+  #   keep_penultimate_actives : true
+  #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
+
+
+
+
+  - certification_model_name : "MdSDP"
+    write_model: true
     cuts : 
     - "RLT"
     - "triangularization"
+    - "McCormick_beta_z"
+    - "beta_logits_comparaison"
+    - "beta_logits_comparaison_big_M"
+    - "sum_beta_logits_equal_logit"
     RLT_props : 
-    # - 0.
-    # - 0.1
-    # - 0.005
-    - 0.1
-    #- 0.2
-    # - 0.3
-    # - 0.1
-    # - 0.15
+    - 1.
     all_combinations_cuts : false
+    INPUT_IN_VARIABLES : true
     MATRIX_BY_LAYERS: true
+    # - [0,1]
+    # - [1,2,3]
+    # - [3,4,5,6]
     LAST_LAYER: false
     use_fusion: false  # Whether to use the fusion API for MOSEK
     use_callback : false # Whether to use the callback for MOSEK
-    use_active_neurons: true # Whether to use active neurons in the certification problem as variables
+    use_active_neurons: false # Whether to use active neurons in the certification problem as variables
+    #ultimate_layer_use_active_neurons: 5 # Whether to use active neurons in the ultimate layer in the certification problem as variables
     use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
-    keep_penultimate_actives : true
-    bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
-
-
-
-  # - certification_model_name : "MdSDP"
-  #   cuts : 
-  #   - "RLT"
-  #   - "triangularization"
-  #   - "Tij"
-  #   - "beta_logits_comparaison_1"
-  #   - "beta_logits_comparaison_2"
-  #   - "McC_betaz_logits"
-  #   - "Tij_before_penultimate_layer"
-  #   RLT_props :
-  #   - 1.
-  #   all_combinations_cuts : false
-  #   MATRIX_BY_LAYERS: true
-  #   LAST_LAYER: false
-  #   use_fusion: false  # Whether to use the fusion API for MOSEK
-  #   use_callback : false # Whether to use the callback for MOSEK
-  #   use_active_neurons: false # Whether to use active neurons in the certification problem as variables
-  #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
-  #   keep_penultimate_actives : true # Whether to keep the penultimate layer active neurons in the certification problem
-  #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
-
-
-
-  # - certification_model_name : "MdSDP"
-  #   cuts : 
-  #   - "RLT"
-  #   - "triangularization"
-  #   - "Tij"
-  #   - "beta_logits_comparaison_1"
-  #   - "beta_logits_comparaison_2"
-  #   - "McC_betaz_logits"
-  #   - "Tij_before_penultimate_layer"
-  #   RLT_props : 
-  #   - 0.1
-  #   all_combinations_cuts : false
-  #   MATRIX_BY_LAYERS: true
-  #   LAST_LAYER: false
-  #   use_fusion: false  # Whether to use the fusion API for MOSEK
-  #   use_callback : false # Whether to use the callback for MOSEK
-  #   use_active_neurons: true # Whether to use active neurons in the certification problem as variables
-  #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
-  #   keep_penultimate_actives : true # Whether to keep the penultimate layer active neurons in the certification problem
-  #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
-  #   alpha_1: 0.5
-  #   alpha_2: 0.5
-
-
-  # - certification_model_name : "ClassicLP"
-  #   LAST_LAYER: false
-  #   use_active_neurons: true # Whether to use active neurons in the certification problem as variables
-  #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
-  #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
+    keep_penultimate_actives : true # Whether to keep the penultimate layer active neurons in the certification problem
+    # bounds_file: "data/bounds/9x100-0.026_linf.csv"  # Folder where precomputed bounds are stored
+    bounds_method: "alpha-CROWN"   #"alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
+    solver_time_limit : 21600 # Time limit for MOSEK in seconds, set to None for no limit
 

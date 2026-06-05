@@ -36,14 +36,14 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))  # ❌ Modifie sys.path
 from conic_bundle import ConicBundleParser
 from networks import ReLUNN
-from tools.utils import ...
+from fastsdp_tools.utils import ...
 ```
 
 **APRÈS**:
 ```python
 from conic_bundle import ConicBundleParser  # ✅ Import direct
 from networks import ReLUNN
-from tools.utils import ...
+from fastsdp_tools.utils import ...
 ```
 
 **Pourquoi ça fonctionne**: Les imports fonctionnent correctement car:
@@ -66,7 +66,7 @@ certification_problem.py
    
 conic_bundle/constraint.py
    Ligne 5: sys.path.append(...)
-   Ligne 6: from tools.utils import ...   ← Dépend du sys.path modifié
+   Ligne 6: from fastsdp_tools.utils import ...   ← Dépend du sys.path modifié
 
 conic_bundle/models/Lan.py
    Ligne 18: sys.path.append(...)

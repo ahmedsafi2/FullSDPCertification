@@ -16,7 +16,7 @@ import time
 
 
 from mosek.fusion import Model, Expr, Matrix, ObjectiveSense
-from tools import sort_lists_by_first
+from fastsdp_tools import sort_lists_by_first
 
 
 logger_mosek = logging.getLogger("Mosek_logger")

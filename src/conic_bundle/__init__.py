@@ -1,7 +1,7 @@
 from .conic_bundle_parser import ConicBundleParser
 from .models import LanParser, MdParser, MzbarParser
 import logging
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 
 
 logger_cb = logging.getLogger("Conic_bundle_logger")

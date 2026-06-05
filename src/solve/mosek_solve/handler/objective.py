@@ -11,7 +11,7 @@ from .indexes_variables import (
 )
 from .variables_call import VariablesCall
 from .variable_elements import ElementsinConstraintsObjectives
-from tools import deduplicate_and_sum
+from fastsdp_tools import deduplicate_and_sum
 
 
 import logging

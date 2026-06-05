@@ -24,7 +24,7 @@ import data
 
 Suivi par ligne 26:
 ```python
-from tools import get_project_path
+from fastsdp_tools import get_project_path
 ```
 
 **Usage**:
@@ -105,7 +105,7 @@ from auto_LiRPA.perturbations import PerturbationLpNorm
 import time
 
 from networks import network  # ❌ ERREUR
-from tools import round_list_depth_2, change_to_zero_negative_values
+from fastsdp_tools import round_list_depth_2, change_to_zero_negative_values
 ```
 
 **APRÈS**:
@@ -116,7 +116,7 @@ from auto_LiRPA import BoundedModule, BoundedTensor
 from auto_LiRPA.perturbations import PerturbationLpNorm
 import time
 
-from tools import round_list_depth_2, change_to_zero_negative_values
+from fastsdp_tools import round_list_depth_2, change_to_zero_negative_values
 ```
 
 **Raison**: `network` n'est pas exporté par `networks/__init__.py` et n'est jamais utilisé dans `bounds.py`.

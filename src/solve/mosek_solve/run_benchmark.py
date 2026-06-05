@@ -6,9 +6,9 @@ from itertools import combinations
 import pandas as pd
 import os
 import numpy as np
-from tools import get_m_indexes_of_higher_values_in_list
+from fastsdp_tools import get_m_indexes_of_higher_values_in_list
 
-from tools import (
+from fastsdp_tools import (
     get_project_path,
     create_folder,
     remove_values_of_list_from_list,
@@ -77,12 +77,12 @@ def compute_number_RLT(self) -> int:
     for layer in range(1, self.K+1 if self.LAST_LAYER else self.K):
         for neuron_next in range(self.n[layer]):
             if (layer, neuron_next) in self.stable_inactives_neurons:
-                print("RLT : neuron_next", neuron_next, "is stable, skipping")
+                
                 continue
             if (layer, neuron_next) in self.stable_actives_neurons and (
                 not self.keep_penultimate_actives or layer != self.K - 1
             ):
-                print("RLT : neuron_next", neuron_next, "is stable active, skipping")
+                
                 continue
             nb_cstr = int(self.RLT_prop * self.n[layer - 1])
             indexes_pruned = [
@@ -97,16 +97,16 @@ def compute_number_RLT(self) -> int:
             nb_RLT += len(neurons_with_great_weights)
     return nb_RLT
 
-def adapt_number_RLT(self, max_nb_RLT : int = 5e4):
+def adapt_number_RLT(self, max_nb_RLT : int = 5e5):
     
     if "RLT" not in self.cuts:
-        print('STUDY RLT : RLT not activated, skipping adaptation of number of RLT constraints.')
+        logger_mosek.debug("RLT not activated, skipping adaptation of number of RLT constraints.")
         return
     nb_RLT = self.compute_number_RLT()
-    print("STUDY RLT : Current number of RLT constraints to be added :", nb_RLT)
+    logger_mosek.debug(f"RLT : Current number of RLT constraints to be added : {nb_RLT}")
     if nb_RLT > max_nb_RLT:
         new_RLT_prop = round(self.RLT_prop * max_nb_RLT / nb_RLT, 2)
-        print(f"STUDY RLT: Adapt number of RLT constraints from {self.RLT_prop} to {new_RLT_prop}")
+        logger_mosek.debug(f"RLT: Adapt number of RLT constraints from {self.RLT_prop} to {new_RLT_prop}")
         self.RLT_prop = new_RLT_prop
 
 

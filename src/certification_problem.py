@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import yaml
 import sys
@@ -9,7 +10,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from solve.generic_solver import Solver
 from solve import LayersValues
 import solve
-from tools import FullCertificationConfig
+from fastsdp_tools import FullCertificationConfig
 from pydantic import BaseModel
 import pandas as pd
 import datetime
@@ -18,8 +19,8 @@ import argparse
 import multiprocessing as mp
 from adversarial_attacks import PGDAttack
  
-from tools import create_folder_benchmark, get_project_path
-from tools.resume_utils import find_run_yaml, find_processed_indices, load_existing_results, log_run_history
+from fastsdp_tools import create_folder_benchmark, get_project_path
+from fastsdp_tools.resume_utils import find_run_yaml, find_processed_indices, load_existing_results, log_run_history
 from solve.mosek_solve import concat_dataframes_with_missing_columns
 
 
@@ -27,7 +28,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from networks import ReLUNN
 from data import load_dataset
 
-from tools import get_project_path
+from fastsdp_tools import get_project_path
+
+logger = logging.getLogger(__name__)
 
 device_ = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -67,6 +70,8 @@ class Certification_Problem:
         if not os.path.exists(get_project_path(f"results/benchmark/{self.title}")):
             os.makedirs(get_project_path(f"results/benchmark/{self.title}"))
 
+        self.benchmark = None
+
         print("Certification Problem initialized !")
 
     @classmethod
@@ -96,7 +101,7 @@ class Certification_Problem:
             print(f"Epsilon: {epsilon}, Norm: {norm}")
 
         path_network = config["network"]["path"]
-        print("STUDY : path network : ", path_network)
+        logger.debug("path network : ", path_network)
         network = ReLUNN.from_pth(get_project_path(path_network), bb_beta_crown=False)
 
         if network is not None:
@@ -193,11 +198,11 @@ class Certification_Problem:
             )
             # print("Network device : ", self.network.device)
             print("x device : ", x.device)
-            x = x.to(device_)
+            x = x.to(next(self.network.parameters()).device)
             #torch.save(x, f"tensor_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pt")
             print("x device : ", x.device)
             y_pred =self.network.label(x)
-            print("STUDY : ytrue:", ytrue)
+            logger.debug("ytrue:", ytrue)
 
             if y_pred != ytrue.item() :
                 print(
@@ -215,12 +220,10 @@ class Certification_Problem:
                 solver_config.L = L
                 solver_config.U = U
                 print("Bounds loaded from file : ", solver_config.bounds_file)
-                print("L : ", solver_config.L)
-                print("U : ", solver_config.U)
 
             dict_infos = dict(solver_config)
             dict_infos.pop("certification_model_name")
-            print("STUDY dict_infos:", dict_infos)
+            logger.debug("dict_infos:", dict_infos)
    
             # model_bounds = solve.LPBoundLayer(
             #     network=self.network,
@@ -258,14 +261,14 @@ class Certification_Problem:
                     folder_name=f"results/benchmark/{self.title}/{title_run}",
                     **dict_infos,
                 )
-                print("STUDY : Model instance created")
+                logger.debug("Model instance created")
                 nb_actives = len(model_instance.stable_actives_neurons)
                 nb_inactives = len(model_instance.stable_inactives_neurons)
                 nb_targets = len(model_instance.ytargets)
-                print("STUDY : number of targets : ", nb_targets)
+                logger.debug("number of targets : ", nb_targets)
             except Exception as e:
                 import traceback
-                print("STUDY ERROR : Error while creating model instance:", e)
+                logger.debug("ERROR : Error while creating model instance:", e)
                 traceback.print_exc()
                 nb_actives = -1
                 nb_inactives = -1
@@ -275,12 +278,12 @@ class Certification_Problem:
             output_bounds_U = model_instance.U[self.network.K]
             output_bounds_L = model_instance.L[self.network.K]
 
-            print("STUDY : output_bounds_U:", output_bounds_U)
-            print("STUDY : output_bounds_L:", output_bounds_L)
+            logger.debug("output_bounds_U:", output_bounds_U)
+            logger.debug("output_bounds_L:", output_bounds_L)
 
-            model_instance.solve(verbose=False, only_bounds=False)
-            print("STUDY : Model instance solved")
-            print("STUDY : model_instance.benchmark_dataframe :", model_instance.benchmark_dataframe)
+            model_instance.solve(verbose=True, only_bounds=False)
+            logger.debug("Model instance solved")
+            logger.debug("model_instance.benchmark_dataframe :", model_instance.benchmark_dataframe)
             
             # for k in range(1, self.network.K + 1):
             #     if k not in coefficient_values:

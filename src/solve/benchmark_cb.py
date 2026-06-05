@@ -3,7 +3,7 @@ import pandas as pd
 from pandas.api.types import CategoricalDtype
 from typing import List
 
-from tools import add_row_from_dict, get_project_path
+from fastsdp_tools import add_row_from_dict, get_project_path
 
 
 def extract_log_values(log_file_path):

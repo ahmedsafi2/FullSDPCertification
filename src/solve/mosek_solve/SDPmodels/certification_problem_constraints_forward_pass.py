@@ -1,5 +1,5 @@
 import mosek
-from tools import infinity
+from fastsdp_tools import infinity
 import logging
 import random
 
@@ -331,7 +331,7 @@ def last_layer_linear_equality(self):
     """
     assert self.LAST_LAYER
     for class_label in list(set([self.ytrue]).union(self.ytargets)):
-        print("STUDY : adding last layer linear equality for class ", class_label)
+        logger_mosek.debug("adding last layer linear equality for class ", class_label)
         if self.handler.Constraints.new_constraint(
             f"Last layer linear equality: z_{{{self.K},{class_label}}} = W_K z_{{K-1}} + b_K",
             label="same_for_data",

@@ -3,7 +3,7 @@ import sys
 import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from tools.utils import check_condition_decorator
+from fastsdp_tools.utils import check_condition_decorator
 
 
 class Constraint(Indexes_Variables_for_Conic_Bundle_Parser):

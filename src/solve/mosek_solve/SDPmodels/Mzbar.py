@@ -6,7 +6,7 @@ import sys
 import logging
 from typing import List
 
-from tools.utils import infinity, add_functions_to_class
+from fastsdp_tools.utils import infinity, add_functions_to_class
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
@@ -90,9 +90,9 @@ class MzbarSDP(MosekSolver):
         Add constraints to the task.
         """
         # RELU
-        print("STUDY : Adding ReLU constraints...")
+        logger_mosek.debug("Adding ReLU constraints...")
         self.ReLU_constraint_Lan()
-        print("STUDY : ReLU constraints added.")
+        logger_mosek.debug("ReLU constraints added.")
 
         if "triangularization" in cuts:
             self.ReLU_triangularization()

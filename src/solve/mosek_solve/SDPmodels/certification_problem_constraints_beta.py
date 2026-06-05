@@ -1,5 +1,5 @@
 import mosek
-from tools import infinity
+from fastsdp_tools import infinity
 
 
 # *********************************************BETAS ***************************************************************

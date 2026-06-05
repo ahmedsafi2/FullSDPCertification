@@ -28,8 +28,8 @@ for p in (SRC_PATH, PROJECT_ROOT):
 import solve
 from networks.network import ReLUNN
 from data import load_dataset
-from tools.yaml_config import FullCertificationConfig
-from tools.utils import get_project_path
+from fastsdp_tools.yaml_config import FullCertificationConfig
+from fastsdp_tools.utils import get_project_path
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 YAML_PATH = os.path.join(PROJECT_ROOT, "config", "blob_4x10.yaml")

@@ -19,7 +19,7 @@ sys.path.append(os.path.dirname(current_dir))
 
 
 from conic_bundle import ConicBundleParser
-from tools.utils import add_functions_to_class
+from fastsdp_tools.utils import add_functions_to_class
 
 
 @add_functions_to_class(

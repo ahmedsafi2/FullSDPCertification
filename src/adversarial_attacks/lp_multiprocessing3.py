@@ -11,7 +11,7 @@ import time
 from solve import ClassicLP
 from networks import ReLUNN
 from bounds import compute_bounds_data
-from tools import round_list_depth_2, round_list_depth_3
+from fastsdp_tools import round_list_depth_2, round_list_depth_3
 import sys
 
 
