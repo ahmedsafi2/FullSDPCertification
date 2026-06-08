@@ -24,7 +24,7 @@ if SRC_PATH not in sys.path:
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from solve.mosek_solve.handler.variable_elements import (
+from solve.sdp_solve.handler.variable_elements import (
     _get_layer_neuron_from_key_,
     _get_linear_indices_from_key,
     _get_quad_indices_from_key,
@@ -32,7 +32,7 @@ from solve.mosek_solve.handler.variable_elements import (
     Equivalent_Neurons_Index,
     Equivalent_Betas_Index,
 )
-from solve.mosek_solve.handler.variables_call import VariablesCall
+from solve.sdp_solve.handler.variables_call import VariablesCall
 
 
 def _dump_equivalent_neurons(eq: Equivalent_Neurons_Index, tag: str = ""):

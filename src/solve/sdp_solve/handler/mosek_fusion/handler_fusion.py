@@ -1,3 +1,4 @@
+from tabnanny import verbose
 import numpy as np
 from typing import List, Dict
 import sys
@@ -7,19 +8,18 @@ import logging
 import time
 
 from ..indexes import Indexes_Mosek_Solver
-from .objective_classic import ObjectiveClassic
-from .constraints_classic import ConstraintsClassic
-from .results_classic import (
-    add_all_infos_optimal_values_to_dic,
+
+from .objective_fusion import ObjectiveFusion
+from .constraints_fusion import ConstraintsFusion
+from .callback_fusion import makeUserCallback
+
+from .results_fusion import (
     is_status_optimal,
     is_status_infeasible,
     is_status_unknown,
-    reconstruct_matrix,
+    add_all_infos_optimal_values_to_dic,
+    save_beta_values_fusion,
 )
-from .callback_classic import makeUserCallback
-
-from solve.mosek_solve.run_benchmark import compute_cuts_str
-
 from ..common_handler_functions import (
     print_index_variables_matrices,
     num_matrices_variables,
@@ -33,30 +33,46 @@ from ..common_handler_functions import (
     save_beta_values,
     diagnose_infeasibility,
 )
+from solve.sdp_solve.run_benchmark import compute_cuts_str
+from fastsdp_tools import get_project_path
 
-from fastsdp_tools.utils import count_calls, add_functions_to_class, get_project_path
+
+from mosek.fusion import Model, Domain
+
+
+from fastsdp_tools.utils import count_calls, add_functions_to_class
 
 logger_mosek = logging.getLogger("Mosek_logger")
 
 
+class LoggerWriter:
+    def write(self, msg):
+        msg = msg.rstrip("\n")
+        if msg:
+            logger_mosek.debug(msg)
+
+    def flush(self):
+        pass
+
+
 @add_functions_to_class(
     initialize_variables,
-    reconstruct_matrix,
     save_matrix_csv,
     save_matrix_png,
-    add_all_infos_optimal_values_to_dic,
     get_matrices_variables,
     is_status_optimal,
     is_status_infeasible,
     is_status_unknown,
+    add_all_infos_optimal_values_to_dic,
     compute_solutions,
     save_beta_values,
+    save_beta_values_fusion,
     diagnose_infeasibility,
     print_index_variables_matrices,
     num_matrices_variables,
     print_num_variables,
 )
-class MosekClassicHandler:
+class MosekFusionHandler:
     """
     Class to handle the constraints for the MOSEK solver.
     """
@@ -86,31 +102,27 @@ class MosekClassicHandler:
         LAST_LAYER: bool
             Whether the last layer is included in the matrix of the z variables or not.
         """
-        print("Initializing MosekClassicHandler")
+        print("Initializing MosekFusionHandler")
         self.MATRIX_BY_LAYERS = kwargs.get("MATRIX_BY_LAYERS", False)
-
         self.LAST_LAYER = kwargs.get("LAST_LAYER", False)
         self.BETAS = kwargs.get("BETAS", False)
         self.BETAS_Z = kwargs.get("BETAS_Z", False)
         self.ZBAR = kwargs.get("ZBAR", False)
-        self.stable_inactives_neurons = kwargs.get("stable_inactives_neurons", None)
-        self.stable_active_neurons = kwargs.get("stable_active_neurons", None)
 
         self.n = kwargs.get("n", None)
         self.K = kwargs.get("K", None)
 
         self.folder_name = kwargs.pop("folder_name", None)
-        print("\n \n folder name dans handler: ", self.folder_name)
         self.name = kwargs.pop("name", None)
-
-        self.epsilon = kwargs.pop("epsilon", None)
-        self.solver_time_limit = kwargs.pop("solver_time_limit", None)
-        self.rescode = None
 
         self.ytrue = kwargs.get("ytrue", None)
         self.ytarget = kwargs.get("ytarget", None)
+        print('TEST TARGET IN HANDLER : ', self.ytarget)
 
+        self.epsilon = kwargs.pop("epsilon", None)
 
+        self.stable_inactives_neurons = kwargs.get("stable_inactives_neurons", None)
+        self.stable_actives_neurons = kwargs.get("stable_actives_neurons", None)
 
         self.indexes_matrices = Indexes_Mosek_Solver(**kwargs)
         self.indexes_variables = self.indexes_matrices  # même objet fusionné
@@ -120,46 +132,35 @@ class MosekClassicHandler:
         # )
         # self.print_index_variables_matrices()
 
-        self.vector_variables = []
         self.final_number_constraints = None
 
-        self.Objective = ObjectiveClassic(
+        self.Objective = ObjectiveFusion(
             self.indexes_matrices, self.indexes_variables, **kwargs
         )
-        self.Constraints = ConstraintsClassic(
+        self.Constraints = ConstraintsFusion(
             self.indexes_matrices,
             self.indexes_variables,
             **kwargs,
         )
 
-    def initiate_env(self, verbose: bool = False):
+        self.vector_variables = []
+
+    def initiate_env(self, verbose : bool = False):
         """
-        Initialize the task and env of MOSEK solver.
-        Add log stream to the task."
+        Initialize the model of MOSEK solver.
         """
         logger_mosek.info("Initializing MOSEK solver")
         self.verbose = verbose
-        if self.verbose:
-            print("Initializing MOSEK solver")
-        self.env = mosek.Env()
-        self.task = self.env.Task(0, 0)
-        self.env.__enter__()  # Équivalent à entrer dans le bloc "with"
-        self.task.__enter__()  # Équivalent à entrer dans le bloc "with"
-        if self.verbose:
-            print("Adding callback to the task")
-
-        usercallback = makeUserCallback(maxtime=20000, task=self.task)
-        self.task.set_InfoCallback(usercallback)
-
-        self.adjust_solver_parameters()
+        self.model = Model(self.name)
+        self.model.__enter__()
 
         self.indexes_matrices.current_matrices_variables = []
         self.vector_variables = []
-        self.Objective.add_task(self.task)
-        self.Objective.reinitialize(verbose)
-        self.Constraints.add_task(self.task)
         self.Constraints.reinitialize(verbose)
-        return self  # Pour permettre le chaînage des méthodes
+        self.Constraints.add_model(self.model)
+        self.Objective.reinitialize(verbose)
+        self.Objective.add_model(self.model)
+        return self
 
     def adjust_solver_parameters(self, **parameters):
         """
@@ -169,70 +170,67 @@ class MosekClassicHandler:
         parameters: dict
             The parameters to adjust.
         """
-        print("Adjusting MOSEK solver parameters")
-        
+
         # ===== TOLÉRANCES STRICTES pour réduire le gap primal-dual =====
-        # Réduire le gap relatif entre primal et dual
-        self.task.putdouparam(mosek.dparam.intpnt_tol_rel_gap, 1e-3)  # 1e-6 → 1e-8 : plus strict
+        # Réduire le gap relatif entre primal et dual (était 1e-3, c'est trop lâche !)
+        self.model.setSolverParam("intpntTolRelGap", 1e-8)  # 1e-3 → 1e-8
         
         # Faisabilité primale et duale plus stricte
-        self.task.putdouparam(mosek.dparam.intpnt_tol_pfeas, 1e-3)    # Gap primal plus petit
-        self.task.putdouparam(mosek.dparam.intpnt_tol_dfeas, 1e-3)    # Gap dual plus petit
-        
-        # ===== AUGMENTER LES ITÉRATIONS =====
-        # Par défaut ~300, vous pouvez l'augmenter pour forcer la convergence
-        self.task.putintparam(mosek.iparam.intpnt_max_iterations, 400)
-        
-        # ===== SCALING (pour les problèmes mal conditionnés) =====
-        # Aide à réduire les problèmes numériques
-        # self.task.putintparam(mosek.iparam.intpnt_scaling, mosek.scalingtype.free)
-        
+        self.model.setSolverParam("intpntTolPfeas", 1e-8)   # 1e-3 → 1e-8
+        self.model.setSolverParam("intpntTolDfeas", 1e-8)   # 1e-3 → 1e-8
+
+        # ===== TEMPS MAX =====
+        # Limiter le temps de calcul à 3600 secondes (1h)
+        self.model.setSolverParam("optimizerMaxTime", 3600.0)
+
+        # ===== ITÉRATIONS MAX =====
+        # Augmenter le nombre d'itérations pour convergence forcée
+        self.model.setSolverParam("intpntMaxIterations", 300)
+
         # ===== THREADS =====
-        num_threads = int(os.environ.get("SLURM_CPUS_PER_TASK", 4))
-        self.task.putintparam(mosek.iparam.num_threads, num_threads)
+        # Nombre de threads (augmenter si vous avez CPU disponible)
+        self.model.setSolverParam("numThreads", 4)
 
-        # ===== TIME LIMIT =====
-        if self.solver_time_limit is not None:
-            self.task.putdouparam(mosek.dparam.optimizer_max_time, float(self.solver_time_limit))
-            print(f"MOSEK time limit set to {self.solver_time_limit}s")
-
+        # ===== AUTRES PARAMÈTRES =====
+        # Write solutions of the optimization problem
+        self.model.setSolverParam("ptfWriteSolutions", "on")
+        
         # ===== OPTIONS OPTIONNELLES COMMENTÉES =====
-        # Décommenter si vous avez des problèmes numériques :      
-        # self.task.putintparam(mosek.iparam.presolve_use, mosek.presolvemode.off)
-        # self.task.putdouparam(mosek.dparam.optimizer_max_time, 3600)  # Limite temps à 3600s
+        # Décommenter si vous avez des problèmes numériques :
+        # self.model.setSolverParam("presolveUse", "off")
+        # self.model.setSolverParam("optimizer", "dualSimplex")
 
     @count_calls(
         "init_variables"
     )  # Create an attribute init_variable to count the number of calls of this function
     def add_matrix_variable(self, name: str, dim: int):
         """
-        Add a matrix variable of dimension dim to the task.
+        Add a matrix variable of dimension dim.
         """
         logger_mosek.debug(f"Adding a variable matrix {name} of dimension %s", dim)
-        if self.verbose:
-            print("Adding a variable matrix %s of dimension %s", name, dim)
         if any(
             d["name"] == name for d in self.indexes_matrices.current_matrices_variables
         ):
-            logger_mosek.debug(
+            logger_mosek.warning(
                 f"Variable matrix {name} already exists. Skipping addition."
             )
-            return
         else:
-            if self.verbose:
+            if verbose :
                 print(f"Adding a variable matrix {name} of dimension %s", dim)
             logger_mosek.debug(f"Variable matrix {name} added.")
             self.indexes_matrices.current_matrices_variables.append(
                 {"name": name, "dim": dim, "value": Matrices_Solutions()}
             )
-            self.task.appendbarvars([dim])
+        var = self.model.variable(name, Domain.inPSDCone(dim))
 
     def add_vector_variable(self, name: str, dim: int):
         """
-        Add a vector variable of dimension dim to the task."""
-        logger_mosek.info(f"Adding a variable vector {name} of dimension %s", dim)
+        Add a vector variable of dimension dim."""
+        logger_mosek.info(f"Adding a vector variable {name} of dimension %s", dim)
         self.vector_variables.append(dim)
-        self.task.appendvars(dim)
+        x = self.model.variable(name, dim, Domain.unbounded())
+        # x = self.model.variable(name, dim, Domain.inRange(lower_bound, upper_bound))
+        # x = self.model.variable(name, n, Domain.binary())
 
     def initialize_constraints(self):
         """
@@ -246,18 +244,30 @@ class MosekClassicHandler:
         logger_mosek.info(
             f"Initializing {self.Constraints.current_num_constraint} constraints"
         )
-        self.task.appendcons(self.Constraints.current_num_constraint)
+        # No need to initialize the number of constraints here with the fusion API
         self.final_number_constraints = self.Constraints.current_num_constraint
 
     def cleanup_mosek(self):
-        """Ferme proprement l'environnement et la tâche MOSEK."""
-        logger_mosek.info("Cleaning up MOSEK environment and task \n \n \n")
-        if self.task:
-            self.task.__exit__(None, None, None)  # Équivalent à sortir du bloc "with"
-            self.task = None
-        if self.env:
-            self.env.__exit__(None, None, None)  # Équivalent à sortir du bloc "with"
-            self.env = None
+        """Close MOSEK environment en model."""
+        logger_mosek.info("Cleaning up MOSEK environment and model \n \n \n")
+        if hasattr(self, 'model') and self.model:
+            self.model.__exit__(None, None, None)
+
+    def add_constraints(self):
+        """
+        Add constraints to the model.
+        """
+        raise NotImplementedError(
+            "The method add_constraints is not implemented in the base class."
+        )
+
+    def add_objective(self):
+        """
+        Add the objective function to the model.
+        """
+        raise NotImplementedError(
+            "The method add_objective is not implemented in the base class."
+        )
 
     def is_feasible(self, variables_matrices, precision: float = 1e-6) -> bool:
         """
@@ -274,9 +284,11 @@ class MosekClassicHandler:
             True if the constraint is feasible, False otherwise.
         """
         for constraint in self.Constraints.list_cstr:
+            #print("Adding constraint : ", constraint["name"])
             try:
                 val = 0
                 for index in range(len(constraint["num_matrix"])):
+
                     num_matrix = constraint["num_matrix"][index]
                     i = constraint["i"][index]
                     j = constraint["j"][index]
@@ -351,105 +363,88 @@ class MosekClassicHandler:
 
     def define_objective_sense(self):
         """
-        Define the objective sense.
+        Define the objective sense : necessary for the classic MOSEK api (definition of the sense separately from the objective).
         """
-        self.task.putobjsense(mosek.objsense.minimize)
+        pass
 
     def optimize(self):
         """
         Optimize the task.
         """
-        logger_mosek.info("Optimizing the task")
-        self.rescode = self.task.optimize()
+        self.callback = makeUserCallback(model=self.model, maxtime=20000)
+        self.model.setDataCallbackHandler(self.callback)
+        logger_mosek.info("Optimizing the model")
+        self.model.solve()
 
-    def is_time_limit(self):
-        return self.rescode == mosek.rescode.trm_max_time
-
-    def write_model(
-        self,
-        cuts: List = [],
-        RLT_prop: float = 0.0,
-        data_index: int = None,
-        ytarget: int = None,
-    ):
+    def write_model(self, cuts: List = [], RLT_prop : float = 0.0, data_index : int = None, ytarget : int = None):
         """
         Write the results of the optimization to a file.
         """
         logger_mosek.info("Writing results to file...")
         cuts_str = compute_cuts_str(cuts)
+
         print(
-            "Writing results fo file : ",
-            get_project_path(
-                f"{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_classic.ptf"
-            ),
+            "Writing ptf : ",
+            f"{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_fusion.ptf",
         )
-        self.task.writedata(
+
+        self.model.writeTask(
             get_project_path(
-                f"{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_classic.ptf"
+                f"{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_fusion.ptf"
             )
         )
-        # self.task.writedata(
-        #     get_project_path(f"{self.folder_name}/{self.name}_{cuts_str}_classic.ptf")
-        # )
         logger_mosek.info(
-            f"Results written to {get_project_path(f'{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_classic.ptf')}"
+            f"Results written to {get_project_path(f'{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_fusion.ptf')}"
         )
 
     def print_solver_info(self, verbose: bool = False):
+        """
+        Print the information of the solver.
+        """
+
         def mosek_to_logger(msg):
             msg = msg.rstrip("\n")
             if msg:  # Évite les messages vides
                 logger_mosek.debug(msg)
 
         if verbose:
-            self.task.set_Stream(mosek.streamtype.log, mosek_to_logger)
+            self.model.setLogHandler(LoggerWriter())
 
     def get_solution_status(self):
         """
         Get the status of the optimization.
         """
-        self.status = self.task.getsolsta(mosek.soltype.itr)
-        return self.status
+        self.problem_status = self.model.getProblemStatus()
+        self.solution_status = self.model.getPrimalSolutionStatus()
+        logger_mosek.debug("Solution status: %s", self)
+        return self.solution_status
 
     def get_num_iterations(self):
         """
         Get the number of iterations of the optimization.
         """
-        num_iterations = self.task.getintinf(mosek.iinfitem.intpnt_iter)
+        num_iterations = self.model.getSolverIntInfo("intpntIter")
         return num_iterations
 
     def get_solution(self, **kwargs):
         """
         Get the solution of the optimization.
         """
-        ind_solution = kwargs.get("ind_solution", None)
+        name_solution = kwargs.get("name_solution", None)
+        
+        print("name solution : ", name_solution)
+        psd_var = self.model.getVariable(name_solution)
         dim = kwargs.get("dim", None)
-        mat = self.task.getbarxj(mosek.soltype.itr, ind_solution)
-        return self.reconstruct_matrix(dim, mat)
+        return psd_var.level().reshape((dim, dim))
 
     def get_dual_variables(self):
-        """
-        Get the dual variables of the optimization.
-        """
-        dual_variables = self.task.gety(mosek.soltype.itr)
-
-        # Check solution status
-        prosta = self.task.getprosta(mosek.soltype.itr)
-        solsta = self.task.getsolsta(mosek.soltype.itr)
-
-        print(f"Primal status: {prosta}")
-        print(f"Solution status: {solsta}")
-
-        y = [0.0] * self.final_number_constraints
-
-        assert len(dual_variables) == len(self.Constraints.list_cstr), "Le nombre de variables duales ne correspond pas au nombre de contraintes."
-        for i in range(len(dual_variables)):
-            self.Constraints.list_cstr[i]["dual_value"] = dual_variables[i]
-
-            name = self.Constraints.list_cstr[i]["name"]
-
-            val1 = dual_variables[i]
-
-            print(f"Constraint {name}: {val1}")
-
-        return dual_variables
+        for ind, ctsr in enumerate(self.Constraints.list_cstr):
+            constraint_name = ctsr["name"]
+            try:
+                dual_value = self.model.getConstraint(constraint_name).dual()
+                if dual_value is None:
+                    print(f"Variable duale None (solution duale non disponible) pour {constraint_name}")
+                    continue
+                self.Constraints.list_cstr[ind]["dual_value"] = round(dual_value[0], 6)
+            except Exception as e:
+                print(f"Impossible de récupérer la variable duale pour {constraint_name}: {e}")

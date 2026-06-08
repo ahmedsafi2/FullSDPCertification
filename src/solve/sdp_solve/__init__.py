@@ -21,4 +21,4 @@ handler.setFormatter(formatter)
 logger_mosek.addHandler(handler)
 
 
-__all__ = ["MosekSolver", "LanSDP", "MdSDP", "MzbarSDP", "LayersValues", "SDP_attack", "concat_dataframes_with_missing_columns"]
+__all__ = ["SDPSolver", "LanSDP", "MdSDP", "MzbarSDP", "LayersValues", "SDP_attack", "concat_dataframes_with_missing_columns"]

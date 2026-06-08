@@ -51,13 +51,79 @@ if ! ssh_jz -o ConnectTimeout=5 exit 2>/dev/null; then
 fi
 log_success "Connexion SSH OK"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# MODE --resume
+# Usage : bash run_fastsdp_jean_zay.sh --resume <chemin_dossier_local_ou_relatif>
+# Exemple :
+#   bash scripts/run_fastsdp_jean_zay.sh --resume results/benchmark/9x100-0.026/2026_06_01_...
+# ─────────────────────────────────────────────────────────────────────────────
+if [ "$1" = "--resume" ]; then
+    LOCAL_RUN_FOLDER="$2"
+    if [ -z "$LOCAL_RUN_FOLDER" ]; then
+        log_error "--resume nécessite un chemin de dossier."
+        echo "Usage: bash run_fastsdp_jean_zay.sh --resume <chemin>"
+        exit 1
+    fi
+
+    # Normaliser en chemin absolu local
+    if [[ "$LOCAL_RUN_FOLDER" != /* ]]; then
+        LOCAL_RUN_FOLDER="$LOCAL_PROJECT_DIR/$LOCAL_RUN_FOLDER"
+    fi
+    LOCAL_RUN_FOLDER=$(realpath "$LOCAL_RUN_FOLDER" 2>/dev/null || echo "$LOCAL_RUN_FOLDER")
+
+    # Mapper vers le chemin distant
+    if [[ "$LOCAL_RUN_FOLDER" == "$LOCAL_PROJECT_DIR"* ]]; then
+        REL_PATH="${LOCAL_RUN_FOLDER#$LOCAL_PROJECT_DIR/}"
+        REMOTE_RUN_FOLDER="$REMOTE_PROJECT_DIR/$REL_PATH"
+    else
+        log_error "Le dossier doit être sous $LOCAL_PROJECT_DIR"
+        exit 1
+    fi
+
+    log_info "Reprise du run : $REMOTE_RUN_FOLDER"
+
+    # Synchronisation du code
+    log_info "Synchronisation du code vers Jean-Zay..."
+    for folder in "${FOLDERS_TO_SYNC[@]}"; do
+        if [ -d "$LOCAL_PROJECT_DIR/$folder" ]; then
+            rsync -az -e "ssh $SSH_OPTS" "$LOCAL_PROJECT_DIR/$folder" "$JEAN_ZAY_USER@$JEAN_ZAY_HOST:$REMOTE_PROJECT_DIR"
+        fi
+    done
+    rsync -az -e "ssh $SSH_OPTS" "$LOCAL_PROJECT_DIR/scripts" "$JEAN_ZAY_USER@$JEAN_ZAY_HOST:$REMOTE_PROJECT_DIR"
+    log_success "Synchronisation terminée."
+
+    # Chercher les sous-dossiers part_* sur Jean-Zay
+    PART_FOLDERS=$(ssh_jz "ls -d $REMOTE_RUN_FOLDER/part_* 2>/dev/null" || true)
+
+    if [ -n "$PART_FOLDERS" ]; then
+        # Run divisé : un job de reprise par chunk
+        log_info "Run divisé détecté — soumission d'un job par chunk :"
+        while IFS= read -r part_folder; do
+            [ -z "$part_folder" ] && continue
+            log_info "  → $part_folder"
+            ssh_jz "cd $REMOTE_PROJECT_DIR && sbatch --export=RESUME_FOLDER=$part_folder scripts/run_fastsdp_job.slurm"
+        done <<< "$PART_FOLDERS"
+    else
+        # Run simple : un seul job
+        log_info "Soumission du job de reprise pour $REMOTE_RUN_FOLDER"
+        ssh_jz "cd $REMOTE_PROJECT_DIR && sbatch --export=RESUME_FOLDER=$REMOTE_RUN_FOLDER scripts/run_fastsdp_job.slurm"
+    fi
+
+    log_success "Job(s) de reprise soumis à Jean-Zay."
+    exit 0
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MODE NORMAL
+# ─────────────────────────────────────────────────────────────────────────────
 NETWORK_NAME=$1
 NAME_RUN=$2
 EPSILON=$3
 
 if [ -z "$NETWORK_NAME" ] || [ -z "$NAME_RUN" ]; then
   echo "Erreur: paramètres manquants."
-  echo "Usage: bash run_fastsdp.sh <NETWORK_NAME> <NAME_RUN> [EPSILON]"
+  echo "Usage: bash run_fastsdp_jean_zay.sh <NETWORK_NAME> <NAME_RUN> [EPSILON]"
+  echo "       bash run_fastsdp_jean_zay.sh --resume <chemin_dossier>"
   exit 1
 fi
 

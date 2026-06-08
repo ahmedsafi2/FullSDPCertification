@@ -43,7 +43,7 @@ logger_mosek = logging.getLogger("Mosek_logger")
 @add_functions_to_class(
     create_all_cuts_to_test, get_results, get_results_width_model, adapt_number_RLT, compute_number_RLT
 )
-class MosekSolver(Solver):
+class SDPSolver(Solver):
     """
     A solver that uses MOSEK to solve the optimization problem.
     """
@@ -449,13 +449,104 @@ class MosekSolver(Solver):
         finally:
             self.handler.cleanup_mosek()
 
+    def _run_optimization_isolated(self, cuts: Dict, verbose: bool = False):
+        """
+        Run run_optimization() in a forked child process.
+
+        MOSEK C-level crashes (SIGSEGV, SIGBUS, …) kill only the child; the
+        parent detects the abnormal exit, writes a 'crashed' row to results.csv,
+        and continues with the next target / cut combination.
+
+        is_robust is communicated back to the parent via a shared-memory byte
+        (multiprocessing.Value) created before the fork.
+        """
+        import multiprocessing as mp
+
+        self.handler.is_robust = False  # safe default in parent
+        is_robust_shared = mp.Value("b", 0)
+
+        pid = os.fork()
+        if pid == 0:
+            # ---- CHILD PROCESS ----
+            try:
+                self.run_optimization(cuts, verbose)
+                is_robust_shared.value = int(self.handler.is_robust)
+            except Exception as e:
+                logger_mosek.error("Child process exception: %s", e)
+                is_robust_shared.value = 0
+            finally:
+                os._exit(0)
+
+        # ---- PARENT PROCESS ----
+        _, wstatus = os.waitpid(pid, 0)
+
+        if os.WIFEXITED(wstatus) and os.WEXITSTATUS(wstatus) == 0:
+            self.handler.is_robust = bool(is_robust_shared.value)
+        else:
+            sig = os.WTERMSIG(wstatus) if os.WIFSIGNALED(wstatus) else None
+            code = os.WEXITSTATUS(wstatus) if os.WIFEXITED(wstatus) else None
+            print(
+                f"CRASH: MOSEK child died — signal={sig}, code={code}, "
+                f"data_index={self.data_index}, ytarget={getattr(self, 'ytarget', None)}"
+            )
+            logger_mosek.error(
+                "MOSEK child crashed: signal=%s, code=%s, data_index=%s, ytarget=%s",
+                sig,
+                code,
+                self.data_index,
+                getattr(self, "ytarget", None),
+            )
+            self._write_crash_row(cuts)
+            self.handler.is_robust = False
+
+    def _write_crash_row(self, cuts: Dict):
+        """Write a 'crashed' row to results.csv when the MOSEK child process crashes."""
+        from .run_benchmark import all_possible_cuts
+
+        dic = {
+            "network": self.network_name,
+            "model": self.name,
+            "dataset": self.dataset_name,
+            "data_index": self.data_index,
+            "label": self.ytrue,
+            "label_predicted": self.network.label(
+                self.x.to(next(self.network.parameters()).device)
+            ),
+            "target": getattr(self, "ytarget", None),
+            "epsilon": self.epsilon,
+            "status": "crashed",
+            "optimal_value": None,
+            "MATRIX_BY_LAYERS": str(self.MATRIX_BY_LAYERS),
+            "LAST_LAYER": self.LAST_LAYER,
+            "USE_STABLE_ACTIVES": self.use_active_neurons,
+            "USE_STABLE_INACTIVES": self.use_inactive_neurons,
+            "Nb_stable_inactives": len(self.stable_inactives_neurons),
+            "Nb_stable_actives": len(self.stable_actives_neurons),
+        }
+        dic.update({cut: (cut in cuts) for cut in all_possible_cuts})
+        if "RLT" in cuts:
+            dic["RLT_prop"] = getattr(self, "RLT_prop", None)
+        path = get_project_path(f"{self.folder_name}/results.csv")
+        row_df = pd.DataFrame(dic, index=[0])
+        if os.path.exists(path):
+            existing = pd.read_csv(path)
+            merged = pd.concat([existing, row_df], ignore_index=True)
+        else:
+            merged = row_df
+        merged.to_csv(path, index=False)
+        logger_mosek.info(
+            "Crash row written for data_index=%s, ytarget=%s",
+            self.data_index,
+            getattr(self, "ytarget", None),
+        )
+
     def solve(self, verbose: bool = False, only_bounds: bool = False):
         """
         Solve the optimization problem using MOSEK.
         """
         print("VERBOSE IN SOLVE : ", verbose)
         if self.is_trivially_solved or only_bounds:
-            if verbose : 
+            if verbose :
                 logger_mosek.debug("Trivially solved problem, no need to run optimization.")
             self.get_results_trivially_solved()
             return True
@@ -464,7 +555,7 @@ class MosekSolver(Solver):
                 print("Testing cuts: ", cuts)
 
             if "Lan" in self.__class__.__name__:
-                if verbose : 
+                if verbose :
                     print("CALLBACK ytargets : ", self.ytargets)
                 for ytarget in self.ytargets:
 
@@ -474,34 +565,33 @@ class MosekSolver(Solver):
                             print(f"Testing RLT_prop for ytarget {ytarget} ! ", RLT_prop)
                         self.RLT_prop = RLT_prop
                         self.ytarget = ytarget
-                        self.run_optimization(cuts, verbose)
+                        self._run_optimization_isolated(cuts, verbose)
                         if self.handler.is_robust:
                             if verbose :
                                 print("Robust solution found for ytarget:", ytarget)
                             break
                         else:
                             print("No robust solution found for ytarget:", ytarget)
-                    
-                    exit()
+
             else:
                 for RLT_prop in self.RLT_props:
                     if verbose :
                         print(f"Testing RLT_prop ! ", RLT_prop)
                     self.RLT_prop = RLT_prop
-                    self.run_optimization(cuts, verbose)
+                    self._run_optimization_isolated(cuts, verbose)
                     if self.handler.is_robust:
                         if verbose :
                             print("Robust solution found for RLT_prop:", RLT_prop)
                         break
                     else:
-                        if verbose : 
+                        if verbose :
                             print("No robust solution found for RLT_prop:", RLT_prop)
 
     def __str__(self):
         """
         String representation of the solver.
         """
-        line = f"MosekSolver(K={self.network.K}, n={self.network.n} \n"
+        line = f"SDPSolver(K={self.network.K}, n={self.network.n} \n"
         line += f"  cuts={self.cuts} \n"
         line += f"  all_combinations_cuts={self.all_combinations_cuts} \n"
         line += self.handler.print_index_variables_matrices()

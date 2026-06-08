@@ -11,11 +11,10 @@ from typing import List
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
 
-from ..mosek_generic_solver import MosekSolver
+from ..mosek_generic_solver import SDPSolver
 from networks import ReLUNN
 from .certification_problem_objective import objective_Lan
 from .certification_problem_constraints_bounds import (
-    L2_ball_bounds,
     quad_bounds,
     McCormick_inter_layers,
     all_Mc_Cormick_all_layers,
@@ -24,9 +23,7 @@ from .certification_problem_constraints_bounds import (
 )
 from .certification_problem_constraints_forward_pass import (
     ReLU_constraint_Lan,
-    ReLU_constraint_stable_active_relaxation,
     ReLU_triangularization,
-    last_layer_linear_equality
 )
 from .certification_problem_constraints_rlt import add_RLT_constraints
 from .certification_problem_constraints_division_by_layers import matrix_by_layers_rec
@@ -39,7 +36,6 @@ logger_mosek = logging.getLogger("Mosek_logger")
 @add_functions_to_class(
     objective_Lan,
     ReLU_constraint_Lan,
-    ReLU_constraint_stable_active_relaxation,
     quad_bounds,
     ReLU_triangularization,
     add_RLT_constraints,
@@ -49,15 +45,11 @@ logger_mosek = logging.getLogger("Mosek_logger")
     all_Mc_Cormick_all_layers,
     all_4_McCormick,
     is_front_of_matrix,
-    L2_ball_bounds,
-    last_layer_linear_equality
 )
-class LanSDP(MosekSolver):
+class SDP_attack(SDPSolver):
     def __init__(self, **kwargs):
-        # print("kwargs in LanSDP: ", kwargs)
-        super().__init__(certification_model_name="LanSDP", **kwargs)
-
-        logger_mosek.debug("beginning LanSDP init")
+        print("kwargs in SDP_attack: ", kwargs)
+        super().__init__(certification_model_name="SDP_attack", **kwargs)
         self.BETAS = False
         self.BETAS_Z = False
 
@@ -66,14 +58,10 @@ class LanSDP(MosekSolver):
         ]
         if "ytarget" in kwargs:
             self.ytarget = kwargs["ytarget"]
-        elif not self.is_trivially_solved:
+        else:
             self.ytarget = np.random.choice(self.possible_targets)
 
-        print("Neurones stables actives: ", self.stable_actives_neurons)
-        print("Neurones stables inactives: ", self.stable_inactives_neurons)
-
         logger_mosek.debug(f"Bounds for the network :  {self.L} and {self.U}")
-        logger_mosek.debug("ending LanSDP init")
 
     def add_objective(self):
         """
@@ -85,42 +73,11 @@ class LanSDP(MosekSolver):
         """
         Add constraints to the task.
         """
-        self._cut_constraint_counts = {}
-        self.handler.Constraints._skipped_count = 0
-
-        def _snap():
-            return len(self.handler.Constraints.list_cstr) + self.handler.Constraints._skipped_count
-
-        _n = _snap()
+        # RELU
         self.ReLU_constraint_Lan()
-        self._cut_constraint_counts["baseline_relu"] = _snap() - _n
 
-        _n = _snap()
-        self.ReLU_triangularization()
-        self._cut_constraint_counts["triangularization"] = _snap() - _n
-
-        _n = _snap()
+        # BOUNDS
         self.quad_bounds()
-        if self.norm == "L2" and self.INPUT_IN_VARIABLES and len(self.pruned_input_neurons) == 0:
-            self.L2_ball_bounds()
-        self._cut_constraint_counts["baseline_bounds"] = _snap() - _n
-
-        _n = _snap()
-        if "RLT" in cuts:
-            self.add_RLT_constraints(p=self.RLT_prop)
-        self._cut_constraint_counts["RLT"] = _snap() - _n
-
-        _n = _snap()
-        if "allMC" in cuts:
-            self.all_Mc_Cormick_all_layers()
-        self._cut_constraint_counts["allMC"] = _snap() - _n
-
-        _n = _snap()
-        if self.MATRIX_BY_LAYERS:
-            self.matrix_by_layers_rec(only_linear_constraints=True)
-        if self.LAST_LAYER:
-            self.last_layer_linear_equality()
         self.first_term_equal_zero()
-        self._cut_constraint_counts["baseline_other"] = _snap() - _n
 
         self.handler.Constraints.end_constraints()

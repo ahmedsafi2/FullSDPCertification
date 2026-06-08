@@ -1,4 +1,5 @@
 import logging
+import re
 import numpy as np
 import yaml
 import sys
@@ -21,7 +22,7 @@ from adversarial_attacks import PGDAttack
  
 from fastsdp_tools import create_folder_benchmark, get_project_path
 from fastsdp_tools.resume_utils import find_run_yaml, find_processed_indices, load_existing_results, log_run_history
-from solve.mosek_solve import concat_dataframes_with_missing_columns
+from solve.sdp_solve import concat_dataframes_with_missing_columns
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -533,7 +534,11 @@ def main(network: str, title_run: str, start: int = None, end: int = None):
 
 
 def main_resume(run_folder: str):
-    """Resume a partially completed run by skipping already-processed samples."""
+    """Resume a partially completed run by skipping already-processed samples.
+
+    If the folder name matches part_X_Y (a divided-run chunk), only samples
+    in [X, Y) are processed (start=X, end=Y), mirroring the original split.
+    """
     run_folder = Path(run_folder).resolve()
     if not run_folder.exists():
         raise FileNotFoundError(f"Run folder not found: {run_folder}")
@@ -553,16 +558,24 @@ def main_resume(run_folder: str):
     results_base = get_project_path(f"results/benchmark/{certif_problem.title}")
     title_run = str(run_folder.relative_to(results_base))
 
+    # Restore start/end range when resuming a divided-run chunk (folder = part_X_Y)
+    start, end = None, None
+    m = re.match(r"part_(\d+)_(\d+)$", run_folder.name)
+    if m:
+        start, end = int(m.group(1)), int(m.group(2))
+        print(f"Chunk resume detected: samples [{start}, {end})")
+
     start_time = datetime.datetime.now()
 
     log_path = run_folder / "resume.log"
     try:
-        with open(log_path, "w") as log_file:
+        with open(log_path, "a") as log_file:
             original_stdout, original_stderr = sys.stdout, sys.stderr
             sys.stdout = _Tee(original_stdout, log_file)
             sys.stderr = _Tee(original_stderr, log_file)
             try:
-                certif_problem.solve(title_run, skip_indices=skip_indices, resume=True)
+                certif_problem.solve(title_run, skip_indices=skip_indices, resume=True,
+                                     start=start, end=end)
             finally:
                 sys.stdout = original_stdout
                 sys.stderr = original_stderr

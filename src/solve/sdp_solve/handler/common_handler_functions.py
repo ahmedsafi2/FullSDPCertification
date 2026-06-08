@@ -10,7 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from typing import List
-from solve.mosek_solve.run_benchmark import (
+from solve.sdp_solve.run_benchmark import (
     compute_cuts_str,
     print_dual_variable_to_file_for_cb_solver,
     print_solution_to_file_for_cb_solver

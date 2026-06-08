@@ -6,18 +6,15 @@ import sys
 import logging
 from typing import List
 
-
 from fastsdp_tools.utils import infinity, add_functions_to_class
-
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
 
-from ..mosek_generic_solver import MosekSolver
+from ..mosek_generic_solver import SDPSolver
 from networks import ReLUNN
-from .certification_problem_objective import objective_Md
+from .certification_problem_objective import objective_Mzbar
 from .certification_problem_constraints_bounds import (
-    L2_ball_bounds,
     quad_bounds,
     McCormick_inter_layers,
     all_Mc_Cormick_all_layers,
@@ -26,22 +23,18 @@ from .certification_problem_constraints_bounds import (
 )
 from .certification_problem_constraints_forward_pass import (
     ReLU_constraint_Lan,
-    ReLU_constraint_stable_active_relaxation,
     ReLU_triangularization,
-    last_layer_linear_equality
 )
 from .certification_problem_constraints_beta import (
     discrete_betas,
     sum_betas_equals_1,
-    sum_beta_i_beta_j_equal_beta_i,
     McCormick_beta_z,
-    McCormick_beta_z_all_valid_layers,
+    McCormick_beta_z,
     betai_betaj,
+    zbar_sum_beta_z,
+    zbar_max_z,
     z_j2_beta_j2_greater_than_zj,
     z_j2_beta_j2_less_than_zj,
-    z_j2_zj_big_m,
-    sum_beta_j_z_i_equal_z_i,
-    sum_beta_j_z_i_equal_z_i_layer
 )
 from .certification_problem_constraints_division_by_layers import (
     matrix_by_layers_rec,
@@ -54,14 +47,14 @@ logger_mosek = logging.getLogger("Mosek_logger")
 
 
 @add_functions_to_class(
-    objective_Md,
+    objective_Mzbar,
     ReLU_constraint_Lan,
-    ReLU_constraint_stable_active_relaxation,
     quad_bounds,
     discrete_betas,
     sum_betas_equals_1,
-    sum_beta_i_beta_j_equal_beta_i,
+    zbar_sum_beta_z,
     betai_betaj,
+    zbar_max_z,
     ReLU_triangularization,
     matrix_by_layers_rec,
     add_RLT_constraints,
@@ -71,101 +64,75 @@ logger_mosek = logging.getLogger("Mosek_logger")
     all_4_McCormick,
     is_front_of_matrix,
     McCormick_beta_z,
-    McCormick_beta_z_all_valid_layers,
+    McCormick_beta_z,
     z_j2_beta_j2_greater_than_zj,
     z_j2_beta_j2_less_than_zj,
-    L2_ball_bounds,
-    last_layer_linear_equality,
-    z_j2_zj_big_m,
-    sum_beta_j_z_i_equal_z_i,
-    sum_beta_j_z_i_equal_z_i_layer
 )
-class MdSDP(MosekSolver):
+class MzbarSDP(SDPSolver):
     def __init__(self, **kwargs):
-
         super().__init__(
-            certification_model_name="MdSDP", BETAS=True, BETAS_Z=True, **kwargs
+            certification_model_name="MzbarSDP",
+            BETAS=True,
+            BETAS_Z=True,
+            ZBAR=True,
+            **kwargs,
         )
-
-        logger_mosek.debug(f"Bounds for the network :  {self.L} and {self.U}")
-        print("ytargets in MdSDP:", self.ytargets)
+        print("MZBAR MATRIX BY LAYERS", self.MATRIX_BY_LAYERS)
 
     def add_objective(self):
         """
         Add the objective to the Objective class.
         """
-        self.objective_Md()
+        self.objective_Mzbar()
 
     def add_constraints(self, cuts: List = []):
         """
         Add constraints to the task.
         """
-        self._cut_constraint_counts = {}
-        self.handler.Constraints._skipped_count = 0
-
-        def _snap():
-            return len(self.handler.Constraints.list_cstr) + self.handler.Constraints._skipped_count
-
-        # sum_beta_logits_equal_logit
-        _n = _snap()
-        if "sum_beta_logits_equal_logit" in cuts:
-            self.sum_beta_j_z_i_equal_z_i()
-        self._cut_constraint_counts["sum_beta_logits_equal_logit"] = _snap() - _n
-
-        # RELU + BOUNDS (baseline)
+        # RELU
         logger_mosek.debug("Adding ReLU constraints...")
-        _n = _snap()
         self.ReLU_constraint_Lan()
         logger_mosek.debug("ReLU constraints added.")
-        self._cut_constraint_counts["baseline_relu"] = _snap() - _n
 
-        _n = _snap()
         if "triangularization" in cuts:
             self.ReLU_triangularization()
-        self._cut_constraint_counts["triangularization"] = _snap() - _n
 
-        _n = _snap()
+        #ZBAR
+        self.zbar_sum_beta_z()
+        self.zbar_max_z()
+
+        # BOUNDS
         self.quad_bounds()
         if self.norm == "L2" and self.INPUT_IN_VARIABLES and len(self.pruned_input_neurons) == 0:
             self.L2_ball_bounds()
-        self._cut_constraint_counts["baseline_bounds"] = _snap() - _n
 
-        # BETA (base)
-        _n = _snap()
+        # BETA
         self.discrete_betas()
         self.sum_betas_equals_1()
         self.betai_betaj()
-        self._cut_constraint_counts["baseline_beta"] = _snap() - _n
 
-        _n = _snap()
         if "McCormick_beta_z" in cuts:
-            self.McCormick_beta_z_all_valid_layers(cuts=cuts)
-        self._cut_constraint_counts["McCormick_beta_z"] = _snap() - _n
+            self.McCormick_beta_z_all_valid_layers()
 
-        _n = _snap()
+        # # Some cuts comparing different logits
         if "beta_logits_comparaison" in cuts:
             self.z_j2_beta_j2_greater_than_zj()
             self.z_j2_beta_j2_less_than_zj()
-        self._cut_constraint_counts["beta_logits_comparaison"] = _snap() - _n
-
-        _n = _snap()
-        if "beta_logits_comparaison_big_M" in cuts:
+        
+        if "beta_logits_comparaison_big_M" in cuts : 
             self.z_j2_zj_big_m()
-        self._cut_constraint_counts["beta_logits_comparaison_big_M"] = _snap() - _n
 
         # RLT
-        _n = _snap()
         if "RLT" in cuts:
             self.add_RLT_constraints(p=self.RLT_prop)
-        self._cut_constraint_counts["RLT"] = _snap() - _n
 
-        # Finalisation (first_term, décomposition chordale, last_layer)
-        _n = _snap()
         self.first_term_equal_zero()
+
+        # MATRIX BY LAYERS
         if self.MATRIX_BY_LAYERS:
             self.matrix_by_layers_rec(only_linear_constraints=True)
+
         if self.LAST_LAYER:
             self.last_layer_linear_equality()
-        self._cut_constraint_counts["baseline_other"] = _snap() - _n
 
         self.handler.Constraints.end_constraints()

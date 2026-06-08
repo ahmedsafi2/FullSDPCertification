@@ -108,7 +108,7 @@ from .network import ReLUNN
 from .mlp_sdp_crown import MNIST_MLP
 
 # ✅ CORRECT - Dans solve/__init__.py
-from .mosek_solve import MosekSolver
+from .mosek_solve import SDPSolver
 from .gurobi_solve import GurobiSolver
 ```
 

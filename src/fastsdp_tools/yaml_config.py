@@ -109,7 +109,7 @@ class DatasetConfig(BaseModel):
     num_samples: int
 
 
-class MosekSolverConfig(BaseModel):
+class SDPSolverConfig(BaseModel):
     certification_model_name: str
 
     @validator("certification_model_name")
@@ -230,7 +230,7 @@ class FullCertificationConfig(BaseModel):
     input_ball: InputBallConfig
     data: Union[DataConfig, DatasetConfig]
     network: NetworkConfig
-    models: Optional[List[Union[MosekSolverConfig, GurobiSolverConfig]]] = None
+    models: Optional[List[Union[SDPSolverConfig, GurobiSolverConfig]]] = None
     divide_run: int = 1
     @validator('models')
     def process_bounds(cls, v, values):

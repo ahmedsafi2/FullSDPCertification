@@ -32,8 +32,8 @@ import pytest
 import torch
 
 from networks.network import ReLUNN
-from solve.mosek_solve.SDPmodels.Lan_SDP import LanSDP
-from solve.mosek_solve.SDPmodels.Md import MdSDP
+from solve.sdp_solve.SDPmodels.Lan_SDP import LanSDP
+from solve.sdp_solve.SDPmodels.Md import MdSDP
 from fastsdp_tools import get_project_path
 
 # Tolérance numérique : les SDP peuvent avoir un gap primal-dual résiduel

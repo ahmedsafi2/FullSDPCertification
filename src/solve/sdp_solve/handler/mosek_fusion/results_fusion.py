@@ -5,7 +5,7 @@ import logging
 import os
 
 from fastsdp_tools import get_project_path
-from solve.mosek_solve.run_benchmark import compute_cuts_str
+from solve.sdp_solve.run_benchmark import compute_cuts_str
 
 
 logger_mosek = logging.getLogger("Mosek_logger")

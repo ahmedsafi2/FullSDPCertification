@@ -123,7 +123,7 @@ Après suppression, vérifier que les imports fonctionnent:
 ```bash
 python -c "from networks import ReLUNN; print('✅ OK')"
 python -c "from conic_bundle import ConicBundleParser; print('✅ OK')"
-python -c "from solve import MosekSolver; print('✅ OK')"
+python -c "from solve import SDPSolver; print('✅ OK')"
 ```
 
 ### Étape 4: Nettoyer les Variables Inutiles
