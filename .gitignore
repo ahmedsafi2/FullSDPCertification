@@ -18,6 +18,6 @@ venv/
 */__pycache__/
 results/
 .DS_Store
-data/
-!src/data/
-!*blob*
+/data/*
+!/data/**/
+!/data/**/*blob*
