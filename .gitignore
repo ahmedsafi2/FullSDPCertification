@@ -8,7 +8,7 @@
 wandb/
 ./wandb/
 /tmp/wandb/
-data/
+# data/
 *.lic
 results/
 venv/
