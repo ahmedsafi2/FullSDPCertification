@@ -26,6 +26,7 @@ from fastsdp_tools import (
 from ..generic_solver import Solver
 from .handler.mosek_fusion import MosekFusionHandler
 from .handler.mosek_classic.handler_classic import MosekClassicHandler
+from .handler.cvxpy import CvxpyHandler
 from .run_benchmark import (
     create_all_cuts_to_test,
     adapt_number_RLT,
@@ -38,6 +39,19 @@ from fastsdp_tools import change_to_zero_negative_values
 
 
 logger_mosek = logging.getLogger("Mosek_logger")
+
+
+def _append_csv(path: str, row_df: pd.DataFrame) -> None:
+    """Append row_df to path, creating the file if needed. Silently ignores empty/corrupt files."""
+    if os.path.exists(path):
+        try:
+            existing = pd.read_csv(path)
+            merged = pd.concat([existing, row_df], ignore_index=True)
+        except (pd.errors.EmptyDataError, pd.errors.ParserError):
+            merged = row_df
+    else:
+        merged = row_df
+    merged.to_csv(path, index=False)
 
 
 @add_functions_to_class(
@@ -56,6 +70,9 @@ class SDPSolver(Solver):
         BETAS_Z: bool = False,
         ZBAR: bool = False,
         use_fusion: bool = False,
+        solver: str = "mosek_classic",  # "mosek_classic" | "mosek_fusion" | "cvxpy"
+        cp_solver: str = "MOSEK",       # backend CVXPY : "MOSEK", "SCS", "CLARABEL", ...
+        cp_solver_kwargs: dict = None,
         INPUT_IN_VARIABLES = True,  # Union[bool, float]: 0.0=no input vars, 1.0=all, 0<p<1=partial
         solver_time_limit: int = None,
         **kwargs,
@@ -72,7 +89,13 @@ class SDPSolver(Solver):
         self.create_all_cuts_to_test()
         self.RLT_props = kwargs.get("RLT_props")
 
-        self.use_fusion = use_fusion
+        # Résolution use_fusion (ancien param) vs solver (nouveau param)
+        if use_fusion and solver == "mosek_classic":
+            solver = "mosek_fusion"
+        self.solver = solver
+        self.use_fusion = (solver == "mosek_fusion")
+        self.cp_solver = cp_solver
+        self.cp_solver_kwargs = cp_solver_kwargs or {}
 
         self.BETAS = BETAS
         self.BETAS_Z = BETAS_Z
@@ -118,63 +141,47 @@ class SDPSolver(Solver):
         params_sdp = cls.parse_yaml_mosek(yaml_file)
         return cls(**params, **params_sdp, **kwargs)
 
+    def _common_handler_kwargs(self):
+        return dict(
+            dataset=self.dataset,
+            epsilon=self.epsilon,
+            ytrue=self.ytrue,
+            ytarget=self.ytarget,
+            ytargets=self.ytargets,
+            K=self.network.K,
+            n=self.network.n,
+            W=self.network.W,
+            b=self.network.b,
+            L=self.L,
+            U=self.U,
+            MATRIX_BY_LAYERS=self.MATRIX_BY_LAYERS,
+            keep_penultimate_actives=self.keep_penultimate_actives,
+            LAST_LAYER=self.LAST_LAYER,
+            BETAS=self.BETAS,
+            BETAS_Z=self.BETAS_Z,
+            ZBAR=self.ZBAR,
+            stable_inactives_neurons=self.stable_inactives_neurons,
+            stable_actives_neurons=self.stable_actives_neurons,
+            folder_name=self.folder_name,
+            name=self.name,
+            INPUT_IN_VARIABLES=self.INPUT_IN_VARIABLES,
+            kept_input_neurons=self.kept_input_neurons,
+            pruned_input_neurons=self.pruned_input_neurons,
+            solver_time_limit=self.solver_time_limit,
+        )
+
     def initiate_solver(self):
-        if self.use_fusion:
-            self.handler = MosekFusionHandler(
-                dataset=self.dataset,
-                epsilon=self.epsilon,
-                ytrue=self.ytrue,
-                ytarget=self.ytarget,
-                ytargets=self.ytargets,
-                K=self.network.K,
-                n=self.network.n,
-                W=self.network.W,
-                b=self.network.b,
-                L=self.L,
-                U=self.U,
-                MATRIX_BY_LAYERS=self.MATRIX_BY_LAYERS,
-                keep_penultimate_actives=self.keep_penultimate_actives,
-                LAST_LAYER=self.LAST_LAYER,
-                BETAS=self.BETAS,
-                BETAS_Z=self.BETAS_Z,
-                ZBAR=self.ZBAR,
-                stable_inactives_neurons=self.stable_inactives_neurons,
-                stable_actives_neurons=self.stable_actives_neurons,
-                folder_name=self.folder_name,
-                name=self.name,
-                INPUT_IN_VARIABLES=self.INPUT_IN_VARIABLES,
-                kept_input_neurons=self.kept_input_neurons,
-                pruned_input_neurons=self.pruned_input_neurons,
-                solver_time_limit=self.solver_time_limit,
+        kw = self._common_handler_kwargs()
+        if self.solver == "cvxpy":
+            self.handler = CvxpyHandler(
+                **kw,
+                cp_solver=self.cp_solver,
+                cp_solver_kwargs=self.cp_solver_kwargs,
             )
+        elif self.solver == "mosek_fusion":
+            self.handler = MosekFusionHandler(**kw)
         else:
-            self.handler = MosekClassicHandler(
-                dataset=self.dataset,
-                epsilon=self.epsilon,
-                ytrue=self.ytrue,
-                ytarget=self.ytarget,
-                ytargets=self.ytargets,
-                K=self.network.K,
-                n=self.network.n,
-                W=self.network.W,
-                b=self.network.b,
-                L=self.L,
-                U=self.U,
-                MATRIX_BY_LAYERS=self.MATRIX_BY_LAYERS,
-                keep_penultimate_actives=self.keep_penultimate_actives,
-                LAST_LAYER=self.LAST_LAYER,
-                BETAS=self.BETAS,
-                BETAS_Z=self.BETAS_Z,
-                ZBAR=self.ZBAR,
-                stable_inactives_neurons=self.stable_inactives_neurons,
-                stable_actives_neurons=self.stable_actives_neurons,
-                folder_name=self.folder_name,
-                name=self.name,
-                INPUT_IN_VARIABLES=self.INPUT_IN_VARIABLES,
-                kept_input_neurons=self.kept_input_neurons,
-                pruned_input_neurons=self.pruned_input_neurons,
-                solver_time_limit=self.solver_time_limit,
-            )
+            self.handler = MosekClassicHandler(**kw)
 
     def _write_presolve_row(self, cuts: Dict, nb_variables: int):
         """Write a pre-solve row to results.csv right after constraints are built, before MOSEK runs."""
@@ -204,12 +211,7 @@ class SDPSolver(Solver):
             dic["RLT_prop"] = self.RLT_prop
         path = get_project_path(f"{self.folder_name}/results.csv")
         row_df = pd.DataFrame(dic, index=[0])
-        if os.path.exists(path):
-            existing = pd.read_csv(path)
-            merged = pd.concat([existing, row_df], ignore_index=True)
-        else:
-            merged = row_df
-        merged.to_csv(path, index=False)
+        _append_csv(path, row_df)
         logger_mosek.debug(f"Pre-solve row written — Nb_constraints={nb_constraints}, Nb_variables={nb_variables}")
         self._write_model_size_csv(cuts, nb_variables)
 
@@ -246,12 +248,7 @@ class SDPSolver(Solver):
 
         path = get_project_path(f"{self.folder_name}/taille_modele.csv")
         row_df = pd.DataFrame(row, index=[0])
-        if os.path.exists(path):
-            existing = pd.read_csv(path)
-            merged = pd.concat([existing, row_df], ignore_index=True)
-        else:
-            merged = row_df
-        merged.to_csv(path, index=False)
+        _append_csv(path, row_df)
         logger_mosek.debug(f"taille_modele.csv updated — data_index={self.data_index}")
 
     def run_optimization(self, cuts: Dict, verbose: bool = False):
@@ -462,6 +459,12 @@ class SDPSolver(Solver):
         """
         import multiprocessing as mp
 
+        # CUDA cannot be re-initialized in a forked subprocess — move network to
+        # CPU before fork so the child never touches CUDA (MOSEK is CPU-only).
+        network_device = next(self.network.parameters()).device
+        if network_device.type == "cuda":
+            self.network.cpu()
+
         self.handler.is_robust = False  # safe default in parent
         is_robust_shared = mp.Value("b", 0)
 
@@ -478,6 +481,10 @@ class SDPSolver(Solver):
                 os._exit(0)
 
         # ---- PARENT PROCESS ----
+        # Restore network to its original device before any GPU-dependent calls.
+        if network_device.type == "cuda":
+            self.network.to(network_device)
+
         _, wstatus = os.waitpid(pid, 0)
 
         if os.WIFEXITED(wstatus) and os.WEXITSTATUS(wstatus) == 0:
@@ -528,12 +535,7 @@ class SDPSolver(Solver):
             dic["RLT_prop"] = getattr(self, "RLT_prop", None)
         path = get_project_path(f"{self.folder_name}/results.csv")
         row_df = pd.DataFrame(dic, index=[0])
-        if os.path.exists(path):
-            existing = pd.read_csv(path)
-            merged = pd.concat([existing, row_df], ignore_index=True)
-        else:
-            merged = row_df
-        merged.to_csv(path, index=False)
+        _append_csv(path, row_df)
         logger_mosek.info(
             "Crash row written for data_index=%s, ytarget=%s",
             self.data_index,

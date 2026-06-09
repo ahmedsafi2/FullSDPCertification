@@ -166,7 +166,15 @@ class SDPSolverConfig(BaseModel):
     LAST_LAYER: bool = (
         False  # Whether to use the last layer of the network (logits) as variables
     )
-    use_fusion: bool = False  # Whether to use the fusion API for MOSEK
+    use_fusion: bool = False  # Whether to use the fusion API for MOSEK (deprecated: use solver="mosek_fusion")
+    solver: str = "mosek_classic"  # Backend solver : "mosek_classic" | "mosek_fusion" | "cvxpy"
+    @validator("solver")
+    def validate_solver(cls, v, values):
+        if v not in ["mosek_classic", "mosek_fusion", "cvxpy"]:
+            raise ValueError(f"solver must be one of 'mosek_classic', 'mosek_fusion', 'cvxpy', got '{v}'")
+        return v
+    cp_solver: str = "MOSEK"  # CVXPY backend : "MOSEK", "SCS", "CLARABEL", "CVXOPT", ...
+    cp_solver_kwargs: Optional[dict] = None  # Kwargs passés à cp.Problem.solve()
     use_callback: bool = False  # Whether to use the callback for MOSEK
     use_active_neurons: Optional[bool] = (
         False  # Whether to use active neurons in the certification problem as variables

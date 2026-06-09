@@ -291,15 +291,16 @@ class Certification_Problem:
             #         coefficient_values[k] = []
             #     coefficient_values[k].extend(model_instance.handler.Constraints.coefficient_values[k])
             #print("STUDY COEFF after run: coefficient values for each layer: {}".format(coefficient_values))
-            self.benchmark = concat_dataframes_with_missing_columns(
-                self.benchmark, model_instance.benchmark_dataframe
-            )
-            self.benchmark.to_csv(
-                get_project_path(
-                    f"results/benchmark/{self.title}/{title_run}/results.csv"
-                ),
-                index=False,
-            )
+            if model_instance.benchmark_dataframe is not None:
+                self.benchmark = concat_dataframes_with_missing_columns(
+                    self.benchmark, model_instance.benchmark_dataframe
+                )
+                self.benchmark.to_csv(
+                    get_project_path(
+                        f"results/benchmark/{self.title}/{title_run}/results.csv"
+                    ),
+                    index=False,
+                )
             dict_stability = {
                             "label": [ytrue],
                             "data_index": [i],
