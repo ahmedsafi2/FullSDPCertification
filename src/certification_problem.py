@@ -62,6 +62,7 @@ class Certification_Problem:
         self.network_name = kwargs.get("network_name", network.name)
         self.dataset_name = kwargs.get("dataset_name")
         self.yaml_file = kwargs.get("yaml_file", None)
+        self._config_path = kwargs.get("config_path", None)
         self.divide_run = kwargs.get("divide_run", 1)
         print("Data name in certification problem:", self.dataset_name)
 
@@ -76,25 +77,29 @@ class Certification_Problem:
         print("Certification Problem initialized !")
 
     @classmethod
-    def load_from_yaml(cls, yaml_file):
+    def load_from_yaml(cls, yaml_file, config_path: str = None):
         """
         Load the certification problem from a YAML file.
         Args:
-            yaml_file (str): Path to the YAML file.
+            yaml_file (str): Basename of the YAML file (e.g. "mnist-9x100.yaml").
+            config_path (str): Full path to the yaml file. When provided (worker mode),
+                               this overrides the default config/ lookup so workers always
+                               use the config snapshot saved by the orchestrator.
         Returns:
             Certification_Problem: An instance of the Certification_Problem class.
         """
-        print(f"Loading certification problem from {yaml_file} ...")
-       
+        actual_path = config_path if config_path else get_project_path(f"config/{yaml_file}")
+        print(f"Loading certification problem from {actual_path} ...")
+
         print("Loading dataset ...")
-        dataset = load_dataset(get_project_path(f"config/{yaml_file}"))
+        dataset = load_dataset(actual_path)
         if dataset is not None:
             print("Dataset loaded successfully.")
         else:
             print("Failed to load dataset.")
             return None
         print("Loading epsilon ...")
-        with open(get_project_path(f"config/{yaml_file}"), "r") as file:
+        with open(actual_path, "r") as file:
             config = yaml.safe_load(file)
             print("CONFIG  inf CERTIFICATION PROBLEM:     ", config)
             epsilon = config["input_ball"]["epsilon"]
@@ -121,6 +126,7 @@ class Certification_Problem:
             network_name=validated_config.network.name,
             dataset_name=validated_config.data.name,
             yaml_file=yaml_file,
+            config_path=actual_path,
             divide_run=validated_config.divide_run,
         )
 
@@ -130,7 +136,7 @@ class Certification_Problem:
         """
         return f"Certification Problem with epsilon: {self.epsilon}, dataset size: {len(self.dataset)}"
 
-    def run(self, solver_config: BaseModel, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None) -> None:
+    def run(self, solver_config: BaseModel, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None, skip_pairs: set = None) -> None:
         """
         Run the certification problem.
 
@@ -282,7 +288,7 @@ class Certification_Problem:
             logger.debug("output_bounds_U:", output_bounds_U)
             logger.debug("output_bounds_L:", output_bounds_L)
 
-            model_instance.solve(verbose=True, only_bounds=False)
+            model_instance.solve(verbose=True, only_bounds=False, skip_pairs=skip_pairs)
             logger.debug("Model instance solved")
             logger.debug("model_instance.benchmark_dataframe :", model_instance.benchmark_dataframe)
             
@@ -382,9 +388,9 @@ class Certification_Problem:
             )
             plt.close()
 
-    def solve(self, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None, resume: bool = False) -> None:
-        print("Starting certification problem solving ...")
-        print("self.models:", self.models)
+    def solve(self, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None, skip_pairs: set = None, resume: bool = False) -> None:
+        print("Starting certification problem solving ...", flush=True)
+        print("self.models:", self.models, flush=True)
 
         if not resume:
             self.benchmark = pd.DataFrame()
@@ -398,18 +404,18 @@ class Certification_Problem:
             )
 
         if self.yaml_file is not None:
-            shutil.copyfile(
-                get_project_path(f"config/{self.yaml_file}"),
-                get_project_path(
-                    f"results/benchmark/{self.title}/{title_run}/{self.yaml_file}"
-                ),
+            src = self._config_path or get_project_path(f"config/{self.yaml_file}")
+            dst = get_project_path(
+                f"results/benchmark/{self.title}/{title_run}/{self.yaml_file}"
             )
+            if not (os.path.exists(dst) and os.path.samefile(src, dst)):
+                shutil.copyfile(src, dst)
 
         for i, model_config in enumerate(self.models):
 
-            print("Solving with model:", model_config.certification_model_name)
-            print("model dict :", model_config)
-            self.run(model_config, title_run, start=start, end=end, skip_indices=skip_indices)
+            print("Solving with model:", model_config.certification_model_name, flush=True)
+            print("model dict :", model_config, flush=True)
+            self.run(model_config, title_run, start=start, end=end, skip_indices=skip_indices, skip_pairs=skip_pairs)
 
 
 
@@ -451,6 +457,8 @@ def _run_orchestrator(certif_problem, network, title_run_full):
 
     print(f"Orchestrator: {n_chunks} chunks of ~{chunk_size} samples from {num_samples} total")
 
+    saved_config = os.path.join(parent_dir, certif_problem.yaml_file) if certif_problem.yaml_file else None
+
     processes = []
     for chunk_idx in range(n_chunks):
         chunk_start = chunk_idx * chunk_size
@@ -463,6 +471,8 @@ def _run_orchestrator(certif_problem, network, title_run_full):
             "--start", str(chunk_start),
             "--end", str(chunk_end),
         ]
+        if saved_config and os.path.exists(saved_config):
+            cmd += ["--config", saved_config]
         print(f"  → chunk {chunk_idx}: samples [{chunk_start}, {chunk_end})")
         processes.append(subprocess.Popen(cmd))
 
@@ -471,9 +481,9 @@ def _run_orchestrator(certif_problem, network, title_run_full):
     print(f"All chunks done. Exit codes: {exit_codes}")
 
 
-def main(network: str, title_run: str, start: int = None, end: int = None):
+def main(network: str, title_run: str, start: int = None, end: int = None, config_path: str = None):
     yaml_file = f"{network}.yaml"
-    certif_problem = Certification_Problem.load_from_yaml(yaml_file)
+    certif_problem = Certification_Problem.load_from_yaml(yaml_file, config_path=config_path)
 
     is_worker = start is not None and end is not None
 
@@ -493,8 +503,8 @@ def main(network: str, title_run: str, start: int = None, end: int = None):
             try:
                 _run_orchestrator(certif_problem, network, title_run_full)
             finally:
-                processed = find_processed_indices(parent_dir)
-                log_run_history(parent_dir, "initial", start_time, processed)
+                _done, _pairs = find_processed_indices(parent_dir)
+                log_run_history(parent_dir, "initial", start_time, _done | {idx for idx, _ in _pairs})
             return
 
     results_dir = get_project_path(
@@ -524,14 +534,18 @@ def main(network: str, title_run: str, start: int = None, end: int = None):
             sys.stderr = _Tee(original_stderr, log_file)
             try:
                 certif_problem.solve(title_run_for_solve, start=start, end=end)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+                raise
             finally:
                 sys.stdout = original_stdout
                 sys.stderr = original_stderr
         print(f"Log saved → {log_path}")
     finally:
         if not is_worker:
-            processed = find_processed_indices(Path(results_dir))
-            log_run_history(Path(results_dir), "initial", start_time, processed)
+            _done, _pairs = find_processed_indices(Path(results_dir))
+            log_run_history(Path(results_dir), "initial", start_time, _done | {idx for idx, _ in _pairs})
 
 
 def main_resume(run_folder: str):
@@ -547,13 +561,17 @@ def main_resume(run_folder: str):
     yaml_path = find_run_yaml(run_folder)
     network = yaml_path.stem
 
-    skip_indices = find_processed_indices(run_folder)
-    print(f"Already processed: {len(skip_indices)} samples — {sorted(skip_indices)}")
+    skip_indices, skip_pairs = find_processed_indices(run_folder)
+    # data_indices with partial LanSDP results (some targets done, not all)
+    partial_indices = {idx for idx, _ in skip_pairs} - skip_indices
+    print(f"Already fully processed: {len(skip_indices)} samples — {sorted(skip_indices)}")
+    print(f"Partially processed (LanSDP): {len(partial_indices)} samples — {sorted(partial_indices)}")
+    print(f"Done (data_index, target) pairs: {len(skip_pairs)}")
 
     existing_results = load_existing_results(run_folder)
     print(f"Loaded {len(existing_results)} existing result rows.")
 
-    certif_problem = Certification_Problem.load_from_yaml(f"{network}.yaml")
+    certif_problem = Certification_Problem.load_from_yaml(f"{network}.yaml", config_path=str(yaml_path))
     certif_problem.benchmark = existing_results
 
     results_base = get_project_path(f"results/benchmark/{certif_problem.title}")
@@ -575,14 +593,19 @@ def main_resume(run_folder: str):
             sys.stdout = _Tee(original_stdout, log_file)
             sys.stderr = _Tee(original_stderr, log_file)
             try:
-                certif_problem.solve(title_run, skip_indices=skip_indices, resume=True,
-                                     start=start, end=end)
+                certif_problem.solve(title_run, skip_indices=skip_indices, skip_pairs=skip_pairs,
+                                     resume=True, start=start, end=end)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+                raise
             finally:
                 sys.stdout = original_stdout
                 sys.stderr = original_stderr
         print(f"Resume log saved → {log_path}")
     finally:
-        new_indices = find_processed_indices(run_folder) - skip_indices
+        new_fully_done, new_pairs = find_processed_indices(run_folder)
+        new_indices = (new_fully_done - skip_indices) | {idx for idx, _ in new_pairs - skip_pairs}
         log_run_history(run_folder, "resume", start_time, new_indices)
 
 
@@ -597,6 +620,8 @@ if __name__ == "__main__":
                         help="Worker mode: end index (exclusive) for sample slice")
     parser.add_argument("--resume", type=str, default=None,
                         help="Resume an existing run: path to the run folder")
+    parser.add_argument("--config", type=str, default=None,
+                        help="Worker mode: full path to yaml config (overrides config/ lookup)")
     args = parser.parse_args()
 
     print("Number of CPU : ", mp.cpu_count())
@@ -606,6 +631,7 @@ if __name__ == "__main__":
     else:
         if args.network is None:
             parser.error("network is required when not using --resume")
-        main(network=args.network, title_run=args.title_run, start=args.start, end=args.end)
+        main(network=args.network, title_run=args.title_run, start=args.start, end=args.end,
+             config_path=args.config)
 
     

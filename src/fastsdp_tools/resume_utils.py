@@ -12,16 +12,30 @@ def find_run_yaml(run_folder: Path) -> Path:
     raise FileNotFoundError(f"No YAML config found in {run_folder} or its parent.")
 
 
-def find_processed_indices(run_folder: Path) -> set:
-    """Return the set of data_index already present in any results.csv under run_folder."""
-    processed = set()
+def find_processed_indices(run_folder: Path) -> tuple:
+    """Return (fully_done, done_pairs).
+
+    fully_done: set of data_index where target is NaN — MdSDP rows where the entire
+                sample is solved in one shot, so no partial state is possible.
+    done_pairs: set of (data_index, target) int tuples — LanSDP rows where each
+                target class is a separate SDP solve and partial completion can occur.
+    """
+    fully_done = set()
+    done_pairs = set()
     for csv_path in run_folder.rglob("results.csv"):
         try:
-            df = pd.read_csv(csv_path, usecols=["data_index"])
-            processed.update(df["data_index"].dropna().astype(int).tolist())
+            df = pd.read_csv(csv_path, usecols=["data_index", "target"])
+            for _, row in df.iterrows():
+                if pd.isna(row["data_index"]):
+                    continue
+                idx = int(row["data_index"])
+                if pd.isna(row["target"]):
+                    fully_done.add(idx)
+                else:
+                    done_pairs.add((idx, int(row["target"])))
         except (KeyError, pd.errors.EmptyDataError, ValueError):
             pass
-    return processed
+    return fully_done, done_pairs
 
 
 def format_intervals(indices: set) -> str:

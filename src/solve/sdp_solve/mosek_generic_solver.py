@@ -26,7 +26,10 @@ from fastsdp_tools import (
 from ..generic_solver import Solver
 from .handler.mosek_fusion import MosekFusionHandler
 from .handler.mosek_classic.handler_classic import MosekClassicHandler
-from .handler.cvxpy import CvxpyHandler
+try:
+    from .handler.cvxpy import CvxpyHandler
+except ImportError:
+    CvxpyHandler = None
 from .run_benchmark import (
     create_all_cuts_to_test,
     adapt_number_RLT,
@@ -42,16 +45,30 @@ logger_mosek = logging.getLogger("Mosek_logger")
 
 
 def _append_csv(path: str, row_df: pd.DataFrame) -> None:
-    """Append row_df to path, creating the file if needed. Silently ignores empty/corrupt files."""
-    if os.path.exists(path):
+    """Append row_df to path, creating the file if needed.
+
+    Fast path (O(1)): when the file already exists and has the same column set,
+    append the row without reading the existing data.
+    Slow path (O(N)): when schemas differ (e.g. first presolve row vs. result row),
+    read the full file, concat, and rewrite so all columns are preserved.
+    """
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        row_df.to_csv(path, index=False)
+        return
+    try:
+        existing_cols = pd.read_csv(path, nrows=0).columns.tolist()
+    except (pd.errors.EmptyDataError, pd.errors.ParserError):
+        row_df.to_csv(path, index=False)
+        return
+    if set(existing_cols) == set(row_df.columns.tolist()):
+        row_df[existing_cols].to_csv(path, mode='a', header=False, index=False)
+    else:
         try:
             existing = pd.read_csv(path)
             merged = pd.concat([existing, row_df], ignore_index=True)
         except (pd.errors.EmptyDataError, pd.errors.ParserError):
             merged = row_df
-    else:
-        merged = row_df
-    merged.to_csv(path, index=False)
+        merged.to_csv(path, index=False)
 
 
 @add_functions_to_class(
@@ -185,15 +202,18 @@ class SDPSolver(Solver):
 
     def _write_presolve_row(self, cuts: Dict, nb_variables: int):
         """Write a pre-solve row to results.csv right after constraints are built, before MOSEK runs."""
+        print("Cuts in _write_presolve_row: ", cuts, flush=True)
         from .run_benchmark import all_possible_cuts
+        print("Number of constraints before optimization: ", len(self.handler.Constraints.list_cstr), flush=True)
         nb_constraints = len(self.handler.Constraints.list_cstr)
+        print("Number of variables before optimization: ", nb_variables, flush=True)
         dic = {
             "network": self.network_name,
             "model": self.name,
             "dataset": self.dataset_name,
             "data_index": self.data_index,
             "label": self.ytrue,
-            "label_predicted": self.network.label(self.x.to(next(self.network.parameters()).device)),
+            "label_predicted": self.label_predicted,
             "target": getattr(self, "ytarget", None),
             "epsilon": self.epsilon,
             "status": "pre-solve",
@@ -206,14 +226,20 @@ class SDPSolver(Solver):
             "Nb_constraints": nb_constraints,
             "Nb_variables": nb_variables,
         }
+        print("All possible cuts: ", all_possible_cuts, flush=True)
         dic.update({cut: (cut in cuts) for cut in all_possible_cuts})
+        print("Cuts added to dic for _write_presolve_row: ", {cut: (cut in cuts) for cut in all_possible_cuts}, flush=True)
         if "RLT" in cuts:
             dic["RLT_prop"] = self.RLT_prop
         path = get_project_path(f"{self.folder_name}/results.csv")
+
         row_df = pd.DataFrame(dic, index=[0])
+        print("Writing pre-solve row to results.csv with data_index:", self.data_index, "target:", getattr(self, 'ytarget', None), flush=True)
         _append_csv(path, row_df)
+        print("Pre-solve row written to results.csv with data_index:", self.data_index, "target:", getattr(self, 'ytarget', None), flush=True)
         logger_mosek.debug(f"Pre-solve row written — Nb_constraints={nb_constraints}, Nb_variables={nb_variables}")
         self._write_model_size_csv(cuts, nb_variables)
+        print(f"Pre-solve row written to results.csv with {nb_constraints} constraints and {nb_variables} variables.", flush=True)
 
     
     _TRACKED_CUTS = [
@@ -259,11 +285,11 @@ class SDPSolver(Solver):
                 logger_mosek.debug("Beginnning of run_optimization with cuts: %s", cuts)
             # self.handler.renew_solver()
             start_pretreatment_time = time.time()
-            if verbose : 
-                print("Initializing ENV...")
+            if verbose :
+                print("Initializing ENV...", flush=True)
             self.handler.initiate_env(verbose)
-            if verbose : 
-                print("Intializing ENV : DONE.")
+            if verbose :
+                print("Intializing ENV : DONE.", flush=True)
             self.handler.print_solver_info(verbose)
             if verbose :
                 logger_mosek.debug("Handler initialized.")
@@ -290,11 +316,11 @@ class SDPSolver(Solver):
             nb_variables = self.handler.print_num_variables()
             if verbose :
                 logger_mosek.debug("Variables initialized.")
-                print("Adding constraints to the task...")
+                print("Adding constraints to the task...", flush=True)
             time_1 = time.time()
             self.adapt_number_RLT()
             self.add_constraints(cuts)  # Constraints must be added after variables
-            self.handler.Constraints.get_histogram_of_coefficients_name_constraint("ReLU Relaxed")
+            #self.handler.Constraints.get_histogram_of_coefficients_name_constraint("ReLU Relaxed")
             self._write_presolve_row(cuts, nb_variables)
             if verbose:
                 logger_mosek.debug("Constraints added.")
@@ -478,6 +504,11 @@ class SDPSolver(Solver):
                 logger_mosek.error("Child process exception: %s", e)
                 is_robust_shared.value = 0
             finally:
+                try:
+                    sys.stdout.flush()
+                    sys.stderr.flush()
+                except Exception:
+                    pass
                 os._exit(0)
 
         # ---- PARENT PROCESS ----
@@ -516,9 +547,7 @@ class SDPSolver(Solver):
             "dataset": self.dataset_name,
             "data_index": self.data_index,
             "label": self.ytrue,
-            "label_predicted": self.network.label(
-                self.x.to(next(self.network.parameters()).device)
-            ),
+            "label_predicted": self.label_predicted,
             "target": getattr(self, "ytarget", None),
             "epsilon": self.epsilon,
             "status": "crashed",
@@ -542,7 +571,7 @@ class SDPSolver(Solver):
             getattr(self, "ytarget", None),
         )
 
-    def solve(self, verbose: bool = False, only_bounds: bool = False):
+    def solve(self, verbose: bool = False, only_bounds: bool = False, skip_pairs: set = None):
         """
         Solve the optimization problem using MOSEK.
         """
@@ -560,6 +589,9 @@ class SDPSolver(Solver):
                 if verbose :
                     print("CALLBACK ytargets : ", self.ytargets)
                 for ytarget in self.ytargets:
+                    if skip_pairs and (self.data_index, ytarget) in skip_pairs:
+                        print(f"Skipping target {ytarget} for data_index {self.data_index} (already processed).")
+                        continue
 
                     for RLT_prop in self.RLT_props:
 
