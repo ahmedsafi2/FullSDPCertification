@@ -25,3 +25,4 @@ results/
 .claude/
 *.md
 !README.md
+*idris.fr
