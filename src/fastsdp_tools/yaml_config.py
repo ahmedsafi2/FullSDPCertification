@@ -193,9 +193,10 @@ class SDPSolverConfig(BaseModel):
     L: Optional[List[float]] = None
     U: Optional[List[float]] = None
     bounds_method: str = "alpha-CROWN"  # Method to compute bounds, options: "IBP", "alpha-CROWN", "GREAT_BOUNDS", "from_file"
+    bounds_n_runs: int = 1  # Number of independent alpha-CROWN runs; best-of-N is kept (max L, min U). Ignored for non-CROWN methods.
     write_model : Optional[bool] = False
     INPUT_IN_VARIABLES: Union[bool, float] = True  # If False/0.0, z_0 removed from SDP; if 0<p<1, keep top p*n_0 input neurons by W_1 column norm
-    solver_time_limit: Optional[int] = None  # Time limit in seconds for MOSEK solver (None = no limit)
+    solver_time_limit: Optional[int] = 7200  # Time limit in seconds for MOSEK solver (None = no limit)
 
 
 class GurobiSolverConfig(BaseModel):
@@ -248,6 +249,8 @@ class FullCertificationConfig(BaseModel):
         for model in v:
             if not(model.bounds_method in ["IBP", "alpha-CROWN", "GREAT_BOUNDS", "from_file"]):
                 raise ValueError("Bounds method must be one of 'IBP', 'alpha-CROWN', 'GREAT_BOUNDS', or 'from_file'.")
+            if model.bounds_n_runs < 1:
+                raise ValueError("bounds_n_runs must be >= 1.")
             elif model.bounds_method == "from_file" and model.bounds_file is None:
                 raise ValueError("Bounds file must be specified if bounds method is 'from_file'.")
             elif model.bounds_method == "from_file" and norm is not None:

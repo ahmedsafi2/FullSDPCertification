@@ -398,8 +398,8 @@ class MosekClassicHandler:
     def print_solver_info(self, verbose: bool = False):
         def mosek_to_logger(msg):
             msg = msg.rstrip("\n")
-            if msg:  # Évite les messages vides
-                logger_mosek.debug(msg)
+            if msg:
+                print(msg, flush=True)
 
         if verbose:
             self.task.set_Stream(mosek.streamtype.log, mosek_to_logger)

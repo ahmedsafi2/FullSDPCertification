@@ -21,3 +21,4 @@ results/
 /data/*
 !/data/**/
 !/data/**/*blob*
+!/data/**/*csv*

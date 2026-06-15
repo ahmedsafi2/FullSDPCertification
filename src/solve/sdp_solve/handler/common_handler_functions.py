@@ -243,6 +243,7 @@ class Matrices_Solutions:
                 f"Ajout de la configuration {key} non presente avec la value de dim {value.shape}"
             )
             self._data[key] = value
+            print("Configuration ajoutée.")
 
         else:
             raise ValueError(
@@ -454,7 +455,7 @@ def compute_solutions(self, cuts: List, print_sol: bool = False):
         )
         file_cb.write("Primal Solutions \n")
     for ind_solution in range(len(self.indexes_matrices.current_matrices_variables)):
-
+        print(f"CALLBACK : Computing solution for matrix {ind_solution} with cuts {cuts_str}...")
         name_solution = self.indexes_matrices.current_matrices_variables[ind_solution][
             "name"
         ]
@@ -472,9 +473,10 @@ def compute_solutions(self, cuts: List, print_sol: bool = False):
         #     logger_mosek.debug(
         #         f"Solution for {name_solution} of dimension {dim}: {mat}"
         #     )
-
-        self.save_matrix_png(sol, name_solution=name_solution, cuts=cuts)
+        print(f"CALLBACK : Solution for {name_solution} of dimension {dim} computed.")
+        #self.save_matrix_png(sol, name_solution=name_solution, cuts=cuts)
         self.save_matrix_csv(sol, name_solution=name_solution, cuts=cuts)
+        print(f"CALLBACK : Solution for {name_solution} of dimension {dim} saved as PNG and CSV.")
 
         if print_sol:
             print_solution_to_file_for_cb_solver(

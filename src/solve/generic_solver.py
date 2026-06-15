@@ -78,6 +78,8 @@ class Solver:
         
         self.ytrue = ytrue
         logger.debug("ytrue = ", self.ytrue)
+        with torch.no_grad():
+            self.label_predicted = self.network.label(self.x.cpu())
 
         self.ytarget = kwargs.get("ytarget", None)
 

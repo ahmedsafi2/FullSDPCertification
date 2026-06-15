@@ -134,21 +134,29 @@ def compute_bounds_data_new(network, x, epsilon, n, K, method: str = "IBP", norm
 
     return L, U
 
-def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : str = "Linf"):
+def compute_bounds_data(
+    network, x, epsilon, n, K,
+    method: str = "IBP",
+    norm: str = "Linf",
+    n_runs: int = 1,
+):
     """
     Compute the  L and U
 
     Args:
         method (str): The method to compute the bounds (CROWN, IBP, Linear, etc.).
+        n_runs (int): Number of independent alpha-CROWN runs. Best-of-N is kept:
+                      L_final[k][j] = max over runs, U_final[k][j] = min over runs.
+                      Ignored (forced to 1) for deterministic methods (IBP, etc.).
     """
-    logger.debug(f"Computing bounds with method: {method} ...")
+    logger.debug(f"Computing bounds with method: {method}, n_runs={n_runs} ...")
     print("epsilon : ", epsilon)
-    L = [[-np.inf] * n[k] for k in range(K + 1)]
-    U = [[np.inf] * n[k] for k in range(K + 1)]
 
     if method == "GREAT_BOUNDS":
+        L = [[-np.inf] * n[k] for k in range(K + 1)]
+        U = [[np.inf] * n[k] for k in range(K + 1)]
         L[0] = [max(L[0][j], 0) for j in range(len(L[0]))]
-        return
+        return L, U
 
     if not torch.is_tensor(x):
         x = torch.Tensor(x)
@@ -158,162 +166,88 @@ def compute_bounds_data(network, x, epsilon, n, K, method: str = "IBP", norm : s
     print("x shape : ", x.shape)
 
     network = network.to(device)
-    print("network device : ", next(network.parameters()).device)
     network.eval()
-    print("network is none : ", network is None)
-
     zeros = torch.zeros_like(x).to(device)
-    print("zeros device : ", zeros.device)
-
-    logger.debug("creating BoundedModule ...")
-    try:
-
-        # # Vérif optional : assure que tout est bien sur cuda
-        # for param in network.parameters():
-        #     print("param :  ", param)
-        #     print("device :  ", device)
-        #     print("param device :  ", param.device)
-        #     assert param.device == device
-        # print('parameters are on the right device')
-        # for buf in network.buffers():
-        #     assert buf.device == device
-        # print('buffers are on the right device')
-        print("About to create BoundedModule on device:", device)
-        print("network device before BoundedModule:", next(network.parameters()).device)
-        print("zeros device before BoundedModule:", zeros.device)
-        bounded_model = BoundedModule(
-            network,
-            zeros,
-            bound_opts={"conv_mode": "patches"},
-        )
-        print("created BoundedModule")
-    except Exception as e:
-        raise Exception("Error creating BoundedModule:", e)
- 
-
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # print("Using device:", device)
-
-    # # S'assurer que le modèle est bien déplacé
-    # network.to(device)
-
-    # # Vérifier que tous les paramètres ET buffers sont bien sur le même device
-    # for name, param in network.named_parameters():
-    #     print(f"STUDY : Parameter {name} is on device: {param.device}")
-
-    # for name, layer in network.layers.items():
-    #     print("STUDY : Layer : ", name)
-    # # Créer l'entrée zéro sur le bon device
-    # zeros = torch.zeros_like(x, device=device)
-
-    # # Et maintenant seulement :
-    # bounded_model = BoundedModule(
-    #     network,
-    #     zeros,
-    #     bound_opts={"conv_mode": "patches"},
-    # )
-
-    bounded_model.eval()
-    logger.debug("bounded_model device : ", next(bounded_model.parameters()).device)
 
     if norm == "Linf":
-        logger.debug("Using Linf norm for perturbation.")
         ptb = PerturbationLpNorm(norm=np.inf, eps=epsilon)
     elif norm == "L2":
-        logger.debug("pertubation L2 used")
         ptb = PerturbationLpNorm(norm=2, eps=epsilon)
-        #ptb = PerturbationLpNorm(norm=np.inf, eps=epsilon**2)  # comparer les deux versions
     else:
         raise NotImplementedError(f"Norm {norm} not implemented.")
     bounded_image = BoundedTensor(x, ptb)
-    if method == "alpha-CROWN":
-        lb, ub = bounded_model.compute_bounds(x=(bounded_image,), method=method)
-    else:
-        with torch.no_grad():
+
+    is_crown = method == "alpha-CROWN"
+    # Non-CROWN methods are deterministic: a single run suffices
+    actual_n_runs = n_runs if is_crown else 1
+
+    best_L = None
+    best_U = None
+
+    for run_idx in range(actual_n_runs):
+        print(f"CALLBACK [CROWN bounds] Run {run_idx + 1}/{actual_n_runs}")
+
+        # New BoundedModule each run → fresh random alpha initialisation
+        try:
+            bounded_model = BoundedModule(
+                network,
+                zeros,
+                bound_opts={"conv_mode": "patches"},
+            )
+        except Exception as e:
+            raise Exception("Error creating BoundedModule:", e)
+        bounded_model.eval()
+
+        if is_crown:
             lb, ub = bounded_model.compute_bounds(x=(bounded_image,), method=method)
-    intermediate_bounds = bounded_model.save_intermediate()
-    print("Intermediate bounds : ", intermediate_bounds)
+        else:
+            with torch.no_grad():
+                lb, ub = bounded_model.compute_bounds(x=(bounded_image,), method=method)
 
-    intermediate_bounds_list = list(intermediate_bounds.keys())
+        intermediate_bounds = bounded_model.save_intermediate()
 
-    logger.debug("Intermediate bounds list : ", intermediate_bounds_list)
+        intermediate_bounds_list = list(intermediate_bounds.keys())
+        layers_name = {intermediate_bounds_list[0]: 0}
+        for k in range(1, K + 1):
+            layers_name[intermediate_bounds_list[1 + (k - 1) * 2]] = k
+        layers_name[intermediate_bounds_list[-1]] = K
 
-    for layer_name, (min_tensor, max_tensor) in intermediate_bounds.items():
-        logger.debug(f"{layer_name}")
-        logger.debug(f"shape = {max_tensor.squeeze().detach().cpu().numpy().shape}")
-        
-        # if self.data_modele == "blob":
-        #     print(f"  Min: {min_tensor.squeeze().cpu().numpy()}")
-        #     print(f"  Max: {max_tensor.squeeze().cpu().numpy()}")
-        # else:
-        # print(f"  Min SHAPE: {min_tensor.squeeze().cpu().numpy().shape}")
-        logger.debug("Min min : ", min_tensor.min())
-        # print("Min max : ", min_tensor.max())
-        # print(f"  Max SHAPE: {max_tensor.squeeze().cpu().numpy().shape}")
-        # print("Max min : ", max_tensor.min())
-        logger.debug("Max max : ", max_tensor.max())
+        L_run = [[-np.inf] * n[k] for k in range(K + 1)]
+        U_run = [[np.inf] * n[k] for k in range(K + 1)]
 
-    layers_name = {}
-    layers_name[intermediate_bounds_list[0]] = 0
+        for layer_name, (min_tensor, max_tensor) in intermediate_bounds.items():
+            if layer_name not in layers_name:
+                logger.debug(f"Layer {layer_name} not found in layers_name mapping.")
+                continue
+            k = layers_name[layer_name]
+            if k == 0:
+                min_tensor = torch.clamp(min_tensor, min=0).view(-1)
+                max_tensor = max_tensor.view(-1)
+            L_run[k] = min_tensor.squeeze().detach().cpu().numpy().tolist()
+            U_run[k] = max_tensor.squeeze().detach().cpu().numpy().tolist()
 
-    logger.debug("Preparing to create bounds...")
-    print('Intermediate_bounds_list : ', intermediate_bounds_list )
-    for k in range(1, K + 1):
-        print(f"Adding layer for k = {k}, num_layer = {1 + (k - 1) * 2}")
-        layers_name[intermediate_bounds_list[1 + (k - 1) * 2]] = k    ### !!!!  Before *3 because of the dropout layer  !!!!
-    logger.debug("Layers name mapping : ", layers_name)
+        if best_L is None:
+            best_L, best_U = L_run, U_run
+        else:
+            # Tighter bounds: higher lower bound, lower upper bound
+            best_L = [
+                [max(best_L[k][j], L_run[k][j]) for j in range(n[k])]
+                for k in range(K + 1)
+            ]
+            best_U = [
+                [min(best_U[k][j], U_run[k][j]) for j in range(n[k])]
+                for k in range(K + 1)
+            ]
 
-    logger.debug("Intermediate bounds list final values : ", intermediate_bounds_list[-1])
-    layers_name[intermediate_bounds_list[-1]] = K
+        if actual_n_runs > 1:
+            total_L = sum(sum(best_L[k]) for k in range(K + 1))
+            print(f"  Run {run_idx + 1}: cumulative best L sum = {total_L:.4f}")
 
-    for layer_name, (min_tensor, max_tensor) in intermediate_bounds.items():
+    # Round only after accumulating the best over all runs
+    best_L = round_list_depth_2(best_L)
+    best_U = round_list_depth_2(best_U)
 
-        if layer_name not in layers_name:
-            print(f"Layer {layer_name} not found in layers_name mapping.")
-            print(f"  Min: {min_tensor.squeeze().shape}")
-            print(f"  Max: {max_tensor.squeeze().shape} \n")
-            continue
-        print(f"{layer_name}:")
-        print(f"  Min: {min_tensor.squeeze().shape}")
-        print(f"  Max: {max_tensor.squeeze().shape} \n")
-        if layers_name[layer_name] == 0:
-            # For the first layer, we set the lower bound to 0
-            min_tensor = torch.clamp(min_tensor, min=0).view(-1)
-            max_tensor = max_tensor.view(-1)
-
-       
-        L[layers_name[layer_name]] = (
-            min_tensor.squeeze().detach().cpu().numpy().tolist()
-        )
-        U[layers_name[layer_name]] = (
-            max_tensor.squeeze().detach().cpu().numpy().tolist()
-        )
-
-    L = round_list_depth_2(L)
-    U = round_list_depth_2(U)
-
-    # for k in range(len(L)):
-    #     min_layer_diff = 1e10
-    #     max_layer_diff = -1e10
-    #     min_layer_diff_ecart_relatif = 1e10
-    #     min_layer = min(L[k])
-    #     max_layer = max(U[k])
-    #     for j in range(len(L[k])):
-    #         if L[k][j] > U[k][j]:
-    #             print(
-    #                 f"STUDY : Warning: Inconsistent bounds at layer {k}, neuron {j}: L={L[k][j]} > U={U[k][j]}. Adjusting L to U."
-    #             )
-    #         else :
-    #             if U[k][j] - L[k][j] < min_layer_diff:
-    #                 min_layer_diff = U[k][j] - L[k][j]
-    #             if U[k][j] - L[k][j] > max_layer_diff:
-    #                 max_layer_diff = U[k][j] - L[k][j]
-    #             if 2*(U[k][j] - L[k][j]) / (abs(U[k][j]) + abs(L[k][j])) < min_layer_diff_ecart_relatif:
-    #                 min_layer_diff_ecart_relatif = 2*(U[k][j] - L[k][j]) / (abs(U[k][j]) + abs(L[k][j]))
-
-    #     print("STUDY : Bounds differences at layer ", k, " : min=", min_layer, ";  max=", max_layer, " : min_diff=", min_layer_diff, ";  max_diff=", max_layer_diff, ";  rel_min=", min_layer_diff_ecart_relatif)
-
-    return L, U
+    return best_L, best_U
 
 
 def compute_bounds_(self, method: str = "IBP"):
@@ -328,13 +262,14 @@ def compute_bounds_(self, method: str = "IBP"):
     if method == "IBP":
         self.compute_IBP()
     elif method == "beta-CROWN" or method == "alpha-CROWN":
-        print("OULA bornes alpha claude")
         self.compute_bounds_data_crown(
                 method="alpha-beta-CROWN",
             )
-    else :
+    else:
+        n_runs = getattr(self, "bounds_n_runs", 1)
         L, U = compute_bounds_data(
-            self.network, self.x, self.epsilon, self.n, self.K, method=method, norm=self.norm
+            self.network, self.x, self.epsilon, self.n, self.K,
+            method=method, norm=self.norm, n_runs=n_runs,
         )
         self.L = L
         self.U = U

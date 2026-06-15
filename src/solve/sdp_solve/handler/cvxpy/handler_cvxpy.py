@@ -2,7 +2,10 @@ import numpy as np
 import logging
 import os
 from typing import List
-import cvxpy as cp
+try:
+    import cvxpy as cp
+except ImportError:
+    cp = None
 
 from ..indexes import Indexes_Mosek_Solver
 from .objective_cvxpy import ObjectiveCvxpy

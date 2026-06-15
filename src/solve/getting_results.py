@@ -12,7 +12,7 @@ def get_results_trivially_solved(self):
         "dataset": self.dataset_name,
         "data_index": self.data_index,
         "label": self.ytrue,
-        "label_predicted": self.network.label(self.x),
+        "label_predicted": self.label_predicted,
         "target": self.ytarget if "Lan" in self.__class__.__name__ else None,
         "epsilon": self.epsilon,
         "status": "trivially_solved",

@@ -232,7 +232,7 @@ def complex_adversarial_training_loop(
             },
             save_code=False,
             dir="wandb",
-            mode="online",
+            mode="offline",
             settings=wandb.Settings(_disable_stats=True),
         )
         # Optionnel: surveiller les gradients et paramètres
