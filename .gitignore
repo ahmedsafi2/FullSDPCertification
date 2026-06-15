@@ -22,3 +22,6 @@ results/
 !/data/**/
 !/data/**/*blob*
 !/data/**/*csv*
+.claude/
+*.md
+!README.md
