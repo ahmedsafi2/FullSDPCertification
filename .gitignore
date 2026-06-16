@@ -26,3 +26,4 @@ results/
 *.md
 !README.md
 *idris.fr
+data/datasets/EMNIST/
