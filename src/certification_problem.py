@@ -69,8 +69,7 @@ class Certification_Problem:
         print("dataset in certification problem:", self.dataset)
 
         self.title = f"{self.network_name}-{self.epsilon}"
-        if not os.path.exists(get_project_path(f"results/benchmark/{self.title}")):
-            os.makedirs(get_project_path(f"results/benchmark/{self.title}"))
+        os.makedirs(get_project_path(f"results/benchmark/{self.title}"), exist_ok=True)
 
         self.benchmark = None
 
