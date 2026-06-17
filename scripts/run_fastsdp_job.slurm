@@ -2,8 +2,7 @@
 #SBATCH --job-name=fast_sdp
 #SBATCH -A llc@cpu                      # Compte CPU (MOSEK est CPU-only)
 #SBATCH --partition=cpu_p1              # Partition CPU
-#SBATCH --cpus-per-task=4              # CPUs dispo (MOSEK utilise 4 threads)
-#SBATCH --mem=180G                      # RAM par nœud (nœuds cpu_p1 ont 192 Go, on laisse 12 Go au système)
+#SBATCH --cpus-per-task=40             # Nœud entier : 40 CPUs = ~192 Go RAM sur cpu_p1 (seul moyen d'avoir plus de mémoire sur Jean-Zay)
 #SBATCH --time=20:00:00                 # Temps max par job (limite cpu_p1 sur Jean-Zay)
 #SBATCH --chdir=/lustre/fswork/projects/rech/llc/uvq13au/FastSDPCertification
 #SBATCH --output=slurm-%x-%j.out       # Log SLURM standard (à la racine du projet)
