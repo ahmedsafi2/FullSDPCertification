@@ -18,8 +18,6 @@ import datetime
 import shutil
 import argparse
 import multiprocessing as mp
-from adversarial_attacks import PGDAttack
- 
 from fastsdp_tools import create_folder_benchmark, get_project_path
 from fastsdp_tools.resume_utils import find_run_yaml, find_processed_indices, load_existing_results, log_run_history
 from solve.sdp_solve import concat_dataframes_with_missing_columns

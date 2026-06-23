@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(grep -n \"use_active_neurons\\\\|use_inactive_neurons\" /share/homes/boyerma/FastSDPCertification/src/solve/mosek_solve/SDPmodels/*.py)"
-    ]
-  }
-}

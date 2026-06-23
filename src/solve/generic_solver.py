@@ -15,7 +15,7 @@ from bounds import (
     prune_adversarial_targets,
     compute_IBP,
 )
-from bounds_crown_claude import (
+from bounds_crown import (
     compute_bounds_data_crown
 )
 from fastsdp_tools import (
