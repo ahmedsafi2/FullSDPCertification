@@ -126,8 +126,7 @@ class SDPSolverConfig(BaseModel):
         if v is None:
             return []
         for cut in v :
-            if cut not in ["RLT", "triangularization", "McCormick_beta_z", "beta_logits_comparaison", 
-                           "beta_logits_comparaison_big_M", "sum_beta_logits_equal_logit"]:
+            if cut not in ["RLT", "triangularization", "McCormick_beta_z", "beta_logits_comparaison"]:
                 raise ValueError(f"cut {cut} not valid.")
         return v
 
@@ -167,11 +166,11 @@ class SDPSolverConfig(BaseModel):
         False  # Whether to use the last layer of the network (logits) as variables
     )
     use_fusion: bool = False  # Whether to use the fusion API for MOSEK (deprecated: use solver="mosek_fusion")
-    solver: str = "mosek_classic"  # Backend solver : "mosek_classic" | "mosek_fusion" | "cvxpy"
+    solver: str = "mosek_classic"  # Backend solver : "mosek_classic" | "mosek_fusion"
     @validator("solver")
     def validate_solver(cls, v, values):
-        if v not in ["mosek_classic", "mosek_fusion", "cvxpy"]:
-            raise ValueError(f"solver must be one of 'mosek_classic', 'mosek_fusion', 'cvxpy', got '{v}'")
+        if v not in ["mosek_classic", "mosek_fusion"]:
+            raise ValueError(f"solver must be one of 'mosek_classic', 'mosek_fusion', got '{v}'")
         return v
     cp_solver: str = "MOSEK"  # CVXPY backend : "MOSEK", "SCS", "CLARABEL", "CVXOPT", ...
     cp_solver_kwargs: Optional[dict] = None  # Kwargs passés à cp.Problem.solve()

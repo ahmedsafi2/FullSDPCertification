@@ -26,10 +26,6 @@ from fastsdp_tools import (
 from ..generic_solver import Solver
 from .handler.mosek_fusion import MosekFusionHandler
 from .handler.mosek_classic.handler_classic import MosekClassicHandler
-try:
-    from .handler.cvxpy import CvxpyHandler
-except ImportError:
-    CvxpyHandler = None
 from .run_benchmark import (
     create_all_cuts_to_test,
     adapt_number_RLT,
@@ -189,13 +185,7 @@ class SDPSolver(Solver):
 
     def initiate_solver(self):
         kw = self._common_handler_kwargs()
-        if self.solver == "cvxpy":
-            self.handler = CvxpyHandler(
-                **kw,
-                cp_solver=self.cp_solver,
-                cp_solver_kwargs=self.cp_solver_kwargs,
-            )
-        elif self.solver == "mosek_fusion":
+        if self.solver == "mosek_fusion":
             self.handler = MosekFusionHandler(**kw)
         else:
             self.handler = MosekClassicHandler(**kw)

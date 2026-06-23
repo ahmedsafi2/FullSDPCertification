@@ -29,9 +29,8 @@ def solve_single_lp(args):
     ) = args
 
     try:
-        # Import inside worker to avoid pickling issues
-        from solve import ClassicLP
         from bounds import compute_bounds_data
+        raise NotImplementedError("LPAttack requires Gurobi (gurobi_solve) which has been removed.")
 
         # Compute bounds for this image and target
         L, U = compute_bounds_data(

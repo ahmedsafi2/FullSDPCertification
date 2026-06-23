@@ -90,12 +90,9 @@ models :
     - "triangularization"
     - "McCormick_beta_z"
     - "beta_logits_comparaison"
-    - "beta_logits_comparaison_big_M"
-    - "sum_beta_logits_equal_logit"
-    RLT_props : 
+    RLT_props :
     - 1.
     all_combinations_cuts : false
-    INPUT_IN_VARIABLES : true
     MATRIX_BY_LAYERS: true
     # - [0,1]
     # - [1,2,3]

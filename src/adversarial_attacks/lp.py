@@ -8,7 +8,6 @@ import multiprocessing as mp
 import queue
 import time
 
-from solve.gurobi_solve import ClassicLP
 from bounds import compute_bounds_data
 from fastsdp_tools import round_list_depth_2, round_list_depth_3
 
@@ -86,18 +85,7 @@ class LPAttack:
                 # print('b : ', round_list_depth_2(self.model.b,2))
 
                 print(f"                Processing target class {j}...")
-                lp = ClassicLP(
-                    network=self.model,
-                    x=images[ind].cpu().numpy(),
-                    ytrue=labels[ind].item(),
-                    ytarget=j,
-                    epsilon=self.eps,
-                    L=L,
-                    U=U,
-                )
-                lp.solve()
-                loss_pertubation += lp.get_optimal_value()
-                adv_images.append(lp.get_adversarial_attack())
+                raise NotImplementedError("LPAttack requires Gurobi (gurobi_solve) which has been removed.")
             print(
                 f"         Processing time for image {ind + 1}: {time.time() - time_image:.2f} seconds"
             )
