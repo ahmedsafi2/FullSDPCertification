@@ -178,35 +178,13 @@ class Certification_Problem:
             if skip_indices and i in skip_indices:
                 print(f"Skipping sample {i} (already processed).")
                 continue
-            # if (i) % 10 != 0:
-            #     print(
-            #         f"Skipping sample {i + 1} with label {ytrue.item()} as it is not a multiple of 10."
-            #     )
-            #     continue
-            # if ytrue.item() != 1:
-            #     print(
-            #         f"Skipping sample {i + 1} with label {ytrue.item()} as it is not a multiple of 10."
-            #     )
-            #     continue
-            # assert ytrue == y, "ytrue should match the label y"
-
-            # if i > 100 :
-            #     #     f"Stopping after 25 samples. Current sample index: {i}. You can change this limit in the code."
-            #     # )
-            #     #print("Skipping data sample ", i + 1, "for testing purposes.")
-            #     continue
-
-            print("i : ", i)
 
             x = x.view(-1)  # Ensure x is a 2D tensor
-            print("x  shape after view:", x.shape)
             print(
                 f"STUDY : Running certification for sample {i + 1} of label {ytrue.item()}"
             )
-            # print("Network device : ", self.network.device)
             print("x device : ", x.device)
             x = x.to(next(self.network.parameters()).device)
-            #torch.save(x, f"tensor_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pt")
             print("x device : ", x.device)
             y_pred =self.network.label(x)
             logger.debug("ytrue:", ytrue)
@@ -232,27 +210,7 @@ class Certification_Problem:
             dict_infos.pop("certification_model_name")
             logger.debug("dict_infos:", dict_infos)
    
-            # model_bounds = solve.LPBoundLayer(
-            #     network=self.network,
-            #     epsilon=self.epsilon,
-            #     norm=self.norm,
-            #     x=x,
-            #     ytrue=y_pred.item(),
-            #     data_index=i,
-            #     dataset_name=self.dataset_name,
-            #     network_name=self.network_name,
-            #     folder_name=f"results/benchmark/{self.title}/{title_run}",
-            #     use_active_neurons = True,
-            #     use_inactive_neurons = True,
-            #     bounds_method = "IBP"
-            # )
             
-            # model_bounds.solve()
-
-            # L = model_bounds.L
-            # U = model_bounds.U
-            # print("Recuperation de L :", L)
-            # print("Recuperation de U : ", U)
             try:
                 model_instance = model_class(
                     network=self.network,
@@ -260,8 +218,6 @@ class Certification_Problem:
                     norm=self.norm,
                     x=x,
                     ytrue=y_pred,
-                    # L = L,
-                    # U = U,
                     data_index=i,
                     dataset_name=self.dataset_name,
                     network_name=self.network_name,
@@ -292,11 +248,6 @@ class Certification_Problem:
             logger.debug("Model instance solved")
             logger.debug("model_instance.benchmark_dataframe :", model_instance.benchmark_dataframe)
             
-            # for k in range(1, self.network.K + 1):
-            #     if k not in coefficient_values:
-            #         coefficient_values[k] = []
-            #     coefficient_values[k].extend(model_instance.handler.Constraints.coefficient_values[k])
-            #print("STUDY COEFF after run: coefficient values for each layer: {}".format(coefficient_values))
             if model_instance.benchmark_dataframe is not None:
                 self.benchmark = concat_dataframes_with_missing_columns(
                     self.benchmark, model_instance.benchmark_dataframe
@@ -343,50 +294,7 @@ class Certification_Problem:
                 )
             )
 
-        for k in range(1, self.network.K + 1):
-            if coefficient_values[k] == []:
-                print(f"No coefficient values collected for layer {k}, skipping histogram.")
-                continue
-            # Histogram with all values
-            plt.hist(coefficient_values[k], bins=50)
-            plt.title("Histogram of coefficients in ReLU Relaxed Layer {}".format(k))
-            plt.xlabel("Coefficient value")
-            plt.ylabel("Frequency")
-            plt.savefig(
-                get_project_path(
-                    f"results/benchmark/{self.title}/{title_run}/histogram_coefficients_Layer_{k}.png"
-                )
-            )
-            plt.close()
-
-            # Histogram with 95% of values (centered around median)
-            median = np.median(coefficient_values[k])
-            p95_distance = np.percentile(np.abs(np.array(coefficient_values[k]) - median), 95)
-            filtered_values_95 = [v for v in coefficient_values[k] if abs(v - median) <= p95_distance]
-            plt.hist(filtered_values_95, bins=50)
-            plt.title("Histogram of coefficients in ReLU Relaxed 95% Layer {}".format(k))
-            plt.xlabel("Coefficient value")
-            plt.ylabel("Frequency")
-            plt.savefig(
-                get_project_path(
-                    f"results/benchmark/{self.title}/{title_run}/histogram_coefficients_95_Layer_{k}.png"
-                )
-            )
-            plt.close()
-
-            # Histogram with 75% of values (centered around median)
-            p75_distance = np.percentile(np.abs(np.array(coefficient_values[k]) - median), 75)
-            filtered_values_75 = [v for v in coefficient_values[k] if abs(v - median) <= p75_distance]
-            plt.hist(filtered_values_75, bins=50)
-            plt.title("Histogram of coefficients in ReLU Relaxed 75% Layer {}".format(k))
-            plt.xlabel("Coefficient value")
-            plt.ylabel("Frequency")
-            plt.savefig(
-                get_project_path(
-                    f"results/benchmark/{self.title}/{title_run}/histogram_coefficients_75_Layer_{k}.png"
-                )
-            )
-            plt.close()
+        
 
     def solve(self, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None, skip_pairs: set = None, resume: bool = False, include_indices: set = None) -> None:
         print("Starting certification problem solving ...", flush=True)

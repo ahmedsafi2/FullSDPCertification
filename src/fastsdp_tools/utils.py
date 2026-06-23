@@ -84,7 +84,7 @@ def sort_lists_by_first(L1, *other_lists):
     for i, lst in enumerate(other_lists):
         if len(lst) != len(L1):
             raise ValueError(
-                f"La liste à l'index {i+1} a une longueur différente de la liste principale"
+                f"List at index {i+1} is longer than the principal one"
             )
 
     indexed_values = list(enumerate(L1))
@@ -123,7 +123,7 @@ def deduplicate_and_sum(I_list, L_list, num_matrix_list, values_list):
         or len(num_matrix_list) != len(values_list)
         or len(L_list) != len(values_list)
     ):
-        raise ValueError("Les trois listes doivent avoir la même taille")
+        raise ValueError("The 3 lists must have the same size")
 
     couple_sums = {}
     for idx in range(len(I_list)):
@@ -185,26 +185,21 @@ def summing_values_two_dicts(dict1, dict2):
 
 def add_row_from_dict(df, row_dict):
     """
-    Ajoute une ligne à un DataFrame à partir d'un dictionnaire.
+    Add a row from a dict to a dataframe
 
     Parameters:
     -----------
     df : pandas.DataFrame
-        Le DataFrame auquel ajouter une ligne
     row_dict : dict
-        Le dictionnaire contenant les données à ajouter
 
     Returns:
     --------
     pandas.DataFrame
-        Le DataFrame mis à jour avec la nouvelle ligne
 
     Notes:
     ------
-    - Si le dictionnaire contient des clés absentes du DataFrame, de nouvelles colonnes
-      sont ajoutées avec des valeurs None pour toutes les lignes existantes
-    - Si le DataFrame contient des colonnes absentes du dictionnaire, des valeurs None
-      sont ajoutées pour ces colonnes dans la nouvelle ligne
+    - If the dictionnay has keys absent from dataframe, new columns are created with None value on all existing rows
+    - If the dictionnary doesn't have keys present in dataframe, None values are added for these columns on the new row
     """
     new_row_df = pd.DataFrame([row_dict], columns=df.columns)
 
@@ -234,19 +229,15 @@ def add_row_from_dict(df, row_dict):
 
 def get_git_root():
     try:
-        # Essaie de trouver la racine du repo Git
         root = subprocess.check_output(
             ['git', 'rev-parse', '--show-toplevel'],
             stderr=subprocess.DEVNULL
         ).decode('utf-8').strip()
         return root
     except Exception:
-        # Fallback si Git n'est pas dispo (ex: Jean-Zay)
-        # Par exemple : retourne le dossier contenant ce fichier
         return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 
 
-# Appliquer le path
 git_root = get_git_root()
 if git_root not in sys.path:
     sys.path.append(git_root)
@@ -256,22 +247,16 @@ def get_project_path(relative_path):
 
 
 def str_to_list(arg):
-    # Enlève les crochets et sépare les éléments
     return list(map(int, arg.strip("[]").split(",")))
 
 
 def check_condition_decorator(condition_method_name):
     """
-    Décorateur qui vérifie une condition définie dans une méthode de classe
-    avant d'exécuter la méthode décorée.
-
-    Args:
-        condition_method_name: Nom de la méthode qui vérifie la condition (sans 'self.')
+    Decorator that checks a specific condition defined in a class method before executing said method
     """
 
     def decorator(func):
         def wrapper(self, *args, **kwargs):
-            # Obtient la méthode de vérification à partir du nom
             check_method = getattr(self, condition_method_name)
             if check_method(*args, **kwargs):
                 return func(self, *args, **kwargs)
@@ -289,9 +274,7 @@ def add_functions_to_class(*functions):
     """
 
     def decorator(classe):
-        # Parcourir toutes les fonctions à ajouter
         for function in functions:
-            # Ajouter chaque fonction à la classe
             setattr(classe, function.__name__, function)
         return classe
 
@@ -307,13 +290,10 @@ def count_calls(counter_name):
 
     def decorator(func):
         def wrapper(self, *args, **kwargs):
-            # Vérifie si le compteur existe, sinon le crée
             if not hasattr(self.__class__, counter_name):
                 setattr(self.__class__, counter_name, 0)
-            # Incrémente le compteur
             current = getattr(self.__class__, counter_name)
             setattr(self.__class__, counter_name, current + 1)
-            # Appelle la fonction originale
             return func(self, *args, **kwargs)
 
         return wrapper
@@ -321,11 +301,9 @@ def count_calls(counter_name):
     return decorator
 
 
-# Fonction auxiliaire pour convertir une chaîne en liste de flottants
 def parse_float_list(arg):
     return [float(x) for x in arg.split(",")]
 
 
-# Fonction auxiliaire pour convertir une chaîne en liste de chaînes
 def parse_string_list(arg):
     return arg.split(",")

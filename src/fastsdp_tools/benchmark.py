@@ -7,13 +7,13 @@ def create_folder(folder_path):
 
 
 def create_folder_benchmark(folder_name):
-    """Création du dossier de résultats"""
+    """Create results folder"""
     folder_dir = f"results/benchmark/{folder_name}"
     create_folder(folder_dir)
 
 
 def create_subfolder_benchmark(folder_name, subfolder_name):
-    """Création du sous-dossier de résultats"""
+    """Create results subfolder"""
     folder_dir = f"results/benchmark/{folder_name}/{subfolder_name}"
     create_folder(folder_dir)
 

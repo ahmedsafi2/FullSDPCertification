@@ -294,16 +294,7 @@ def check_stability_neurons(
     for k in range(1, self.K):
         
         for j in range(self.n[k]):
-            # print(
-            #     "STUDY : Layer ",
-            #     k,
-            #     " Neuron ",
-            #     j,
-            #     " L=",
-            #     self.L[k][j],
-            #     " U=",
-            #     self.U[k][j],
-            # )
+
             if self.L[k][j] <= 0 and self.U[k][j] <= 0 and not use_inactive_neurons:
                 self.stable_inactives_neurons.append((k, j))
             elif self.L[k][j] >= 0 and self.U[k][j] > 0 and not use_active_neurons:
@@ -317,10 +308,6 @@ def check_stability_neurons(
                     self.stable_actives_neurons.append((k, j))
     self.stable_active_neurons = set(self.stable_actives_neurons)
     self.stable_inactive_neurons = set(self.stable_inactives_neurons)
-    print(
-        "STUDY : Nb Stable neurons : ",
-        len(self.stable_active_neurons) + len(self.stable_inactive_neurons),
-    )
     logger.debug("stable active neurons : ", self.stable_active_neurons)
     logger.debug("stable inactive neurons : ", self.stable_inactive_neurons)
 
@@ -340,47 +327,7 @@ def prune_adversarial_targets(self):
         ):
             self.ytargets.remove(j)
         else:
-            # print("STUDY : Adversarial target selected : ", j)
             continue
-
-
-# def compute_ibp(self):
-#     "Compute bounds L and U with IBP."
-#     L = [[(self.x[i].item() - self.epsilon) for i in range(self.n[0])]]
-#     U = [[(self.x[i].item() + self.epsilon) for i in range(self.n[0])]]
-#     for k in range(1,self.K+1):
-#         print("IBP de la couche ", k)
-#         lb_layer = []
-#         ub_layer = []
-#         for j in range(self.n[k]):
-#             print(f"Neuron j = {j}")
-#             lb= self.b[k-1][j]
-#             ub = self.b[k-1][j]
-#             for i in range(self.n[k-1]):
-#                 print(f"Neurone precdent i = {i}")
-#                 print("len(self.W_k-1) : ", len(self.W[k-1]))
-#                 print("len(self.W_k-1[0]) : ", len(self.W[k-1][0]))
-
-#                 w_ij = self.W[k-1][j][i]
-#                 print("Poids wij = ", w_ij)
-#                 print(f"L = ", L)
-#                 if w_ij >= 0:
-#                     print("Poids positif")
-#                     print(f"L_{k-1} : ", L[k-1])
-#                     lb += w_ij * L[k-1][i]
-#                     ub += w_ij * U[k-1][i]
-#                     print("Rajouté")
-#                 else:
-#                     print("Poids négatif")
-#                     print(f"L_{k-1} : ", L[k-1])
-#                     lb += w_ij * U[k-1][i]
-#                     ub += w_ij * L[k-1][i]
-#                     print("Rajouté")
-#             lb_layer.append(lb)
-#             ub_layer.append(ub)
-
-#         L.append(lb_layer)
-#         U.append(ub_layer)
 
 
 

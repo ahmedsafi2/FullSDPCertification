@@ -15,7 +15,7 @@ class MiniDataset(Dataset):
     def __init__(self, x, y):
         self.data = [
             [(x.squeeze(0), y.squeeze(0))]
-        ]  # enlever batch dim (1, 784) → (784)
+        ] 
 
     def __len__(self):
         return len(self.data)
@@ -24,11 +24,10 @@ class MiniDataset(Dataset):
         return self.data[idx]
 
 
-# On veut simuler : dataloader → (label y, list_x) où list_x = [(x, ytrue), ...]
 class GroupedByLabelDataset:
     def __init__(self, label_to_data, ytrue):
         self.label_to_data = label_to_data
-        self.ytrue = ytrue.squeeze(0)  # (1,) → scalaire
+        self.ytrue = ytrue.squeeze(0)  
 
     def __iter__(self):
         for label, xs in self.label_to_data.items():
@@ -44,10 +43,10 @@ class DataConfig(BaseModel):
     y: int
     x: Union[Any, str]
 
-    @validator("x", pre=True)  # pre = True donc s'exécute avant la validation du type
+    @validator("x", pre=True) 
     def validate_before_x(
         cls, x, values
-    ):  # Here values has all the already validated values by order of assignment
+    ):  
         if isinstance(x, (str, Path)):
             path = Path(get_project_path(x.replace("\\", "/")))
             if not path.exists():
@@ -68,14 +67,14 @@ class DataConfig(BaseModel):
                     f"Not example found with label {y} in path : {path}"
                 )
         else:
-            return x  # x already defined explicitely
+            return x 
 
     ytarget: Optional[int] = None
 
    
     @model_validator(mode="after")
     def create_dataset(self) -> "DataConfig":
-        # Créer une map par label
+       
         print("ytrue in Data Config:", self.y)
         ytrue = torch.tensor([self.y], dtype=torch.int64).unsqueeze(0)
         print("ytrue in Data Config apres tensor operator : ", ytrue)
@@ -149,12 +148,12 @@ class SDPSolverConfig(BaseModel):
     def validate_and_normalize_matrix_by_layers(cls, v, values):
         """Normalise en List[List[int]] ou garde bool pour résolution tardive."""
         if isinstance(v, bool):
-            return v  # résolution tardive quand K est connu
+            return v  
         if isinstance(v, list):
-            # Validation : chaque groupe a ≥ 2 couches
+            
             for group in v:
                 assert len(group) >= 2, f"Group {group} must have at least 2 layers"
-            # Validation : chevauchement exact entre groupes consécutifs
+ 
             for i in range(len(v) - 1):
                 assert v[i][-1] == v[i+1][0], (
                     f"Groups {v[i]} and {v[i+1]} must share exactly one boundary layer"
@@ -163,7 +162,7 @@ class SDPSolverConfig(BaseModel):
            
         raise ValueError(f"MATRIX_BY_LAYERS must be bool or List[List[int]], got {type(v)}")
     LAST_LAYER: bool = (
-        False  # Whether to use the last layer of the network (logits) as variables
+        False
     )
     use_fusion: bool = False  # Whether to use the fusion API for MOSEK (deprecated: use solver="mosek_fusion")
     solver: str = "mosek_classic"  # Backend solver : "mosek_classic" | "mosek_fusion"
@@ -173,7 +172,7 @@ class SDPSolverConfig(BaseModel):
             raise ValueError(f"solver must be one of 'mosek_classic', 'mosek_fusion', got '{v}'")
         return v
     cp_solver: str = "MOSEK"  # CVXPY backend : "MOSEK", "SCS", "CLARABEL", "CVXOPT", ...
-    cp_solver_kwargs: Optional[dict] = None  # Kwargs passés à cp.Problem.solve()
+    cp_solver_kwargs: Optional[dict] = None  # Kwargs given to cp.Problem.solve()
     use_callback: bool = False  # Whether to use the callback for MOSEK
     use_active_neurons: Optional[bool] = (
         False  # Whether to use active neurons in the certification problem as variables
@@ -195,7 +194,7 @@ class SDPSolverConfig(BaseModel):
     bounds_n_runs: int = 1  # Number of independent alpha-CROWN runs; best-of-N is kept (max L, min U). Ignored for non-CROWN methods.
     write_model : Optional[bool] = False
     INPUT_IN_VARIABLES: Union[bool, float] = True  # If False/0.0, z_0 removed from SDP; if 0<p<1, keep top p*n_0 input neurons by W_1 column norm
-    solver_time_limit: Optional[int] = 7200  # Time limit in seconds for MOSEK solver (None = no limit)
+    solver_time_limit: Optional[int] = 7200  
 
 
 class GurobiSolverConfig(BaseModel):
