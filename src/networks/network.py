@@ -48,7 +48,6 @@ class ReLUNN(nn.Module):
 
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
-            # He initialization for ReLU networks
             nn.init.kaiming_normal_(module.weight, mode="fan_in", nonlinearity="relu")
             if module.bias is not None:
                 nn.init.constant_(module.bias, 0)
@@ -91,8 +90,6 @@ class ReLUNN(nn.Module):
             print("n : ", n)
             parametres = torch.load(path)
 
-            # net = cls(K, n)
-            # net.load_state_dict(parametres)
 
             W = []
             b = []
@@ -150,12 +147,12 @@ class ReLUNN(nn.Module):
             return_last_hidden (bool): If True, return the output of the last hidden layer (penultimate layer).
                                        If False, return the final output.
         """
-        # x = x.clone().detach().requires_grad_(True)
 
         if (
             x.dim() >= 4
-        ):  # Si les données sont des images (batch_size, channels, height, width)
-            x = x.view(x.size(0), -1)  # Aplatir les images (batch_size, 784)
+        ):  
+            
+            x = x.view(x.size(0), -1) 
 
         n_couche = 1
         for layer_name, layer in self.layers.items():
@@ -163,7 +160,8 @@ class ReLUNN(nn.Module):
             x = layer(x)
             if (
                 layer_name == self.penultimate_layer
-            ) and return_last_hidden:  # Avant-dernière couche (couche sans ReLU)
+            ) and return_last_hidden:  
+                
                 print("Derniere couche retournée")
                 return x
 
@@ -184,17 +182,14 @@ class ReLUNN(nn.Module):
         """
         if (
             x.dim() >= 4
-        ):  # Si les données sont des images (batch_size, channels, height, width)
-            x = x.view(x.size(0), -1)  # Aplatir les images (batch_size, 784)
+        ):  
+            x = x.view(x.size(0), -1)
 
         n_couche = 1
         values_layer = []
         for layer_name, layer in self.layers.items():
 
             x = layer(x)
-            # print("layer name : ", layer_name)
-            # #print("x : ", x)
-            # print("x shape : ", x.shape)
             if "Linear" in layer_name : 
                 values_layer.append(x.flatten().detach().cpu().tolist())
             n_couche += 1
@@ -224,12 +219,4 @@ class ReLUNN(nn.Module):
 
 if __name__ == "__main__":
     yaml_file = "config/moon.yaml"
-
-    # dataset = data.load_dataset(yaml_file)
-    # X = dataset["features"]
-    # y = dataset["labels"]
-
-    # print("X shape:", X.shape)
-    # print("y shape:", y.shape)
-
     net = ReLUNN.from_yaml(yaml_file)

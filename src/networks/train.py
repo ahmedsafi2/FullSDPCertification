@@ -19,9 +19,6 @@ from adv_train import (
 from adv_train import evaluate_clean
 from data import (
     analyze_class_distribution,
-    # EMNISTBalancedCSV,
-    # emnist_fix_orientation,
-    # ShiftLabels,
 )
 
 
@@ -105,20 +102,8 @@ if __name__ == "__main__":
     config = load_adversarial_training_config(f"config/networks/{args.network}.yaml")
     train_dataset = torch.load(get_project_path(config["train_path"]), weights_only=False)["dataset"]
 
-    # print("Len of train_dataset: ", len(train_dataset))
-    # print("train dataset: ", train_dataset)
-
-    # analyze_class_distribution(
-    #     train_dataset, dataset_name=f"Train Dataset {args.data_modele}"
-    # )
-
     test_dataset = torch.load(get_project_path(config["test_path"]), weights_only=False)["dataset"]
-    # print("Len of test_dataset: ", len(test_dataset))
 
-    # analyze_class_distribution(
-    #     test_dataset, dataset_name=f"Test Dataset {args.data_modele}"
-    # )
-    # print("")
     robust_to_test_dataset = torch.load(
         get_project_path(config["evaluate_robustness_path"]), weights_only=False
     )["dataset"]
@@ -187,16 +172,7 @@ if __name__ == "__main__":
 
     if args.adv_train == 1:
         print("Training with adversarial examples...")
-        # simple_adversarial_training_loop(
-        #     model,
-        #     dataloader,
-        #     dataloader,
-        #     device,
-        #     num_epochs=100,
-        #     lr=0.001,
-        #     eps=0.3,
-        #     adversarial_attack=args.attack,
-        # )
+
         results = complex_adversarial_training_loop(
             model=model,
             trainloader=train_loader,
@@ -222,20 +198,11 @@ if __name__ == "__main__":
         )
 
     state_dict = model.state_dict()
-    print(type(state_dict))  # Cela doit afficher <class 'collections.OrderedDict'>
-    print(state_dict)  # Affiche le contenu du state_dict
-
+    print(type(state_dict))  
+    print(state_dict)  
     name_network = config["name_network"]
     
-    # print("STUDY K at the end of training : ", model.K)
-    # print("STUDY n at the end of training  : ", model.n)
-    # for k in range(K):
-    #     print(
-    #         f" STUDY LAYER = {k}"
-    #         + f"len(b[{k}]) = {len(model.b[k])}"
-    #         + f"len(W[{k}]) = {len(model.W[k])}"
-    #         + f"len(W[{k}][0]) = {len(model.W[k][0])}"
-    #     )
+
     if args.adv_train:
         print("SAVE ADV : ", f"data/models/{args.data_modele}_adv_{name_network}.pt")
 

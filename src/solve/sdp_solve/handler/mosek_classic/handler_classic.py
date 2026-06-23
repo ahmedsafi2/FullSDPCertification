@@ -115,11 +115,6 @@ class MosekClassicHandler:
         self.indexes_matrices = Indexes_Mosek_Solver(**kwargs)
         self.indexes_variables = self.indexes_matrices  # même objet fusionné
 
-        # print(
-        #     "\n \n \n INDEXES \n \n \n : ",
-        # )
-        # self.print_index_variables_matrices()
-
         self.vector_variables = []
         self.final_number_constraints = None
 
@@ -143,8 +138,8 @@ class MosekClassicHandler:
             print("Initializing MOSEK solver")
         self.env = mosek.Env()
         self.task = self.env.Task(0, 0)
-        self.env.__enter__()  # Équivalent à entrer dans le bloc "with"
-        self.task.__enter__()  # Équivalent à entrer dans le bloc "with"
+        self.env.__enter__()  
+        self.task.__enter__()  
         if self.verbose:
             print("Adding callback to the task")
 

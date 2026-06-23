@@ -49,7 +49,6 @@ def get_model(name: str, dataset: str, pretrained: bool = False, input_dim=784) 
     if num_classes is None:
         raise ValueError(f"Unsupported dataset: {dataset}")
 
-    # Replace the final layer
     in_features = model.fc.in_features
     model.fc = nn.Linear(in_features, num_classes)
     return model

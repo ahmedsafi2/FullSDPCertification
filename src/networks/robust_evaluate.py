@@ -23,45 +23,19 @@ if __name__ == "__main__":
     network = network.to(device)
 
     config = load_adversarial_training_config(get_project_path(f"config/networks/{args.network}.yaml"))
-    # robust_to_test_dataset = torch.load(
-    #     get_project_path(config["evaluate_robustness_path"]), weights_only=False
-    # )["dataset"]
+
     robust_to_test_dataset = torch.load("/share/homes/boyerma/FastSDPCertification/data/datasets/MNIST/ConcatMNIST/67_classes/concatmnist_subset_1_per_class.pth", weights_only = False)["dataset"]
   
-    # test_dataset = torch.load(get_project_path(config["test_path"]), weights_only=False)["dataset"]
 
-    # dataloader = DataLoader(
-    #     test_dataset,
-    #     batch_size=100,
-    #     shuffle=False,  # Pas besoin de mélanger pour test
-    #     num_workers=2,
-    #     pin_memory=True,
-    # )
     robust_dataloader = DataLoader(
         robust_to_test_dataset,
         batch_size=1,
-        shuffle=False,  # Pas besoin de mélanger pour test
+        shuffle=False, 
         num_workers=2,
         pin_memory=True,
     )
 
-    # pgd_robust = evaluate_robust(
-    #                 network,
-    #                 dataloader,
-    #                 "cuda:0",
-    #                 {
-    #                     "eps": 0.015,
-    #                     "alpha": 0.01,
-    #                     "steps": 40,
-    #                     "random_start": True,
-    #                     "norm": "inf",
-    #                 },
-    #             )
 
-    # acc = evaluate(
-    #     network,
-    #     dataloader,
-    # )
     rob_acc = evaluate_robust(
         network,
         robust_dataloader,
@@ -74,5 +48,4 @@ if __name__ == "__main__":
             "norm": "inf",
         },
     )
-    #print("accuracy: ", acc)
     print("Robust accuracy : ", rob_acc)
