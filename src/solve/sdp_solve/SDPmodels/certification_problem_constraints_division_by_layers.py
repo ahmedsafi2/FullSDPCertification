@@ -3,22 +3,11 @@ import mosek
 
 def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
     """
-    Contraintes de cohérence entre matrices adjacentes (décomposition chordale).
-
-    Pour chaque couche frontière k partagée entre deux groupes consécutifs
-    (layer_groups[i][-1] == layer_groups[i+1][0]), on impose :
-
-      Linéaire  : P_{groupe gauche}[z_{k,j}]           == P_{groupe droit}[z_{k,j}]
-      Quadratique: P_{groupe gauche}[z_{k,j} * z_{k,j2}] == P_{groupe droit}[z_{k,j} * z_{k,j2}]
-
-    front_of_matrix=False → groupe gauche (k est le dernier élément du groupe)
-    front_of_matrix=True  → groupe droit  (k est le premier élément du groupe)
+    Coherence constraints between adjacent matrices (chordal decomposition)
     """
-    print("Adding rec matrices constraint")
 
     layer_groups = self.handler.indexes_matrices.layer_groups
 
-    # Calcul des couches qui sont présentes dans deux matrices consécutives 
     repetitive_layers = [
         layer_groups[i][-1]
         for i in range(len(layer_groups) - 1)
@@ -26,7 +15,7 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
 
     sum_cstr = 0
 
-    # --- Contraintes linéaires ---
+    # --- Linear constraints ---
     for k in repetitive_layers:
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons and not self.use_inactive_neurons:
@@ -47,7 +36,7 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
             self.handler.Constraints.add_bound(bound_type=mosek.boundkey.fx, bound=0)
             sum_cstr += 1
 
-    # --- Contraintes quadratiques ---
+    # ---  Quadratic constraints ---
     if not only_linear_constraints:
         print("Adding rec matrices quadratic constraint")
         for k in repetitive_layers:

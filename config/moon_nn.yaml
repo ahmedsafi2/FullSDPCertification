@@ -21,7 +21,7 @@ network :
 
 models :
   # SDPt
-  - certification_model_name : "LanSDP"
+  - certification_model_type : "TargetedSDP"
     cuts : 
     - "RLT"
     - "triangularization"

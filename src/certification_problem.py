@@ -140,9 +140,9 @@ class Certification_Problem:
         If start/end are provided, only samples with raw dataset index in [start, end) are processed.
         If include_indices is provided, only samples whose index is in the set are processed.
         """
-        model_class = getattr(solve, solver_config.certification_model_name)
+        model_class = getattr(solve, solver_config.certification_model_type)
         print(
-            f"Running certification with solver: {solver_config.certification_model_name}"
+            f"Running certification with solver: {solver_config.certification_model_type}"
         )
 
         print("SOLVER CONFIG:", solver_config)
@@ -207,7 +207,7 @@ class Certification_Problem:
                 print("Bounds loaded from file : ", solver_config.bounds_file)
 
             dict_infos = dict(solver_config)
-            dict_infos.pop("certification_model_name")
+            dict_infos.pop("certification_model_type")
             logger.debug("dict_infos:", dict_infos)
    
             
@@ -321,7 +321,7 @@ class Certification_Problem:
 
         for i, model_config in enumerate(self.models):
 
-            print("Solving with model:", model_config.certification_model_name, flush=True)
+            print("Solving with model:", model_config.certification_model_type, flush=True)
             print("model dict :", model_config, flush=True)
             self.run(model_config, title_run, start=start, end=end, skip_indices=skip_indices, skip_pairs=skip_pairs, include_indices=include_indices)
 
@@ -470,10 +470,10 @@ def main_resume(run_folder: str):
     network = yaml_path.stem
 
     skip_indices, skip_pairs = find_processed_indices(run_folder)
-    # data_indices with partial LanSDP results (some targets done, not all)
+    # data_indices with partial TargetedSDP results (some targets done, not all)
     partial_indices = {idx for idx, _ in skip_pairs} - skip_indices
     print(f"Already fully processed: {len(skip_indices)} samples — {sorted(skip_indices)}")
-    print(f"Partially processed (LanSDP): {len(partial_indices)} samples — {sorted(partial_indices)}")
+    print(f"Partially processed (TargetedSDP): {len(partial_indices)} samples — {sorted(partial_indices)}")
     print(f"Done (data_index, target) pairs: {len(skip_pairs)}")
 
     existing_results = load_existing_results(run_folder)

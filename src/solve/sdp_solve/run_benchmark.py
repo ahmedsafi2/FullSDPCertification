@@ -44,7 +44,7 @@ def create_all_cuts_to_test(self):
 
     if self.cuts is not None:
         if self.all_combinations_cuts:
-            if self.name == "LanSDP":
+            if self.name == "TargetedSDP":
                 self.cuts = remove_values_of_list_from_list(
                     self.cuts,
                     [
@@ -54,7 +54,7 @@ def create_all_cuts_to_test(self):
                         "zbar",
                     ],
                 )
-            elif self.name == "MdSDP":
+            elif self.name == "UntargetedSDP":
                 self.cuts = remove_values_of_list_from_list(self.cuts, ["zbar"])
 
             for r in range(1, len(self.cuts) + 1):

@@ -34,7 +34,7 @@ def evaluate_clean(model, testloader, device):
 
 
 def evaluate_robust(model, testloader, device, pgd_config, max_batches=None):
-    """Évaluation de la robustesse avec PGD"""
+   
     model.eval()
 
     eval_pgd_config = pgd_config.copy()
@@ -253,7 +253,7 @@ def complex_adversarial_training_loop(
             print(f"Clean Accuracy: {clean_acc:.2%}")
 
             robust_acc = None
-            if epoch % (log_frequency * 2) == 0:  # Moins fréquent car plus lent
+            if epoch % (log_frequency * 2) == 0: 
                 robust_acc = evaluate_robust(
                     model,
                     robust_datas_loader,
@@ -351,7 +351,6 @@ def complex_adversarial_training_loop(
 
 
 def plot_training_curves(epochs, train_losses, clean_accs, robust_accs):
-    """Génère des graphiques de training curves en local"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
 
     ax1.plot(epochs, train_losses, "b-", label="Training Loss")

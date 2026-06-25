@@ -21,7 +21,7 @@ def ReLU_constraint_stable_active_relaxation(
     ):
         return
 
-    # print(f"    STUDY NEW SUBCONSTRAINT  RELU k = {k} j = {j}, bound_sense = {bound_sense}; bound_type = {bound_type}")
+    
     self.handler.Constraints.add_quad_variable(
         var1="z",
         layer1=k,
@@ -46,7 +46,7 @@ def ReLU_constraint_stable_active_relaxation(
         if (k - 1, i) in self.stable_inactives_neurons:
             continue
         elif (k - 1, i) in self.stable_actives_neurons :
-            #print(f"STUDY RELU : layer = {k-1}, neuron = {i}, weight = {self.network.W[k - 1][j][i]}")
+            
             self.handler.Constraints.add_z_quad_active_neuron(
                 layer_prev=k - 1,
                 neuron_prev=i,
@@ -61,7 +61,7 @@ def ReLU_constraint_stable_active_relaxation(
             
 
         else:
-            # print(f"Adding non-stable neuron ({k-1}, {i}) with weight {self.network.W[k - 1][j][i]}")
+            
             
             self.handler.Constraints.add_quad_variable(
                 var1="z",
@@ -85,21 +85,16 @@ def ReLU_constraint_stable_active_relaxation(
 def ReLU_constraint_Lan(
     self, relu_quadratic_random : bool = False
 ):
-    # print("Adding quadratic RELU constraint")
-    # print(f"STUDY NEW CONSTRAINT RELU")
-
+  
     for k in range(1, self.K):
         print(f"Adding ReLU constraints for layer {k}")
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons:
-                # print(f"Skipping stable inactive neuron ({k}, {j})")
                 continue
             if (k, j) in self.stable_actives_neurons and (
                 not self.keep_penultimate_actives or k != self.K - 1
             ):
-                # print(f"Skipping stable active neuron ({k}, {j})")
                 continue
-            # print(f"STUDY : Adding ReLU constraint for layer {k}, neuron {j} : z_{k,j}>=0")
             # zk >= 0
             if self.handler.Constraints.new_constraint(f"ReLU - z_{k,j}>=0", label = "same_for_data"):
                 continue
@@ -118,7 +113,7 @@ def ReLU_constraint_Lan(
             if k == 1 and not self.INPUT_IN_VARIABLES:
                 # z_0 entirely removed: sub-constraints 2 and 3 skipped
                 continue
-            # print(f"STUDY : Adding ReLU constraint for layer {k}, neuron {j} : z_{k,j}>= Wk zk-1 + bk")
+            
             if self.handler.Constraints.new_constraint(
                 f"ReLU - z_{k,j} >= W_{k,j} z_{k-1} + b{k,j}", label = "same_for_data"
             ):
@@ -160,13 +155,10 @@ def ReLU_constraint_Lan(
             # zk * (zk - Wk zk-1 - bk) = 0
             has_pruned_at_prev = (k == 1 and len(self.pruned_input_neurons) > 0)
             if has_pruned_at_prev:
-                # z_0[pruned] not SDP variables: quadratic terms z_1[j]*z_0[i] unavailable.
-                # Skip this sub-constraint (valid relaxation: feasible set enlarges).
                 continue
             if self.MATRIX_BY_LAYERS and (
                 any((k - 1, i) in self.stable_actives_neurons for i in range(self.n[k - 1]))):
-                # The constraint cannot be added as it links products of variables from different matrices : a relaxation is needed
-                # print("STUDY COEFF Relaxation of ReLU constraint for layer", k, "neuron", j)
+                
                 if relu_quadratic_random :
                     for i in range(8):
                         self.ReLU_constraint_stable_active_relaxation(
@@ -266,18 +258,6 @@ def ReLU_triangularization(self):
             rel_u = max(U_kj, 0)
             rel_l = max(L_kj, 0)
             k_cst = (rel_u - rel_l) / (U_kj - L_kj)
-            # print(
-            #     "k_cst:",
-            #     k_cst,
-            #     "rel_u:",
-            #     rel_u,
-            #     "rel_l:",
-            #     rel_l,
-            #     "L : ",
-            #     self.handler.Constraints.L[k][j],
-            #     "U :",
-            #     self.handler.Constraints.U[k][j],
-            # )
 
             # zk <= k * (Wk zk-1 + bk - Lk) + ReLU(Lk)
             if self.handler.Constraints.new_constraint(

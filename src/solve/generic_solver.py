@@ -186,7 +186,7 @@ class Solver:
         self.best_adversarial_examples = None
         self.verbose = verbose
 
-        self.name = kwargs.get("certification_model_name")
+        self.name = kwargs.get("certification_model_type")
 
         self.folder_name = kwargs.get("folder_name", None)
 

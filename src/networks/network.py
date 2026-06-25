@@ -53,10 +53,7 @@ class ReLUNN(nn.Module):
                 nn.init.constant_(module.bias, 0)
 
     def extract_weights(self):
-        """
-        Extrait les poids et biais des couches linéaires.
-        Met à jour self.W et self.b avec les poids actuels.
-        """
+
         W = []
         b = []
 
@@ -72,11 +69,7 @@ class ReLUNN(nn.Module):
 
     @classmethod
     def from_yaml(cls, yaml_file):
-        """
-        Create a ReLUNN instance from a YAML file.
-        Args:
-            yaml_file (str): Path to the YAML file.
-        """
+
         with open(yaml_file, "r") as file:
             config = yaml.safe_load(file)
             print("file : ", yaml_file)
@@ -112,7 +105,7 @@ class ReLUNN(nn.Module):
     
     @classmethod
     def from_pth(cls, pth_path, dropout_prob=0, bb_beta_crown:bool = False):
-        "Robust to different architectures"
+      
         parametres = torch.load(pth_path, map_location="cpu")
         if bb_beta_crown and 'state_dict' in parametres:
             parametres = parametres['state_dict'][0]
@@ -175,11 +168,7 @@ class ReLUNN(nn.Module):
         return x
 
     def return_values_each_layer(self, x):
-        """
-        Forward pass through the network and return the output of each layer.
-        Args:
-            x (torch.Tensor): Input tensor.
-        """
+
         if (
             x.dim() >= 4
         ):  

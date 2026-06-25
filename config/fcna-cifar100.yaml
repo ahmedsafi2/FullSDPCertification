@@ -29,7 +29,7 @@ network :
 
 models :
   # # SDP-IP
-  # - certification_model_name : "LanSDP"
+  # - certification_model_type : "TargetedSDP"
   #   # cuts : 
   #   # - "RLT"
   #   # - "triangularization"
@@ -46,7 +46,7 @@ models :
   #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
 
   # # SDP-Layer
-  # - certification_model_name : "LanSDP"
+  # - certification_model_type : "TargetedSDP"
   #   cuts : 
   #   - "triangularization"                                                                                                                                       
   #   # RLT_props : 
@@ -61,7 +61,7 @@ models :
   #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
 
   # # SDPt
-  # - certification_model_name : "LanSDP"
+  # - certification_model_type : "TargetedSDP"
   #   cuts : 
   #   - "RLT"
   #   - "triangularization"
@@ -78,7 +78,7 @@ models :
   #   bounds_method: "alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
 
 
-  - certification_model_name : "MdSDP"
+  - certification_model_type : "UntargetedSDP"
     write_model: true
     cuts : 
     - "RLT"
@@ -103,7 +103,7 @@ models :
 
 
 
-  # - certification_model_name : "ClassicLP"
+  # - certification_model_type : "ClassicLP"
   #   LAST_LAYER: false
   #   use_active_neurons: true # Whether to use active neurons in the certification problem as variables
   #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables

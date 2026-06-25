@@ -31,7 +31,7 @@ network :
 
 models :
   # # SDP-IP
-  # - certification_model_name : "LanSDP"
+  # - certification_model_type : "TargetedSDP"
   #   # cuts : 
   #   # - "RLT"
   #   # - "triangularization"
@@ -49,7 +49,7 @@ models :
   #   bounds_method: "from_file"   #"alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
 
   # # # SDP-Layer
-  # - certification_model_name : "LanSDP"
+  # - certification_model_type : "TargetedSDP"
   #   cuts : 
   #   # - "RLT"
   #   - "triangularization"
@@ -67,7 +67,7 @@ models :
   #   bounds_method: "from_file"   #"alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
 
   # # SDPt
-  # - certification_model_name : "LanSDP"
+  # - certification_model_type : "TargetedSDP"
   #   cuts : 
   #   - "RLT"
   #   - "triangularization"
@@ -85,7 +85,7 @@ models :
   #   bounds_method: "from_file"   #"alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
 
 
-  - certification_model_name : "MdSDP"
+  - certification_model_type : "UntargetedSDP"
     write_model: true
     cuts : 
     - "RLT"
