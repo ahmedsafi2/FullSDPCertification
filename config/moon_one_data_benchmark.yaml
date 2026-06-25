@@ -37,8 +37,8 @@ network :
 certification_problem :
   epsilon: 0.5
   models:
-  - "LanSDP"
-  - "MdSDP"
+  - "TargetedSDP"
+  - "UntargetedSDP"
   - "MzbarSDP"
   cuts :
   # - "triangularization"

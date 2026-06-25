@@ -31,7 +31,7 @@ network :
 
 models :
   # # SDP-IP
-  # - certification_model_name : "LanSDP"
+  # - certification_model_type : "TargetedSDP"
   #   # cuts : 
   #   # - "RLT"
   #   # - "triangularization"
@@ -50,7 +50,7 @@ models :
 
 
   # # SDP-Layer
-  # - certification_model_name : "LanSDP"
+  # - certification_model_type : "TargetedSDP"
   #   cuts : 
   #   - "triangularization"
   #   # RLT_props : 
@@ -67,7 +67,7 @@ models :
 
 
   # # SDPt
-  # - certification_model_name : "LanSDP"
+  # - certification_model_type : "TargetedSDP"
   #   cuts : 
   #   - "RLT"
   #   - "triangularization"
@@ -86,7 +86,7 @@ models :
 
 
 
-  - certification_model_name : "MdSDP"
+  - certification_model_type : "UntargetedSDP"
     write_model: false
     # solver : "cvxpy"
     # cp_solver : "SCS"

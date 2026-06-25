@@ -297,6 +297,7 @@ def complex_adversarial_training_loop(
     robust_accuracies_EPS_0_0_1 = []
     robust_accuracies_EPS_to_test = []
     epochs_logged = []
+    robust_epochs_logged = []
 
     model.to(device)
 
@@ -379,11 +380,11 @@ def complex_adversarial_training_loop(
 
         # Métriques d'époque
         avg_train_loss = running_loss / len(trainloader)
-        train_losses.append(avg_train_loss)
 
         # Évaluation périodique
         if epoch % log_frequency == 0 or epoch == num_epochs - 1:
             print(f"Epoch {epoch}, Loss: {avg_train_loss:.4f}")
+            train_losses.append(avg_train_loss)
 
             # Évaluation clean
             model.eval()
@@ -407,6 +408,7 @@ def complex_adversarial_training_loop(
                     },
                 )
                 robust_accuracies_EPS_0_3.append(robust_acc)
+                robust_epochs_logged.append(epoch)
                 print(f"Robust Accuracy EPS=0.3: {robust_acc:.2%}")
 
                 robust_acc_eps_0_1 = evaluate_robust(
@@ -481,7 +483,7 @@ def complex_adversarial_training_loop(
     # Graphiques finaux (sauvegarde locale)
     if not use_wandb:
         plot_training_curves(
-            epochs_logged, train_losses, clean_accuracies, robust_accuracies_EPS_0_3
+            epochs_logged, train_losses, clean_accuracies, robust_accuracies_EPS_0_3, robust_epochs_logged
         )
 
     # Fermeture W&B
@@ -496,7 +498,7 @@ def complex_adversarial_training_loop(
     }
 
 
-def plot_training_curves(epochs, train_losses, clean_accs, robust_accs):
+def plot_training_curves(epochs, train_losses, clean_accs, robust_accs, robust_epochs=None):
     """Génère des graphiques de training curves en local"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
 
@@ -511,7 +513,8 @@ def plot_training_curves(epochs, train_losses, clean_accs, robust_accs):
     # Accuracy curves
     ax2.plot(epochs, clean_accs, "g-", label="Clean Accuracy")
     if robust_accs:
-        robust_epochs = epochs[::2]  # Moins fréquent
+        if robust_epochs is None:
+            robust_epochs = epochs[::2]
         ax2.plot(robust_epochs, robust_accs, "r-", label="Robust Accuracy")
     ax2.set_xlabel("Epoch")
     ax2.set_ylabel("Accuracy")

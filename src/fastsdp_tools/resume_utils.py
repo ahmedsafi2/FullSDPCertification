@@ -15,9 +15,9 @@ def find_run_yaml(run_folder: Path) -> Path:
 def find_processed_indices(run_folder: Path) -> tuple:
     """Return (fully_done, done_pairs).
 
-    fully_done: set of data_index where target is NaN — MdSDP rows where the entire
+    fully_done: set of data_index where target is NaN — UntargetedSDP rows where the entire
                 sample is solved in one shot, so no partial state is possible.
-    done_pairs: set of (data_index, target) int tuples — LanSDP rows where each
+    done_pairs: set of (data_index, target) int tuples — TargetedSDP rows where each
                 target class is a separate SDP solve and partial completion can occur.
 
     Rows with status "pre-solve" or "crashed" are excluded: they were written before

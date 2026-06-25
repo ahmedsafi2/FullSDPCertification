@@ -29,7 +29,7 @@ class LPBoundLayer(GurobiSolver):
     ):
         #print("kwargs in init LP : ", kwargs)
 
-        super().__init__(certification_model_name="LP_Bound_Layer", **kwargs)
+        super().__init__(certification_model_type="LP_Bound_Layer", **kwargs)
         assert self.bounds_method == "IBP"
         assert self.use_inactive_neurons and self.use_active_neurons
 

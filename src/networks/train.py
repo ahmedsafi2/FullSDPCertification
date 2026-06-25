@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     elif args.data_modele == "moon":
         print("args data modele == MOON...")
-        yaml_file = "config/moon.yaml"
+        yaml_file = "config/moon_one_data_benchmark.yaml"
         loaded_data = data.load_dataset(yaml_file)
         print("Loaded data: ", loaded_data)
         train_dataset = loaded_data
@@ -207,7 +207,7 @@ if __name__ == "__main__":
             experiment_name=f"{args.data_modele}_{attack}_"
             + datetime.datetime.now().strftime("%m_%d_%Hh%M_%Ss"),
             log_frequency=10,
-            use_wandb=True,
+            use_wandb=False,
             yaml_file=f"networks/{args.network}.yaml",
             epsilon_to_test=epsilon_to_test,
             **config,

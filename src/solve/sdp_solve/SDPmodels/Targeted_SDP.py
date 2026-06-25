@@ -31,6 +31,12 @@ from .certification_problem_constraints_forward_pass import (
 from .certification_problem_constraints_rlt import add_RLT_constraints
 from .certification_problem_constraints_division_by_layers import matrix_by_layers_rec
 from .certification_problem_constraints_sdp import first_term_equal_zero
+from .certification_problem_relaxed_relu_heuristic import (
+    add_z_quad_active_neuron_heuristic, 
+    quadratic_constraint_heuristic,
+    quadratic_constraint_heuristic_4_DETERMINISTIC_CONSTRAINTS,
+    quadratic_constraint_heuristic_RANDOM
+)
 
 
 logger_mosek = logging.getLogger("Mosek_logger")
@@ -50,14 +56,18 @@ logger_mosek = logging.getLogger("Mosek_logger")
     all_4_McCormick,
     is_front_of_matrix,
     L2_ball_bounds,
-    last_layer_linear_equality
+    last_layer_linear_equality,
+    add_z_quad_active_neuron_heuristic, 
+    quadratic_constraint_heuristic,
+    quadratic_constraint_heuristic_4_DETERMINISTIC_CONSTRAINTS,
+    quadratic_constraint_heuristic_RANDOM
 )
-class LanSDP(SDPSolver):
+class TargetedSDP(SDPSolver):
     def __init__(self, **kwargs):
-        # print("kwargs in LanSDP: ", kwargs)
-        super().__init__(certification_model_name="LanSDP", **kwargs)
+        # print("kwargs in TargetedSDP: ", kwargs)
+        super().__init__(certification_model_type="TargetedSDP", **kwargs)
 
-        logger_mosek.debug("beginning LanSDP init")
+        logger_mosek.debug("beginning TargetedSDP init")
         self.BETAS = False
         self.BETAS_Z = False
 
@@ -73,7 +83,7 @@ class LanSDP(SDPSolver):
         print("Neurones stables inactives: ", self.stable_inactives_neurons)
 
         logger_mosek.debug(f"Bounds for the network :  {self.L} and {self.U}")
-        logger_mosek.debug("ending LanSDP init")
+        logger_mosek.debug("ending TargetedSDP init")
 
     def add_objective(self):
         """

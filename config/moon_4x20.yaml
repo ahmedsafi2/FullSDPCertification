@@ -1,7 +1,7 @@
 data :
-  name : "blob"
-  path : "data/datasets/blob_dataset.pth"
-  num_classes : 3
+  name : "moon"
+  path : "data/datasets/moon_dataset.pth"
+  num_classes : 1
   num_samples : 1000
 
 input_ball:
@@ -11,15 +11,15 @@ input_ball:
 divide_run : 1
 
 network :
-  name : "blob_nn_4x10"
-  path : "data/models/blob_adv_blob_nn_4x10.pt"
+  name : "moon_4x20"
+  path : "data/models/moon_adv_moon_4x20.pt"
   K : 5
   n :
   - 2
-  - 10
-  - 10
-  - 10
-  - 10
+  - 40
+  - 40
+  - 40
+  - 40
   - 3
 
 models :
@@ -49,7 +49,7 @@ models :
     #ultimate_layer_use_active_neurons: 5 # Whether to use active neurons in the ultimate layer in the certification problem as variables
     use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
     keep_penultimate_actives : true # Whether to keep the penultimate layer active neurons in the certification problem
-    bounds_file: "data/bounds/blob_4x10-0.5_linf.csv"  # Folder where precomputed bounds are stored
+    bounds_file: "data/bounds/moon_4x20_linf_0.5.csv"  # Folder where precomputed bounds are stored
     bounds_method: "from_file"   #"alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
     bounds_n_runs : 10 # Number of runs to compute bounds, useful when the method is non-deterministic (e.g., alpha-CROWN with random alpha initialization)
    # solver_time_limit : 10 # Time limit for MOSEK in seconds, set to None for no limit

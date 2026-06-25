@@ -48,6 +48,12 @@ from .certification_problem_constraints_division_by_layers import (
 )
 from .certification_problem_constraints_rlt import add_RLT_constraints
 from .certification_problem_constraints_sdp import first_term_equal_zero
+from .certification_problem_relaxed_relu_heuristic import (
+    add_z_quad_active_neuron_heuristic, 
+    quadratic_constraint_heuristic,
+    quadratic_constraint_heuristic_4_DETERMINISTIC_CONSTRAINTS,
+    quadratic_constraint_heuristic_RANDOM
+)
 
 
 logger_mosek = logging.getLogger("Mosek_logger")
@@ -78,17 +84,21 @@ logger_mosek = logging.getLogger("Mosek_logger")
     last_layer_linear_equality,
     z_j2_zj_big_m,
     sum_beta_j_z_i_equal_z_i,
-    sum_beta_j_z_i_equal_z_i_layer
+    sum_beta_j_z_i_equal_z_i_layer,
+    add_z_quad_active_neuron_heuristic, 
+    quadratic_constraint_heuristic,
+    quadratic_constraint_heuristic_4_DETERMINISTIC_CONSTRAINTS,
+    quadratic_constraint_heuristic_RANDOM
 )
-class MdSDP(SDPSolver):
+class UntargetedSDP(SDPSolver):
     def __init__(self, **kwargs):
 
         super().__init__(
-            certification_model_name="MdSDP", BETAS=True, BETAS_Z=True, **kwargs
+            certification_model_type="UntargetedSDP", BETAS=True, BETAS_Z=True, **kwargs
         )
 
         logger_mosek.debug(f"Bounds for the network :  {self.L} and {self.U}")
-        print("ytargets in MdSDP:", self.ytargets)
+        print("ytargets in UntargetedSDP:", self.ytargets)
 
     def add_objective(self):
         """

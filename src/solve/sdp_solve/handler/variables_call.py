@@ -803,9 +803,9 @@ class VariablesCall:
         front_of_matrix_next: bool,
         weight: float,
         bound_sense: str = "upper",
-        bound_type: str = "one_variable",
+        mccormick_type: str = "one_variable",
     ):
-        assert bound_type in ["one_variable", "composed", "random"]
+        assert mccormick_type in ["one_variable", "composed", "random"]
         assert bound_sense in ["lower", "upper"]
 
         assert (layer_prev, neuron_prev) in self.stable_actives_neurons
@@ -834,12 +834,12 @@ class VariablesCall:
                 # if (layer_next - layer1 > 2) and (layer1>0):
                 #     print(f"STUDY RELU : ", f"Product of z_{layer_next} and z_{layer1} is NOT present in the variable matrices, adding product with bounding.")
                 # Produit non présent, utilisation d'encadrement avec bornes de mccormick
-                if bound_type == "random":
-                    bound_type_ = random.choice(["one_variable", "composed"])
+                if mccormick_type == "random":
+                    mccormick_type = random.choice(["one_variable", "composed"])
                 else:
-                    bound_type_ = bound_type
+                    mccormick_type = mccormick_type
 
-                if bound_type_ == "composed":
+                if mccormick_type == "composed":
                     coeff_next_, cst_ = self.add_z_quad_bound_composed(layer1, neuron1, front_of_matrix_prev,
                                                                        weight, coeff1, U_next, bound_sense)
                 else:

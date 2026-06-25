@@ -36,7 +36,7 @@ class MdQuad(GurobiSolver):
         self,
         **kwargs,
     ):
-        super().__init__(certification_model_name="MdQuad", BETAS=True, **kwargs)
+        super().__init__(certification_model_type="MdQuad", BETAS=True, **kwargs)
 
 
     def add_objective(self):

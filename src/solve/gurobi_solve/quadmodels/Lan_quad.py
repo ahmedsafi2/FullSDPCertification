@@ -25,7 +25,7 @@ class LanQuad(GurobiSolver):
     ):
         print("kwargs in init LanQuad : ", kwargs)
 
-        super().__init__(certification_model_name="LanQuad", **kwargs)
+        super().__init__(certification_model_type="LanQuad", **kwargs)
         self.possible_targets = [
             target for target in self.ytargets if target != self.ytrue
         ]

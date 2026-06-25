@@ -26,7 +26,7 @@ def get_results_trivially_solved(self):
         "Nb_stable_inactives": len(self.stable_inactives_neurons),
         "Nb_stable_actives": len(self.stable_actives_neurons),
     }
-    if self.__class__.__name__=="LanSDP" or self.__class__.__name__=="MdSDP":
+    if self.__class__.__name__=="TargetedSDP" or self.__class__.__name__=="UntargetedSDP":
         dic_benchmark["MATRIX_BY_LAYERS"] = self.MATRIX_BY_LAYERS
     print("dic benchmark keys : ", dic_benchmark)
     if self.benchmark_dataframe is None:

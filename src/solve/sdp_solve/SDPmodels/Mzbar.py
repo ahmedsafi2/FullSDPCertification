@@ -71,7 +71,7 @@ logger_mosek = logging.getLogger("Mosek_logger")
 class MzbarSDP(SDPSolver):
     def __init__(self, **kwargs):
         super().__init__(
-            certification_model_name="MzbarSDP",
+            certification_model_type="MzbarSDP",
             BETAS=True,
             BETAS_Z=True,
             ZBAR=True,

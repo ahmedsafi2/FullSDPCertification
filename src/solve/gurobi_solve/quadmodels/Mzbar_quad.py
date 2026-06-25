@@ -45,7 +45,7 @@ class MzbarQuad(GurobiSolver):
     ):
         print("kwargs in init LanQuad : ", kwargs)
 
-        super().__init__(certification_model_name="MzbarQuad", BETAS=True, **kwargs)
+        super().__init__(certification_model_type="MzbarQuad", BETAS=True, **kwargs)
 
     def add_objective(self):
         self.add_objective_zbar()
