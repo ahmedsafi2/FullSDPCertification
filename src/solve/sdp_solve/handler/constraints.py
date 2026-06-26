@@ -151,9 +151,6 @@ class CommonConstraints( SDPVariableMapper ):
             ub = self.list_cstr[self.current_num_constraint]["ub"]
             lb = self.list_cstr[self.current_num_constraint]["lb"]
             bound_type = self.list_cstr[self.current_num_constraint]["bound_type"]
-            print(
-                f"Current constraint {name} : {elements};     bound : {bound_type}; ub : {ub}; lb : {lb}\n"
-            )
 
     def add_bound(self, bound_type: mosek.boundkey, bound: float):
 
@@ -271,13 +268,8 @@ class CommonConstraints( SDPVariableMapper ):
     def end_constraints(self):
         logger_mosek.info("Ending constraints")
         self.current_num_constraint += 1
-        print(
-            "Ending constraints. Total number of constraints : ",
-            len(self.list_cstr),
-        )
 
     def get_histogram_of_coefficients(self):
-        print("Getting histogram of coefficients...")
         histogram_coeff = {}
         min_coeff = infinity
         max_coeff = -infinity
@@ -291,7 +283,7 @@ class CommonConstraints( SDPVariableMapper ):
         close_to_zero_total_coeff = infinity
         close_to_zero_total_bound = infinity
 
-        comparaison_by_constraints = []
+        comparison_by_constraints = []
 
         for cstr in self.list_cstr:
 
@@ -333,7 +325,7 @@ class CommonConstraints( SDPVariableMapper ):
                 else:
                     histogram_coeff[value] = 1
 
-            comparaison_by_constraints.append(
+            comparison_by_constraints.append(
                 {
                     "greater_coeff": greater_coeff,
                     "smaller_coef": smaller_coef,
@@ -353,12 +345,11 @@ class CommonConstraints( SDPVariableMapper ):
             max_bound,
             sum_bound / len(self.list_cstr),
             close_to_zero_total_bound,
-            comparaison_by_constraints,
+            comparison_by_constraints,
         )
 
 
     def get_histogram_of_coefficients_name_constraint(self, name_constraint : str = "ReLU Relaxed"):
-        print("Getting histogram of coefficients...")
         self.coefficient_values = {k : [] for k in range(self.K+1)}
         decimals_list = []
         equals_zero = 0
@@ -374,8 +365,8 @@ class CommonConstraints( SDPVariableMapper ):
                            
                             d = decimal.Decimal(str(val))
                             if '.' in str(d):
-                                nb_decimals = len(str(d).split('.')[1])
-                                decimals_list.append(nb_decimals)
+                                n_decimals = len(str(d).split('.')[1])
+                                decimals_list.append(n_decimals)
 
                             if abs(val) < 1e-6:
 
@@ -403,14 +394,14 @@ class CommonConstraints( SDPVariableMapper ):
         self.cstr_names = set(d["name"] for d in self.list_cstr if d["name"])
 
         if len(self.list_cstr) > 0:
-            nb_relus = 0
-            nb_rlt = 0
+            n_relus = 0
+            n_rlt = 0
             others = 0
             for cst in self.list_cstr:
                 if "ReLU" in cst["name"]:
-                    nb_relus += 1
+                    n_relus += 1
                 elif "McCormick" in cst["name"]:
-                    nb_rlt += 1
+                    n_rlt += 1
                 else:
                     others += 1
 

@@ -78,7 +78,7 @@ class ObjectiveFusion(Objective):
                 elements=self.elements.elements,
                 dict=dict1,
                 value=value,
-                nb_index=self.indexes_variables.max_index,
+                n_index=self.indexes_variables.max_index,
                 dividing_non_diag=False,
             )
         else:
@@ -87,7 +87,7 @@ class ObjectiveFusion(Objective):
                 dict1=dict1,
                 dict2=dict2,
                 value=value,
-                nb_index=self.indexes_variables.max_index,
+                n_index=self.indexes_variables.max_index,
                 dividing_non_diag=False,
             )
 

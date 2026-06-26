@@ -98,7 +98,6 @@ class MosekFusionHandler:
         LAST_LAYER: bool
             Whether the last layer is included in the matrix of the z variables or not.
         """
-        print("Initializing MosekFusionHandler")
         self.MATRIX_BY_LAYERS = kwargs.get("MATRIX_BY_LAYERS", False)
         self.LAST_LAYER = kwargs.get("LAST_LAYER", False)
         self.BETAS = kwargs.get("BETAS", False)
@@ -113,7 +112,6 @@ class MosekFusionHandler:
 
         self.ytrue = kwargs.get("ytrue", None)
         self.ytarget = kwargs.get("ytarget", None)
-        print('TEST TARGET IN HANDLER : ', self.ytarget)
 
         self.epsilon = kwargs.pop("epsilon", None)
 
@@ -241,9 +239,6 @@ class MosekFusionHandler:
 
                     if i != j:
                         coeff *= 2
-                    print(
-                        f"num_matrix : {num_matrix}, i : {i}, j : {j}, coeff : {coeff}, val_matrix : {val_matrix}"
-                    )
 
                     val += coeff * val_matrix
 
@@ -254,13 +249,11 @@ class MosekFusionHandler:
                     logger_mosek.debug(
                         f"Constraint {constraint['name']} is not feasible: {val} < {lb}"
                     )
-                    print("Constraint  : ", constraint)
                     return False
                 if val > ub + precision:
                     logger_mosek.debug(
                         f"Constraint {constraint['name']} is not feasible: {val} > {ub}"
                     )
-                    print("Constraint  : ", constraint)
                     return False
                 else:
                     logger_mosek.debug(
@@ -268,7 +261,6 @@ class MosekFusionHandler:
                     )
             except Exception as e:
                 logger_mosek.error(f"Error in constraint {constraint['name']}: {e}")
-                print("Constraint  : ", constraint)
         return True
 
     def value_solution(self, variables_matrices):
@@ -304,10 +296,6 @@ class MosekFusionHandler:
         logger_mosek.info("Writing results to file...")
         cuts_str = compute_cuts_str(cuts)
 
-        print(
-            "Writing ptf : ",
-            f"{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_fusion.ptf",
-        )
 
         self.model.writeTask(
             get_project_path(
@@ -321,7 +309,7 @@ class MosekFusionHandler:
     def print_solver_info(self, verbose: bool = False):
         def mosek_to_logger(msg):
             msg = msg.rstrip("\n")
-            if msg:  # Évite les messages vides
+            if msg:  # skip empty messages
                 logger_mosek.debug(msg)
 
         if verbose:
@@ -352,8 +340,7 @@ class MosekFusionHandler:
             try:
                 dual_value = self.model.getConstraint(constraint_name).dual()
                 if dual_value is None:
-                    print(f"Variable duale None (solution duale non disponible) pour {constraint_name}")
                     continue
                 self.Constraints.list_cstr[ind]["dual_value"] = round(dual_value[0], 6)
             except Exception as e:
-                print(f"Impossible de récupérer la variable duale pour {constraint_name}: {e}")
+                pass

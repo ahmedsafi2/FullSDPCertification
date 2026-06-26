@@ -72,15 +72,12 @@ class ReLUNN(nn.Module):
 
         with open(yaml_file, "r") as file:
             config = yaml.safe_load(file)
-            print("file : ", yaml_file)
             K = config["network"]["K"]
             n = config["network"]["n"]
             
 
             path = get_project_path(config["network"]["path"].replace("\\", "/"))
 
-            print("K : ", K)
-            print("n : ", n)
             parametres = torch.load(path)
 
 
@@ -100,7 +97,6 @@ class ReLUNN(nn.Module):
 
             out_features = parametres[weight_k].shape[0]
             n.append(out_features)
-            print("n : ", n)
         return cls(K, n, W, b)
     
     @classmethod
@@ -131,57 +127,34 @@ class ReLUNN(nn.Module):
         return cls(K=K, n=n, W=W, b=b, dropout_prob=dropout_prob)
 
 
-    def forward(self, x, verbose=False, return_last_hidden=False):
+    def forward(self, x, return_last_hidden=False):
         """
         Forward pass through the network.
         Args:
             x (torch.Tensor): Input tensor.
-            verbose (bool): If True, print intermediate outputs.
-            return_last_hidden (bool): If True, return the output of the last hidden layer (penultimate layer).
-                                       If False, return the final output.
+            return_last_hidden (bool): If True, return the output of the last hidden layer.
         """
 
-        if (
-            x.dim() >= 4
-        ):  
-            
-            x = x.view(x.size(0), -1) 
+        if x.dim() >= 4:
+            x = x.view(x.size(0), -1)
 
-        n_couche = 1
         for layer_name, layer in self.layers.items():
-
             x = layer(x)
-            if (
-                layer_name == self.penultimate_layer
-            ) and return_last_hidden:  
-                
-                print("Derniere couche retournée")
+            if layer_name == self.penultimate_layer and return_last_hidden:
                 return x
-
-            if verbose:
-                if n_couche % 2 == 1:
-                    print(f"Couche n° {n_couche//2} : ", x)
-                elif n_couche % 2 == 0:
-                    print(f"Couche n° {n_couche//2} ReLU: ", x, " \n ")
-            n_couche += 1
 
         return x
 
     def return_values_each_layer(self, x):
 
-        if (
-            x.dim() >= 4
-        ):  
+        if x.dim() >= 4:
             x = x.view(x.size(0), -1)
 
-        n_couche = 1
         values_layer = []
         for layer_name, layer in self.layers.items():
-
             x = layer(x)
-            if "Linear" in layer_name : 
+            if "Linear" in layer_name:
                 values_layer.append(x.flatten().detach().cpu().tolist())
-            n_couche += 1
         return values_layer
 
     def label(self, x):

@@ -48,4 +48,3 @@ if __name__ == "__main__":
             "norm": "inf",
         },
     )
-    print("Robust accuracy : ", rob_acc)

@@ -20,27 +20,21 @@ def add_all_infos_optimal_values_to_dic(self, cuts: List):
     )    
     self.dual_obj_value = self.task.getdualobj(mosek.soltype.itr)
     if self.verbose : 
-        print("Optimal primal solution found with objective value: ", self.primal_obj_value)
-        print("Optimal dual objective value: ", self.dual_obj_value)
+        pass
     logger_mosek.info("Dual objective value: %s", self.dual_obj_value)
     if self.verbose :
-        print(f"CALLBACK : constant = {self.Objective.constant}")
+        pass
     self.optimal_value = self.primal_obj_value + self.Objective.constant
-    print(
-        f"CALLBACK : Optimal value (with added constant): {self.optimal_value} : with cuts {cuts}"
-    )
     self.is_robust = self.optimal_value >= 0
     if self.verbose :
-        print("Is robust: ", self.is_robust)
+        pass
 
     gap = abs(self.dual_obj_value - self.primal_obj_value)
     if gap > 0.01 * max(1.0, abs(self.dual_obj_value)):
-        print(f"Dual-primal gap = ({gap:.3e}) - Slater diagnostic")
         try:
             self.diagnose_infeasibility()
         except Exception as e:
             logger_mosek.warning("Slater diagnostic failed : %s", e)
-            print(f"Slater diagnostic failed : {e}")
 
     self.compute_solutions(cuts, print_sol = False)
     dic_sol = {"optimal_value": self.optimal_value}

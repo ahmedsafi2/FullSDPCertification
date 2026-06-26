@@ -68,9 +68,9 @@ def initialize_variables(self):
         if self.BETAS:
             self.add_vector_variable(name="betas", dim=self.n[self.K])
     
-    assert len(self.indexes_matrices.current_matrices_variables) == self.indexes_matrices.nb_matrices, (
+    assert len(self.indexes_matrices.current_matrices_variables) == self.indexes_matrices.n_matrices, (
         f"Inconsistent matrix count: {len(self.indexes_matrices.current_matrices_variables)} created "
-        f"but {self.indexes_matrices.nb_matrices} expected "
+        f"but {self.indexes_matrices.n_matrices} expected "
         f"(BETAS_Z={self.BETAS_Z}, MATRIX_BY_LAYERS={self.MATRIX_BY_LAYERS}, "
         f"LAST_LAYER={self.LAST_LAYER}, BETAS={self.BETAS}, K={self.K})"
     ) 
@@ -129,7 +129,6 @@ def print_index_variables_matrices(self):
             )
             line += f"          index = {ind_matrix}, i = {ind_col} \n"
 
-    print(line)
     return line
 
 
@@ -141,7 +140,6 @@ def print_num_variables(self):
     for i in range(self.num_matrices_variables()):
         dim = self.indexes_matrices.current_matrices_variables[i]["dim"]
         num_variables += (dim+1) * (dim+1)
-    print(f"CALLBACK num variables : {num_variables}")
     return num_variables
 
 
@@ -212,11 +210,7 @@ class Matrices_Solutions:
     def add_value(self, cuts, value):
         key = frozenset(cuts)
         if key not in self._data:
-            print(
-                f"Adding configuration {key} not yet present with value of shape {value.shape}"
-            )
             self._data[key] = value
-            print("Configuration added.")
 
         else:
             raise ValueError(
@@ -232,7 +226,6 @@ class Matrices_Solutions:
 
         key = frozenset(cuts)
         if key not in self._data:
-            print(f"Configuration {key} not found")
             raise ValueError(
                 f"Configuration {key} not found in available configurations"
             )
@@ -275,11 +268,9 @@ def diagnose_infeasibility(self, gap_threshold: float = 0.01, max_constraints_fo
                 f"λ_min={min_eig:.3e}, λ_max={max_eig:.3e}"
             )
             logger_mosek.warning(msg)
-            print(msg)
             if effective_rank < dim:
                 warn = f"    ⚠ Rank-deficient ({effective_rank}<{dim}) → X on the cone boundary, Slater condition not satisfied"
                 logger_mosek.warning(warn)
-                print(warn)
         except Exception as e:
             logger_mosek.warning(f"  Cannot analyze '{name}': {e}")
 
@@ -326,7 +317,6 @@ def diagnose_infeasibility(self, gap_threshold: float = 0.01, max_constraints_fo
             f"or reduce the problem size to enable rank analysis."
         )
         logger_mosek.warning(skip_msg)
-        print(skip_msg)
         return
 
     A = np.zeros((n_rows, n_cols))
@@ -353,14 +343,12 @@ def diagnose_infeasibility(self, gap_threshold: float = 0.01, max_constraints_fo
             f"p90={pct[3]:.2e}  p99={pct[4]:.2e}"
         )
         logger_mosek.warning(dist_msg)
-        print(dist_msg)
         gap_msg = (
             f"CALLBACK  Rank (threshold 1e-8) = {rank_strict}  |  "
             f"Rank (threshold 1e-4) = {rank_loose}  "
             f"→ {'sharp drop = true redundancy' if rank_strict != rank_loose else 'gradual decay = likely numerical'}"
         )
         logger_mosek.warning(gap_msg)
-        print(gap_msg)
         rank = rank_strict
     else:
         rank = 0
@@ -368,7 +356,6 @@ def diagnose_infeasibility(self, gap_threshold: float = 0.01, max_constraints_fo
     label = " (truncated)" if truncated else ""
     msg = f"CALLBACK  Constraint matrix: {n_rows}{label} × {n_cols} → rank={rank}"
     logger_mosek.warning(msg)
-    print(msg)
 
     if rank < n_rows:
         redundant_indices = P[rank:]
@@ -384,11 +371,9 @@ def diagnose_infeasibility(self, gap_threshold: float = 0.01, max_constraints_fo
 
         warn = f"CALLBACK  ⚠ {len(redundant_indices)} redundant constraint(s) by type:"
         logger_mosek.warning(warn)
-        print(warn)
         for t, cnt in sorted(counts.items(), key=lambda x: -x[1]):
             line = f"CALLBACK      {cnt:4d}  {t}"
             logger_mosek.warning(line)
-            print(line)
 
     logger_mosek.warning("=== END DIAGNOSTIC ===")
 
@@ -403,7 +388,6 @@ def compute_solutions(self, cuts: List, print_sol: bool = False):
         )
         file_cb.write("Primal Solutions \n")
     for ind_solution in range(len(self.indexes_matrices.current_matrices_variables)):
-        print(f"CALLBACK : Computing solution for matrix {ind_solution} with cuts {cuts_str}...")
         name_solution = self.indexes_matrices.current_matrices_variables[ind_solution][
             "name"
         ]
@@ -418,10 +402,8 @@ def compute_solutions(self, cuts: List, print_sol: bool = False):
         ].add_value(cuts, sol)
 
 
-        print(f"CALLBACK : Solution for {name_solution} of dimension {dim} computed.")
         #self.save_matrix_png(sol, name_solution=name_solution, cuts=cuts)
         self.save_matrix_csv(sol, name_solution=name_solution, cuts=cuts)
-        print(f"CALLBACK : Solution for {name_solution} of dimension {dim} saved as PNG and CSV.")
 
         if print_sol:
             print_solution_to_file_for_cb_solver(
@@ -480,4 +462,3 @@ def save_beta_values(self, cuts: List):
     out_path = os.path.join(model_dir, f"betas_{cuts_str}.txt")
     with open(out_path, "w") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"CALLBACK: Beta values saved to {out_path}")

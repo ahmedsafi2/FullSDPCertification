@@ -79,7 +79,7 @@ class SDPSolver(Solver):
         self.create_all_cuts_to_test()
         self.RLT_props = kwargs.get("RLT_props")
 
-        # Résolution use_fusion (ancien param) vs solver (nouveau param)
+        # Resolve legacy use_fusion param vs current solver param
         if use_fusion and solver == "mosek_classic":
             solver = "mosek_fusion"
         self.solver = solver
@@ -110,7 +110,6 @@ class SDPSolver(Solver):
         try:
             validated_config = FullCertificationConfig(**raw_config)
         except ValidationError as e:
-            print(f"Erreur de validation du fichier YAML :\n{e}")
             raise
 
         return dict(
@@ -167,10 +166,10 @@ class SDPSolver(Solver):
         else:
             self.handler = MosekClassicHandler(**kw)
 
-    def _write_presolve_row(self, cuts: Dict, nb_variables: int):
+    def _write_presolve_row(self, cuts: Dict, n_variables: int):
         """Write a pre-solve row to results.csv right after constraints are built, before MOSEK runs."""
         from .run_benchmark import all_possible_cuts
-        nb_constraints = len(self.handler.Constraints.list_cstr)
+        n_constraints = len(self.handler.Constraints.list_cstr)
         
         dic = {
             "network": self.network_name,
@@ -188,8 +187,8 @@ class SDPSolver(Solver):
             "USE_STABLE_INACTIVES": self.use_inactive_neurons,
             "Nb_stable_inactives": len(self.stable_inactives_neurons),
             "Nb_stable_actives": len(self.stable_actives_neurons),
-            "Nb_constraints": nb_constraints,
-            "Nb_variables": nb_variables,
+            "Nb_constraints": n_constraints,
+            "Nb_variables": n_variables,
         }
         
         dic.update({cut: (cut in cuts) for cut in all_possible_cuts})
@@ -201,8 +200,8 @@ class SDPSolver(Solver):
         row_df = pd.DataFrame(dic, index=[0])
         
         _append_csv(path, row_df)
-        logger_mosek.debug(f"Pre-solve row written — Nb_constraints={nb_constraints}, Nb_variables={nb_variables}")
-        self._write_model_size_csv(cuts, nb_variables)
+        logger_mosek.debug(f"Pre-solve row written — Nb_constraints={n_constraints}, Nb_variables={n_variables}")
+        self._write_model_size_csv(cuts, n_variables)
 
         
 
@@ -216,7 +215,7 @@ class SDPSolver(Solver):
         "sum_beta_logits_equal_logit",
     ]
 
-    def _write_model_size_csv(self, cuts: Dict, nb_variables: int):
+    def _write_model_size_csv(self, cuts: Dict, n_variables: int):
         """Append one row to taille_modele.csv with per-cut constraint counts."""
         counts = getattr(self, "_cut_constraint_counts", {})
         baseline = (
@@ -228,7 +227,7 @@ class SDPSolver(Solver):
         row = {
             "data_index": self.data_index,
             "Nb_constraints_total": len(self.handler.Constraints.list_cstr),
-            "Nb_variables": nb_variables,
+            "Nb_variables": n_variables,
             "Nb_constraints_baseline": baseline,
         }
         for cut in self._TRACKED_CUTS:
@@ -259,14 +258,13 @@ class SDPSolver(Solver):
             if verbose : 
                 logger_mosek.debug("; Objective created.")
             self.handler.initialize_variables()
-            nb_variables = self.handler.print_num_variables()
+            n_variables = self.handler.print_num_variables()
             if verbose :
                 logger_mosek.debug("Variables initialized.")
-                print("Adding constraints to the task...", flush=True)
 
             self.adapt_number_RLT()
             self.add_constraints(cuts)  
-            self._write_presolve_row(cuts, nb_variables)
+            self._write_presolve_row(cuts, n_variables)
             if verbose:
                 logger_mosek.debug("Constraints added.")
             if self.only_width_model:
@@ -302,10 +300,7 @@ class SDPSolver(Solver):
                 end_pretreatment_time - start_pretreatment_time
             )
             if verbose:
-                print(
-                    "STUDY : Pretreatment computing time: ",
-                    self.handler.time_pretreatment,
-                )
+                pass
             start_time = time.time()
             self.handler.optimize()
             end_time = time.time()
@@ -315,13 +310,13 @@ class SDPSolver(Solver):
                 "Time taken to solve: %s seconds", self.handler.time_solving
             )
             if verbose :
-                print("Getting results ...")
+                pass
             logger_mosek.debug("Results obtained.")
             
             
         except Exception as e:
             if verbose :
-                print("ERROR : An error occurred during optimization:", str(e))
+                pass
             logger_mosek.error("An error occurred during optimization: %s", str(e))
             self.handler.is_robust = False
             try:
@@ -382,10 +377,6 @@ class SDPSolver(Solver):
         else:
             sig = os.WTERMSIG(wstatus) if os.WIFSIGNALED(wstatus) else None
             code = os.WEXITSTATUS(wstatus) if os.WIFEXITED(wstatus) else None
-            print(
-                f"CRASH: MOSEK child died — signal={sig}, code={code}, "
-                f"data_index={self.data_index}, ytarget={getattr(self, 'ytarget', None)}"
-            )
             logger_mosek.error(
                 "MOSEK child crashed: signal=%s, code=%s, data_index=%s, ytarget=%s",
                 sig,
@@ -438,42 +429,41 @@ class SDPSolver(Solver):
             return True
         for cuts in self.cuts_to_test:
             if verbose :
-                print("Testing cuts: ", cuts)
+                pass
 
             if "Targeted" in self.__class__.__name__:
                 
                 for ytarget in self.ytargets:
                     if skip_pairs and (self.data_index, ytarget) in skip_pairs:
-                        print(f"Skipping target {ytarget} for data_index {self.data_index} (already processed).")
                         continue
 
                     for RLT_prop in self.RLT_props:
 
                         if verbose :
-                            print(f"Testing RLT_proportion : ", RLT_prop)
+                            pass
                         self.RLT_prop = RLT_prop
                         self.ytarget = ytarget
                         self._run_optimization_isolated(cuts, verbose)
                         if self.handler.is_robust:
                             if verbose :
-                                print("Robust solution found for ytarget:", ytarget)
+                                pass
                             break
                         else:
-                            print("No robust solution found for ytarget:", ytarget)
+                            pass
 
             else:
                 for RLT_prop in self.RLT_props:
                     if verbose :
-                        print(f"Testing RLT_proportion : ", RLT_prop)
+                        pass
                     self.RLT_prop = RLT_prop
                     self._run_optimization_isolated(cuts, verbose)
                     if self.handler.is_robust:
                         if verbose :
-                            print("Robust solution found for RLT_prop:", RLT_prop)
+                            pass
                         break
                     else:
                         if verbose :
-                            print("No robust solution found for RLT_prop:", RLT_prop)
+                            pass
 
     def __str__(self):
         line = f"SDPSolver(K={self.network.K}, n={self.network.n} \n"

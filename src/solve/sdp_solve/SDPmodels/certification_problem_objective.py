@@ -40,7 +40,6 @@ def objective_targeted(self):
 def objective_untargeted(self):
     if not self.use_active_neurons:
         assert self.keep_penultimate_actives or self.LAST_LAYER, "keep_penultimate_actives must be True for Md objective function"
-    print("Making objective ...")
     if self.LAST_LAYER:
         self.handler.Objective.add_linear_variable(
             var = "z",

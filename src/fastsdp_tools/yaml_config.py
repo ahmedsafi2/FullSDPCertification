@@ -75,9 +75,7 @@ class DataConfig(BaseModel):
     @model_validator(mode="after")
     def create_dataset(self) -> "DataConfig":
        
-        print("ytrue in Data Config:", self.y)
         ytrue = torch.tensor([self.y], dtype=torch.int64).unsqueeze(0)
-        print("ytrue in Data Config apres tensor operator : ", ytrue)
         x_tensor = torch.tensor(self.x, dtype=torch.float32).unsqueeze(0)
         label_to_data = {int(ytrue.item()): [x_tensor.squeeze(0)]}
 
@@ -146,7 +144,7 @@ class SDPSolverConfig(BaseModel):
     MATRIX_BY_LAYERS: Union[bool, List[List[int]]] = True
     @validator("MATRIX_BY_LAYERS", pre=True)
     def validate_and_normalize_matrix_by_layers(cls, v, values):
-        """Normalise en List[List[int]] ou garde bool pour résolution tardive."""
+        """Normalize to List[List[int]] or keep bool for late resolution."""
         if isinstance(v, bool):
             return v  
         if isinstance(v, list):

@@ -17,7 +17,7 @@ from fastsdp_tools import Adversarial_Network_Training, get_project_path
 
 
 def evaluate_clean(model, testloader, device):
-    """Évaluation sur données propres"""
+    """Evaluate model on clean data."""
     model.eval()
     correct = 0
     total = 0
@@ -58,7 +58,6 @@ def evaluate_robust(model, testloader, device, pgd_config, max_batches=None):
             break
         if batch_idx >= 100:
             break
-        print("Evaluating batch ", batch_idx)
         inputs, labels = inputs.to(device), labels.to(device)
 
 
@@ -91,20 +90,18 @@ def complex_adversarial_training_loop(
     **kwargs,
 ):
     """
-    Entraînement adversarial avec logging W&B
+    Adversarial training with W&B logging.
 
     Args:
-        use_wandb: Activer/désactiver W&B
-        project_name: Nom du projet W&B
-        experiment_name: Nom de l'expérience
-        log_frequency: Fréquence de logging (epochs)
+        use_wandb: Enable/disable W&B logging
+        project_name: W&B project name
+        experiment_name: W&B experiment name
+        log_frequency: Logging frequency (in epochs)
     """
     yaml_file = kwargs.get("yaml_file", "adversarial_network_training.yaml")
-    print("KWARGS  : ", kwargs)
     lr = kwargs.get("lr", 0.001)
     eps = kwargs.get("epsilon")
     num_epochs = kwargs.get("num_epochs", 100)
-    print("lambda : ", lambda_)
     if use_wandb:
         wandb.init(
             project=project_name,
@@ -127,7 +124,6 @@ def complex_adversarial_training_loop(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     criterion = nn.CrossEntropyLoss()
-    print("Adversarial training with attack: ", adversarial_attack)
 
     if adversarial_attack == "PGD":
         alpha = kwargs.get("alpha")
@@ -141,8 +137,6 @@ def complex_adversarial_training_loop(
             random_start=random_start,
             norm="inf",
         )
-        print("PGD Attack configured with eps:", eps, "alpha:", alpha, "steps:", steps)
-        print(attack)
 
     elif adversarial_attack == "LP":
         attack = LPAttack3Parallel(
@@ -182,7 +176,6 @@ def complex_adversarial_training_loop(
     model.to(device)
 
     for epoch in range(num_epochs):
-        print(f"Training epoch: {epoch}")
         model.train()
         running_loss = 0.0
         batch_losses = []
@@ -190,7 +183,6 @@ def complex_adversarial_training_loop(
         pbar = tqdm(trainloader, desc=f"Epoch {epoch}/{num_epochs}")
 
         for batch_idx, (inputs, labels) in enumerate(pbar):
-            print(f"    Processing batch {batch_idx + 1}/{len(trainloader)}")
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
 
@@ -210,7 +202,6 @@ def complex_adversarial_training_loop(
                     loss_pertubation, adv_inputs = attack(
                         inputs, labels, model.K, model.n, W, b
                     )
-                    print("Adversarial inputs shape: ", adv_inputs.shape)
 
                 loss_pertubation = torch.tensor(
                     loss_pertubation,
@@ -221,15 +212,11 @@ def complex_adversarial_training_loop(
 
                 model.train()
             
-                print("Inputs shape: ", inputs.shape)
-                print("Labels shape: ", labels.shape)
                 outputs = model(inputs)
-                print("Outputs shape: ", outputs.shape)
                 loss = criterion(outputs, labels) + lambda_ * loss_pertubation
 
             elif adversarial_attack == "CROWN-IBP":
                 loss = attack.compute_crown_ibp_loss(inputs, labels)
-                print("CROWN-IBP loss:", loss.item())
 
             loss.backward()
             optimizer.step()
@@ -245,12 +232,10 @@ def complex_adversarial_training_loop(
         train_losses.append(avg_train_loss)
 
         if epoch % log_frequency == 0 or epoch == num_epochs - 1:
-            print(f"Epoch {epoch}, Loss: {avg_train_loss:.4f}")
 
             model.eval()
             clean_acc = evaluate_clean(model, testloader, device)
             clean_accuracies.append(clean_acc)
-            print(f"Clean Accuracy: {clean_acc:.2%}")
 
             robust_acc = None
             if epoch % (log_frequency * 2) == 0: 
@@ -267,7 +252,6 @@ def complex_adversarial_training_loop(
                     },
                 )
                 robust_accuracies_EPS_0_3.append(robust_acc)
-                print(f"Robust Accuracy EPS=0.3: {robust_acc:.2%}")
 
                 robust_acc_eps_0_1 = evaluate_robust(
                     model,
@@ -362,7 +346,7 @@ def plot_training_curves(epochs, train_losses, clean_accs, robust_accs):
 
     ax2.plot(epochs, clean_accs, "g-", label="Clean Accuracy")
     if robust_accs:
-        robust_epochs = epochs[::2]  # Moins fréquent
+        robust_epochs = epochs[::2]  # sampled less frequently
         ax2.plot(robust_epochs, robust_accs, "r-", label="Robust Accuracy")
     ax2.set_xlabel("Epoch")
     ax2.set_ylabel("Accuracy")

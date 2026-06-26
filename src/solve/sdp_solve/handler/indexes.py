@@ -103,7 +103,7 @@ class Indexes_Mosek_Solver:
         self.check_conformity()
 
         self.current_matrices_variables = []
-        self.count_nb_matrices()
+        self.count_n_matrices()
         self.count_max_indexes()
 
     def _build_layer_to_groups(self) -> dict:
@@ -133,12 +133,12 @@ class Indexes_Mosek_Solver:
         return result
 
 
-    def count_nb_matrices(self):
-        self.nb_matrices = len(self.layer_groups)
+    def count_n_matrices(self):
+        self.n_matrices = len(self.layer_groups)
         if not self.BETAS_Z and self.BETAS:
-            self.nb_matrices += 1  # dedicated matrix for betas
-        assert self.nb_matrices < big_M_cst, (
-            f"nb_matrices={self.nb_matrices} >= big_M_cst={big_M_cst}: "
+            self.n_matrices += 1  # dedicated matrix for betas
+        assert self.n_matrices < big_M_cst, (
+            f"n_matrices={self.n_matrices} >= big_M_cst={big_M_cst}: "
             f"the hash-key encoding in variable_elements.py would overflow silently. "
             f"Increase big_M_cst in variable_elements.py before proceeding."
         )
@@ -178,10 +178,6 @@ class Indexes_Mosek_Solver:
                     for j in range(self.n[layer])
                     if (layer, j) not in self.stable_inactives_neurons
                     and (layer, j) not in self.stable_actives_neurons
-                )
-                print(
-                    f"Matrix size for the group {group_idx} {group} : "
-                    f"{unstable_count}"
                 )
                 assert unstable_count > 0, (
                     f"Group {group} has no unstable neurons — a special treatment is needed."
@@ -278,7 +274,7 @@ class Indexes_Mosek_Solver:
         return 1 + sum(self._n_vars_in_layer(l) for l in self.layer_groups[-1])
 
     def is_in_matrix_with_betas(self, layer: int) -> bool:
-        """True si `layer` appartient au dernier groupe (qui contient les betas quand BETAS_Z=True)."""
+        """True if `layer` belongs to the last group (which holds betas when BETAS_Z=True)."""
         if self.BETAS_Z:
             return layer in self.layer_groups[-1]
         return False

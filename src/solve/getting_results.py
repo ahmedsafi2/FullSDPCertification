@@ -35,7 +35,6 @@ def get_results_trivially_solved(self):
         self.benchmark_dataframe = add_row_from_dict(
             self.benchmark_dataframe, dic_benchmark
         )
-    print("\n \n self.benchmark_dataframe   : ", self.benchmark_dataframe)
     path = get_project_path(f"{self.folder_name}/results.csv")
     row_df = pd.DataFrame(dic_benchmark, index=[0])
     if os.path.exists(path):

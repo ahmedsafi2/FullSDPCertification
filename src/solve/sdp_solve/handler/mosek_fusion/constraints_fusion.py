@@ -70,7 +70,7 @@ class ConstraintsFusion(CommonConstraints):
                 ].elements,
                 dict=dict1,
                 value=value,
-                nb_index=self.indexes_variables.max_index,
+                n_index=self.indexes_variables.max_index,
                 dividing_non_diag=False,
             )
         else:
@@ -81,7 +81,7 @@ class ConstraintsFusion(CommonConstraints):
                 dict1=dict1,
                 dict2=dict2,
                 value=value,
-                nb_index=self.indexes_variables.max_index,
+                n_index=self.indexes_variables.max_index,
                 dividing_non_diag=False,
             )
 
@@ -89,7 +89,7 @@ class ConstraintsFusion(CommonConstraints):
 
         logger_mosek.info(f"Adding {self.list_cstr} constraints to the task...")
         if self.verbose : 
-            print(f"CALLBACK : Number of constraints : {len(self.list_cstr)}")
+            pass
         time_start = time.time()
         for ind_cstr in range(len(self.list_cstr)):
 

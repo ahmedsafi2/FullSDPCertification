@@ -62,7 +62,7 @@ class ObjectiveClassic(Objective):
                 elements=self.elements.elements,
                 dict=dict1,
                 value=value,
-                nb_index=self.indexes_variables.max_index,
+                n_index=self.indexes_variables.max_index,
                 dividing_non_diag=True,
             )
         else:
@@ -71,7 +71,7 @@ class ObjectiveClassic(Objective):
                 dict1=dict1,
                 dict2=dict2,
                 value=value,
-                nb_index=self.indexes_variables.max_index,
+                n_index=self.indexes_variables.max_index,
                 dividing_non_diag=True,
             )
 
@@ -83,7 +83,7 @@ class ObjectiveClassic(Objective):
 
         logging.info("Adding Objective to the task")
         if self.verbose :
-            print("Adding Objective to the task ...")
+            pass
         self.format_obj()
 
         self.task.putbarcblocktriplet(

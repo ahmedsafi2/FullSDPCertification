@@ -41,7 +41,6 @@ def train(model, trainloader, testloader, num_epochs=100, lr=1e-2):
     scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     criterion = nn.CrossEntropyLoss()
 
-    print("Training model ...")
 
     model.to(device)
     for epoch in range(num_epochs):
@@ -59,7 +58,6 @@ def train(model, trainloader, testloader, num_epochs=100, lr=1e-2):
         scheduler.step()
 
         if epoch % 10 == 0:
-            print(f"Epoch {epoch}, Loss: {running_loss/len(trainloader)}")
             evaluate(model, testloader)
 
 
@@ -74,7 +72,6 @@ def evaluate(model, testloader):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-    print(f"Accuracy: {100 * correct / total}%")
     return 100 * correct / total
 
 
@@ -120,15 +117,12 @@ if __name__ == "__main__":
     if args.data_modele == "blob":
         yaml_file = "config/blob.yaml"
         loaded_data = data.load_dataset(yaml_file)
-        print("Loaded data: ", loaded_data)
         train_dataset = loaded_data
         test_dataset = loaded_data
 
     elif args.data_modele == "moon":
-        print("args data modele == MOON...")
         yaml_file = "config/moon.yaml"
         loaded_data = data.load_dataset(yaml_file)
-        print("Loaded data: ", loaded_data)
         train_dataset = loaded_data
         test_dataset = loaded_data
 
@@ -170,7 +164,6 @@ if __name__ == "__main__":
     )
 
     if args.adv_train == 1:
-        print("Training with adversarial examples...")
 
         results = complex_adversarial_training_loop(
             model=model,
@@ -197,15 +190,11 @@ if __name__ == "__main__":
         )
 
     state_dict = model.state_dict()
-    print(type(state_dict))  
-    print(state_dict)  
     name_network = config["name_network"]
     
 
     if args.adv_train:
-        print("SAVE ADV : ", f"data/models/{args.data_modele}_adv_{name_network}.pt")
 
         torch.save(state_dict, f"data/models/{args.data_modele}_adv_{name_network}.pt")
     else:
-        print("SAVE ADV : ", f"data/models/{args.data_modele}_nn.pt")
         torch.save(state_dict, f"data/models/{args.data_modele}_nn.pt")

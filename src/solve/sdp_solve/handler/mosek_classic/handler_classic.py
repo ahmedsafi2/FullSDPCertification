@@ -82,7 +82,6 @@ class MosekClassicHandler:
         LAST_LAYER: bool
             Whether the last layer is included in the matrix of the z variables or not.
         """
-        print("Initializing MosekClassicHandler...")
         self.MATRIX_BY_LAYERS = kwargs.get("MATRIX_BY_LAYERS", False)
 
         self.LAST_LAYER = kwargs.get("LAST_LAYER", False)
@@ -108,7 +107,7 @@ class MosekClassicHandler:
 
 
         self.indexes_matrices = Indexes_Mosek_Solver(**kwargs)
-        self.indexes_variables = self.indexes_matrices  # même objet fusionné
+        self.indexes_variables = self.indexes_matrices  # merged object (shared reference)
 
         self.vector_variables = []
         self.final_number_constraints = None
@@ -126,7 +125,7 @@ class MosekClassicHandler:
         logger_mosek.info("Initializing MOSEK solver")
         self.verbose = verbose
         if self.verbose:
-            print("Initializing MOSEK solver")
+            pass
         self.env = mosek.Env()
         self.task = self.env.Task(0, 0)
         self.env.__enter__()  
@@ -218,9 +217,6 @@ class MosekClassicHandler:
 
                     if i != j:
                         coeff *= 2
-                    print(
-                        f"num_matrix : {num_matrix}, i : {i}, j : {j}, coeff : {coeff}, val_matrix : {val_matrix}"
-                    )
 
                     val += coeff * val_matrix
 
@@ -231,13 +227,11 @@ class MosekClassicHandler:
                     logger_mosek.debug(
                         f"Constraint {constraint['name']} is not feasible: {val} < {lb}"
                     )
-                    print("Constraint  : ", constraint)
                     return False
                 if val > ub + precision:
                     logger_mosek.debug(
                         f"Constraint {constraint['name']} is not feasible: {val} > {ub}"
                     )
-                    print("Constraint  : ", constraint)
                     return False
                 else:
                     logger_mosek.debug(
@@ -245,7 +239,6 @@ class MosekClassicHandler:
                     )
             except Exception as e:
                 logger_mosek.error(f"Error in constraint {constraint['name']}: {e}")
-                print("Constraint  : ", constraint)
         return True
 
     def value_solution(self, variables_matrices):
@@ -290,12 +283,6 @@ class MosekClassicHandler:
         """
         logger_mosek.info("Writing results to file...")
         cuts_str = compute_cuts_str(cuts)
-        print(
-            "Writing results fo file : ",
-            get_project_path(
-                f"{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_classic.ptf"
-            ),
-        )
         self.task.writedata(
             get_project_path(
                 f"{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_classic.ptf"
@@ -309,7 +296,7 @@ class MosekClassicHandler:
         def mosek_to_logger(msg):
             msg = msg.rstrip("\n")
             if msg:
-                print(msg, flush=True)
+                pass
 
         if verbose:
             self.task.set_Stream(mosek.streamtype.log, mosek_to_logger)
@@ -334,8 +321,6 @@ class MosekClassicHandler:
         prosta = self.task.getprosta(mosek.soltype.itr)
         solsta = self.task.getsolsta(mosek.soltype.itr)
 
-        print(f"Primal status: {prosta}")
-        print(f"Solution status: {solsta}")
 
         y = [0.0] * self.final_number_constraints
 
@@ -347,6 +332,5 @@ class MosekClassicHandler:
 
             val1 = dual_variables[i]
 
-            print(f"Constraint {name}: {val1}")
 
         return dual_variables

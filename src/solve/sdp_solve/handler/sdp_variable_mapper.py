@@ -236,7 +236,7 @@ class  SDPVariableMapper :
                 assert (
                     layer == k and neuron == j
                 ), f"ERROR in STUDY1: layer = {layer}, neuron = {neuron}, k = {k}, j = {j}"
-        for num_matrix in range(self.indexes_matrices.nb_matrices):
+        for num_matrix in range(self.indexes_matrices.n_matrices):
             logger_mosek.debug(f"in study_indexes_equivalent_neurons: num_matrix = {num_matrix}")
             try:
                 for i in range(self.indexes_variables.max_index):
@@ -250,7 +250,6 @@ class  SDPVariableMapper :
                     ), f"ERROR in STUDY2: i = {i}, num_matrix = {num_matrix}, i2 = {i2}, num_matrix2 = {num_matrix2}"
 
             except ValueError as e:
-                print("Error : ", e)
                 pass
 
     def _print_equivalent_indexes_(self):
@@ -301,7 +300,6 @@ class  SDPVariableMapper :
                     i, num_matrix = _get_linear_indices_from_key(key, 13)
                     line += f"  i : {i} ; "
                     line += f"  num_matrix : {num_matrix}\n"
-        print(line)
 
         ""
 

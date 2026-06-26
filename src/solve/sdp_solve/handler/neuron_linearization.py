@@ -159,22 +159,9 @@ class NeuronLinearization :
                         + self.equivalent_values_layers[k, j]["constant"]
                     )
                     if upper_bounds < U[k][j]:
-                        print(
-                            "The computed upper bound is BETTER on layer",
-                            k,
-                            "neuron",
-                            j,
-                            "than the initial upper bound.",
-                        )
                         U[k][j] = upper_bounds
                     else:
-                        print(
-                            "The computed upper bound is not better on layer",
-                            k,
-                            "neuron",
-                            j,
-                            "than the initial upper bound.",
-                        )
+                        pass
                     # print(f"Upper bound for layer {k}, neuron {j}: {self.upper_bounds[(k, j)]} and U = {U[k][j]}")
                     lower_bounds = (
                         sum(
@@ -194,21 +181,8 @@ class NeuronLinearization :
                         + self.equivalent_values_layers[k, j]["constant"]
                     )
                     if lower_bounds > L[k][j]:
-                        print(
-                            "The computed lower bound is BETTER on layer",
-                            k,
-                            "neuron",
-                            j,
-                            "than the initial lower bound.",
-                        )
                         L[k][j] = lower_bounds
                     else:
-                        print(
-                            "The computed lower bound is not better on layer",
-                            k,
-                            "neuron",
-                            j,
-                            "than the initial lower bound.",
-                        )
+                        pass
                     
         return L, U

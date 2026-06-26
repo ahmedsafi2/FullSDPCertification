@@ -20,19 +20,14 @@ def add_all_infos_optimal_values_to_dic(self, cuts: List, verbose: bool = False)
     logger_mosek.debug(
         "Optimal solution found with objective value: %s", self.primal_obj_value
     )
-    print("Optimal solution found with objective value: ", self.primal_obj_value)
     self.dual_obj_value = self.model.dualObjValue()
     logger_mosek.info("Dual objective value: %s", self.dual_obj_value)
     
     self.optimal_value = self.primal_obj_value  
-    print(
-        f"Optimal value (no added constant, already written in model): {self.optimal_value} : with cuts {cuts}"
-    )
     self.is_robust = self.optimal_value >= 0
 
     gap = abs(self.dual_obj_value - self.primal_obj_value)
     if gap > 0.01 * max(1.0, abs(self.dual_obj_value)):
-        print(f"Primal-Dual gap ({gap:.3e}) - Slater diagnostic")
         
         try:
             self.diagnose_infeasibility()
@@ -75,7 +70,7 @@ def save_beta_values_fusion(self, cuts: List):
         None,
     )
     if beta_mat_info is None:
-        logger_mosek.warning("save_beta_values_fusion : aucune matrice avec betas trouvée.")
+        logger_mosek.warning("save_beta_values_fusion: no matrix with betas found.")
         return
 
     dim = beta_mat_info["dim"]

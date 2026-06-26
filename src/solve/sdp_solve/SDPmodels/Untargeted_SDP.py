@@ -86,7 +86,6 @@ class UntargetedSDP(SDPSolver):
         )
 
         logger_mosek.debug(f"Bounds for the network :  {self.L} and {self.U}")
-        print("ytargets in UntargetedSDP:", self.ytargets)
 
     def add_objective(self):
         self.objective_untargeted()

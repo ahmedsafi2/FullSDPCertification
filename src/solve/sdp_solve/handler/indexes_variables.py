@@ -1,4 +1,4 @@
-# Rétrocompatibilité : l'implémentation est dans indexes.py
+# Backward compatibility: implementation is in indexes.py
 from .indexes import Indexes_Mosek_Solver
 
 Indexes_Variables_for_Mosek_Solver = Indexes_Mosek_Solver

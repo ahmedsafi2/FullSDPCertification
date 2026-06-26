@@ -7,16 +7,16 @@ big_M_cst = 13
 
 
 @numba.njit
-def _get_key_quad_(i, j, num_matrix, nb_index, M: int = big_M_cst):
-    key = (i + 1) * nb_index * M + (j + 1) * M + num_matrix
+def _get_key_quad_(i, j, num_matrix, n_index, M: int = big_M_cst):
+    key = (i + 1) * n_index * M + (j + 1) * M + num_matrix
 
-    return (i + 1) * nb_index * M + (j + 1) * M + num_matrix
+    return (i + 1) * n_index * M + (j + 1) * M + num_matrix
 
 
 @numba.njit
-def _get_quad_indices_from_key(index, nb_index, M: int = big_M_cst):
-    i = (index // (nb_index * M)) - 1
-    j = ((index // M) % nb_index) - 1
+def _get_quad_indices_from_key(index, n_index, M: int = big_M_cst):
+    i = (index // (n_index * M)) - 1
+    j = ((index // M) % n_index) - 1
     num_matrix = index % M
 
     return i, j, num_matrix
@@ -59,8 +59,8 @@ def _get_layer_neuron_from_key_(key: int, M: int = big_M_cst):
 
 
 @numba.njit
-def _add__co(i, j, num_matrix, value, nb_index, elements):
-    key = _get_key_quad_(i, j, num_matrix, nb_index)
+def _add__co(i, j, num_matrix, value, n_index, elements):
+    key = _get_key_quad_(i, j, num_matrix, n_index)
     if key in elements:
         elements[key] += value
     else:
@@ -76,7 +76,7 @@ def _get__co(index, elements):
 
 
 @numba.njit
-def _decode_elements_numba_co(elements_dict, nb_index):
+def _decode_elements_numba_co(elements_dict, n_index):
     n = len(elements_dict)
     i_arr = np.empty(n, dtype=np.int32)
     j_arr = np.empty(n, dtype=np.int32)
@@ -87,7 +87,7 @@ def _decode_elements_numba_co(elements_dict, nb_index):
     for key, value in elements_dict.items():
         i, j, num_matrix = _get_quad_indices_from_key(
             key,
-            nb_index=nb_index,
+            n_index=n_index,
         )
         i_arr[idx] = i
         j_arr[idx] = j
@@ -102,20 +102,20 @@ class ElementsinConstraintsObjectives:
     """
     Class to handle a variable in a constraint or objective.
     """
-    def __init__(self, nb_index: int):
-        self.nb_index = nb_index
+    def __init__(self, n_index: int):
+        self.n_index = n_index
         self.elements = Dict.empty(
             key_type=numba.types.int64, value_type=numba.types.float64
         )
 
     def get_key(self, i, j, num_matrix):
-        return _get_key_quad_(i, j, num_matrix, self.nb_index)
+        return _get_key_quad_(i, j, num_matrix, self.n_index)
 
     def get_i_j_num_matrix_from_key(self, index):
-        return _get_quad_indices_from_key(index, self.nb_index)
+        return _get_quad_indices_from_key(index, self.n_index)
 
     def add(self, i, j, num_matrix, value):
-        _add__co(i, j, num_matrix, value, self.nb_index, self.elements)
+        _add__co(i, j, num_matrix, value, self.n_index, self.elements)
 
     def get(self, key):
         return _get__co(key, self.elements)
@@ -123,7 +123,7 @@ class ElementsinConstraintsObjectives:
     def decode_key_vec(self):
         return _decode_elements_numba_co(
             self.elements,
-            nb_index=self.nb_index,
+            n_index=self.n_index,
         )
 
 
@@ -251,7 +251,7 @@ class Equivalent_Neurons_Index:
             raise ValueError(f"front_of_matrix must be specified for neuron {neuron} at layer {layer}")
         max_front_layer = self.K if self.LAST_LAYER else self.K - 1
         if not ( (not front_of_matrix and layer > 0) or (front_of_matrix and layer < max_front_layer) ):
-            print(f"ERROR : layer = {layer}, neuron = {neuron}; K = {self.K}, front_of_matrix = {front_of_matrix}" )
+            pass
         weights_str = "weights_front" if front_of_matrix else "weights_back"
         return self.equivalent_neurons[index][weights_str]
 
@@ -312,7 +312,7 @@ class Equivalent_Betas_Index:
 
 @numba.njit
 def add_dict_linear_to_elements(
-    elements: numba.typed.Dict, dict: numba.typed.Dict, value: float, nb_index: int, dividing_non_diag: bool = True
+    elements: numba.typed.Dict, dict: numba.typed.Dict, value: float, n_index: int, dividing_non_diag: bool = True
 ):
     for key in dict.keys():
         i, num_matrix = _get_linear_indices_from_key(key)
@@ -320,7 +320,7 @@ def add_dict_linear_to_elements(
             i=i,
             j=0,
             num_matrix=num_matrix,
-            nb_index=nb_index,
+            n_index=n_index,
         )
 
         if dividing_non_diag and i != 0:
@@ -341,7 +341,7 @@ def add_dict_quad_to_elements(
     dict1: numba.typed.Dict,
     dict2: numba.typed.Dict,
     value: float,
-    nb_index: int,
+    n_index: int,
     dividing_non_diag: bool = True,
 ):
     for key1 in dict1.keys():
@@ -362,7 +362,7 @@ def add_dict_quad_to_elements(
 
             if i2 > i1:
                 i1, i2 = i2, i1
-            index_element = _get_key_quad_(i1, i2, num_matrix1, nb_index=nb_index)
+            index_element = _get_key_quad_(i1, i2, num_matrix1, n_index=n_index)
             if index_element in elements:
                 elements[index_element] += dict1[key1] * dict2[key2] * value_
             else:

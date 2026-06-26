@@ -32,8 +32,8 @@ def _append_row_to_results_csv(self, dic_benchmark: dict):
 
 def get_results_width_model(self, cuts: List, verbose: bool = False):  
     logger_mosek.debug("Recuperation of optimization results for width model...")
-    nb_constraints = len(self.handler.Constraints.list_cstr)
-    nb_variables = self.handler.print_num_variables()
+    n_constraints = len(self.handler.Constraints.list_cstr)
+    n_variables = self.handler.print_num_variables()
     dic_benchmark = {
         "network": self.network_name,
         "model": self.name,
@@ -49,8 +49,8 @@ def get_results_width_model(self, cuts: List, verbose: bool = False):
         "USE_STABLE_INACTIVES": self.use_inactive_neurons,
         "Nb_stable_inactives": len(self.stable_inactives_neurons),
         "Nb_stable_actives": len(self.stable_actives_neurons),
-        "Nb_constraints": nb_constraints,
-        "Nb_variables": nb_variables,
+        "Nb_constraints": n_constraints,
+        "Nb_variables": n_variables,
     }
     dic_benchmark.update({cut: (cut in cuts) for cut in all_possible_cuts})
     if "RLT" in cuts:
@@ -76,7 +76,6 @@ def get_results(self, cuts: List, verbose: bool = False):
         return
     status = self.handler.get_solution_status()
 
-    print("Status of the solution: ", status)
     num_iterations = self.handler.get_num_iterations()
     logger_mosek.info("Number of iterations: %s", num_iterations)
 
@@ -118,7 +117,7 @@ def get_results(self, cuts: List, verbose: bool = False):
         try:
             self.handler.diagnose_infeasibility()
         except Exception as e:
-            print(f"CALLBACK: Diagnostic failed: {e}")
+            pass
         self.handler.get_dual_variables()
         cuts_str = compute_cuts_str(cuts)
         dual_path = get_project_path(
@@ -142,7 +141,6 @@ def get_results(self, cuts: List, verbose: bool = False):
             )
             dic_benchmark.update(dic_info_optimal_values)
         except Exception as e:
-            print("ERROR in get_results : ", e)
             logger_mosek.critical("ERROR IN GETTING SOLUTIONS: %s", e)
             pass
     else:

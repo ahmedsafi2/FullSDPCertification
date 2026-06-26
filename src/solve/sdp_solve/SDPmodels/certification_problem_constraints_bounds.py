@@ -8,11 +8,9 @@ logger_mosek = logging.getLogger("Mosek_logger")
 
 # ********************************************* BOUNDS ***************************************************************
 def quad_bounds(self):
-    print("Adding quadratic bounds constraint")
 
     start_k = 0 if self.INPUT_IN_VARIABLES else 1
     for k in range(start_k, self.K+1  if self.LAST_LAYER else self.K):
-        print(f"Adding quadratic bounds constraint for layer {k}")
         if k == self.K:
             neurons_to_consider =  list(set([self.ytrue]).union(self.ytargets))
         elif k == 0:

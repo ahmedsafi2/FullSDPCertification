@@ -122,12 +122,12 @@ def makeUserCallback(maxtime, task):
         code = callback_codes[caller]
         
         if caller == mosek.callbackcode.begin_optimizer:
-            print("CALLBACK : Starting optimizer")
+            pass
         elif caller == mosek.callbackcode.end_optimizer:
-            print("CALLBACK : Optimizer finished.")
+            pass
         # INTERIOR-POINT
         elif caller == mosek.callbackcode.begin_intpnt:
-            print("CALLBACK : Starting interior-point optimizer")
+            pass
         elif caller == mosek.callbackcode.intpnt:
             itrn = intinf[mosek.iinfitem.intpnt_iter]
             pobj = douinf[mosek.dinfitem.intpnt_primal_obj]
@@ -135,81 +135,64 @@ def makeUserCallback(maxtime, task):
             stime = douinf[mosek.dinfitem.intpnt_time]
             opttime = douinf[mosek.dinfitem.optimizer_time]
 
-            print("CALLBACK  Iterations: %-3d" % itrn)
-            print("CALLBACK   Elapsed time: %6.2f(%.2f) " % (opttime, stime))
-            print("CALLBACK   Primal obj.: %-18.6e  Dual obj.: %-18.6e" % (pobj, dobj))
         elif caller == mosek.callbackcode.end_intpnt:
-            print("CALLBACK : Interior-point optimizer finished.")
+            pass
 
         # SIMPLEX
         elif caller == mosek.callbackcode.begin_simplex:
-            print("CALLBACK  : Starting simplex optimizer")
+            pass
         elif caller == mosek.callbackcode.begin_primal_simplex:
-            print("CALLBACK  :Primal simplex optimizer started.")
+            pass
         elif caller == mosek.callbackcode.update_primal_simplex:
             itrn = intinf[mosek.iinfitem.sim_primal_iter]
             pobj = douinf[mosek.dinfitem.sim_obj]
             stime = douinf[mosek.dinfitem.sim_time]
             opttime = douinf[mosek.dinfitem.optimizer_time]
 
-            print("CALLBACK  Iterations: %-3d" % itrn)
-            print("CALLBACK   Elapsed time: %6.2f(%.2f)" % (opttime, stime))
-            print("CALLBACK   Obj.: %-18.6e" % pobj)
         elif caller == mosek.callbackcode.end_primal_simplex:
-            print("CALLBACK  Primal simplex optimizer finished.")
+            pass
         elif caller == mosek.callbackcode.begin_dual_simplex:
-            print("CALLBACK  Dual simplex optimizer started.")
+            pass
         elif caller == mosek.callbackcode.update_dual_simplex:
             itrn = intinf[mosek.iinfitem.sim_dual_iter]
             pobj = douinf[mosek.dinfitem.sim_obj]
             stime = douinf[mosek.dinfitem.sim_time]
             opttime = douinf[mosek.dinfitem.optimizer_time]
-            print("CALLBACK  Iterations: %-3d" % itrn)
-            print("CALLBACK   Elapsed time: %6.2f(%.2f)" % (opttime, stime))
-            print("CALLBACK   Obj.: %-18.6e" % pobj)
         elif caller == mosek.callbackcode.end_dual_simplex:
-            print("CALLBACK Dual simplex optimizer finished.")
+            pass
 
         # CONIC
         elif caller == mosek.callbackcode.begin_conic:
-            print("CALLBACK  CALLBACK : Starting conic optimizer")
+            pass
         elif caller == mosek.callbackcode.conic:
 
             itrn = intinf[mosek.iinfitem.intpnt_iter]
-            print("CALLBACK  Iterations: %-3d" % itrn)
 
             pobj = douinf[mosek.dinfitem.intpnt_primal_obj]
             dobj = douinf[mosek.dinfitem.intpnt_dual_obj]
-            print("CALLBACK   Primal obj.: %-18.6e  Dual obj.: %-18.6e" % (pobj, dobj))
 
             # stime = douinf[mosek.dinfitem.conic_time]
             opttime = douinf[mosek.dinfitem.optimizer_time]
 
-            print("CALLBACK   Elapsed time: %-18.6e" % opttime)
         elif caller == mosek.callbackcode.end_conic:
-            print("CALLBACK : Conic optimizer finished.")
+            pass
 
         # PRESOLVE
         elif caller == mosek.callbackcode.begin_presolve:
-            print("CALLBACK : Starting presolve")
+            pass
         elif caller == mosek.callbackcode.heartbeat:
-            print("CALLBACK : Presolve heartbeat.")
+            pass
         elif caller == mosek.callbackcode.end_presolve:
-            print("CALLBACK : Presolve finished.")
+            pass
 
         # MIO
         elif caller == mosek.callbackcode.new_int_mio:
-            print("CALLBACK  New integer solution has been located.")
             xx = task.getxx(mosek.soltype.itg)
-            print(xx)
-            print("CALLBACK  Obj.: %f" % douinf[mosek.dinfitem.mio_obj_int])
         else:
-            print("CALLBACK  Unknown callback event: %d" % caller)
             pass
 
         if opttime >= maxtime:
             # mosek is spending too much time. Terminate it.
-            print("CALLBACK   Terminating.")
             return 1
 
         return 0

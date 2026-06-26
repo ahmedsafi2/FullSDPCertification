@@ -48,7 +48,6 @@ def compute_bounds_data_crown(
     use_crown = method.lower() in ["alpha-beta-crown", "beta-crown", "crown-optimized"]
 
     if use_crown:
-        print("Step 1: Computing initial bounds with IBP...")
         with torch.no_grad():
             lb_ibp, ub_ibp = bounded_model.compute_bounds(
                 x=(bounded_x,),
@@ -58,7 +57,6 @@ def compute_bounds_data_crown(
             )
         
         
-        print("Step 2: Optimizing bounds with CROWN...")
         lb, ub = bounded_model.compute_bounds(
             x=(bounded_x,),
             method="CROWN-Optimized",
@@ -68,10 +66,8 @@ def compute_bounds_data_crown(
         
         
         if ub is None:
-            print("Warning: CROWN didn't compute upper bounds, using IBP bounds")
             ub = ub_ibp
         if lb is None:
-            print("Warning: CROWN didn't compute lower bounds, using IBP bounds")
             lb = lb_ibp
             
     else:
@@ -85,7 +81,6 @@ def compute_bounds_data_crown(
  
     preact_bounds = {}
     
-    print("\n--- Extracting intermediate bounds ---")
     
     k = 0
     L = []
@@ -136,17 +131,12 @@ def compute_bounds_data_crown(
             k += 1
 
 
-    print(f"\n--- Summary ---")
-    print(f"Total nodes with bounds: {len(preact_bounds)}")
-    print(f"Output bounds: lb shape = {lb.shape}, ub shape = {ub.shape}")
-    print(f"Output range: [{lb.min():.4f}, {ub.max():.4f}]")
 
     if preact_bounds:
-        print("\n--- PRE-ACTIVATION BOUNDS ---")
         for k, (l, u) in preact_bounds.items():
-            print(f"Layer {k:2d} | lower: [{l.min():.4f}, {l.max():.4f}], upper: [{u.min():.4f}, {u.max():.4f}]")
+            pass
     else:
-        print("\n !! Warning: No intermediate bounds extracted!")
+        pass
         
     self.L = L
     self.U = U
@@ -258,7 +248,6 @@ def compute_bounds_data(
 
         if actual_n_runs > 1:
             total_L = sum(sum(best_L[k]) for k in range(K + 1))
-            print(f"  Run {run_idx + 1}: cumulative best L sum = {total_L:.4f}")
 
 
     best_L = round_list_depth_2(best_L)

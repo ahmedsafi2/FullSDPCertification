@@ -26,7 +26,6 @@ def analyze_class_distribution(dataset, dataset_name="Dataset"):
             labels = dataset.tensors[1].tolist()
         else:
             # Fallback: iterate through the entire dataset (slower but works)
-            print(f"Extracting labels from {dataset_name}... (this may take a moment)")
             for i in range(len(dataset)):
                 _, label = dataset[i]
                 labels.append(label)
@@ -139,11 +138,6 @@ def analyze_class_distribution(dataset, dataset_name="Dataset"):
     ]
 
     # Print statistics
-    print(f"\n{dataset_name} Class Distribution:")
-    print(f"Total samples: {len(labels)}")
-    print(f"Number of classes: {len(class_counts)}")
-    print(f"Classes present: {sorted(class_counts.keys())}")
-    print("\nClass breakdown:")
 
     for class_id in sorted(class_counts.keys()):
         class_name = (
@@ -153,8 +147,5 @@ def analyze_class_distribution(dataset, dataset_name="Dataset"):
         )
         count = class_counts[class_id]
         percentage = (count / len(labels)) * 100
-        print(
-            f"  Class {class_id:2d} ({class_name:15s}): {count:4d} samples ({percentage:5.1f}%)"
-        )
 
     return class_counts

@@ -87,7 +87,6 @@ def ReLU_quadratic_constraint(
 ):
   
     for k in range(1, self.K):
-        print(f"Adding ReLU constraints for layer {k}")
         for j in range(self.n[k]):
             if (k, j) in self.stable_inactives_neurons:
                 continue

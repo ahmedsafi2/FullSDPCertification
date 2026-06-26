@@ -45,7 +45,6 @@ class Certification_Problem:
             epsilon (float): The perturbation bound.
             dataset (TensorDataset): The dataset for certification.
         """
-        print("Initializing Certification Problem ...")
         self.network = network.to(device_ if kwargs.get("use_cuda", True) else "cpu")
         self.epsilon = epsilon
         self.norm = norm
@@ -77,16 +76,12 @@ class Certification_Problem:
             Certification_Problem: An instance of the Certification_Problem class.
         """
         actual_path = config_path if config_path else get_project_path(f"config/{yaml_file}")
-        print(f"Loading certification problem from {actual_path} ...")
 
-        print("Loading dataset ...")
         dataset = load_dataset(actual_path)
         if dataset is not None:
-            print("Dataset loaded successfully.")
+            pass
         else:
-            print("Failed to load dataset.")
             return None
-        print("Loading epsilon ...")
         with open(actual_path, "r") as file:
             config = yaml.safe_load(file)
             epsilon = config["input_ball"]["epsilon"]
@@ -99,7 +94,6 @@ class Certification_Problem:
         if network is not None:
             pass
         else:
-            print("Failed to load network.")
             return None
         validated_config = FullCertificationConfig(**config)
         return cls(
@@ -156,21 +150,14 @@ class Certification_Problem:
             if include_indices is not None and i not in include_indices:
                 continue
             if skip_indices and i in skip_indices:
-                print(f"Skipping sample {i} (already processed).")
                 continue
 
             x = x.view(-1) 
-            print(
-                f"Running certification for sample {i + 1} of label {ytrue.item()}"
-            )
             x = x.to(next(self.network.parameters()).device)
             y_pred =self.network.label(x)
             logger.debug("ytrue:", ytrue)
 
             if y_pred != ytrue.item() :
-                print(
-                    f"Skipping sample {i + 1} with label {ytrue.item()} as it is misclassified by the network."
-                )
                 continue
 
             if solver_config.bounds_method == "from_file":
@@ -202,17 +189,17 @@ class Certification_Problem:
                     **dict_infos,
                 )
                 logger.debug("Model instance created")
-                nb_actives = len(model_instance.stable_actives_neurons)
-                nb_inactives = len(model_instance.stable_inactives_neurons)
-                nb_targets = len(model_instance.ytargets)
-                logger.debug("number of targets : ", nb_targets)
+                n_actives = len(model_instance.stable_actives_neurons)
+                n_inactives = len(model_instance.stable_inactives_neurons)
+                n_targets = len(model_instance.ytargets)
+                logger.debug("number of targets : ", n_targets)
             except Exception as e:
                 import traceback
                 logger.debug("ERROR : Error while creating model instance:", e)
                 traceback.print_exc()
-                nb_actives = -1
-                nb_inactives = -1
-                nb_targets = 0
+                n_actives = -1
+                n_inactives = -1
+                n_targets = 0
                 continue
 
             output_bounds_U = model_instance.U[self.network.K]
@@ -238,15 +225,15 @@ class Certification_Problem:
             dict_stability = {
                             "label": [ytrue],
                             "data_index": [i],
-                            "Number_actives_stable": [nb_actives],
-                            "Number_inactives_stable": [nb_inactives],
-                            "Number_targets": [nb_targets],
+                            "Number_actives_stable": [n_actives],
+                            "Number_inactives_stable": [n_inactives],
+                            "Number_targets": [n_targets],
                         }
             for k in range(1, self.network.K + 1):
-                nb_stable_actives_layer_k = len([(n, j) for (n, j) in model_instance.stable_actives_neurons if n == k])
-                nb_stable_inactives_layer_k = len([(n, j) for (n, j) in model_instance.stable_inactives_neurons if n == k])
-                dict_stability[f"Stable_Actives_Layer_{k}"] = nb_stable_actives_layer_k
-                dict_stability[f"Stable_Inactives_Layer_{k}"] = nb_stable_inactives_layer_k
+                n_stable_actives_layer_k = len([(n, j) for (n, j) in model_instance.stable_actives_neurons if n == k])
+                n_stable_inactives_layer_k = len([(n, j) for (n, j) in model_instance.stable_inactives_neurons if n == k])
+                dict_stability[f"Stable_Actives_Layer_{k}"] = n_stable_actives_layer_k
+                dict_stability[f"Stable_Inactives_Layer_{k}"] = n_stable_inactives_layer_k
 
             for k in range(self.network.K + 1):
                 for j in range(self.network.n[k]):
@@ -332,7 +319,6 @@ def _run_orchestrator(certif_problem, network, title_run_full):
     n_chunks = certif_problem.divide_run
     chunk_size = -(-num_samples // n_chunks)  # ceil division
 
-    print(f"Orchestrator: {n_chunks} chunks of ~{chunk_size} samples from {num_samples} total")
 
     saved_config = os.path.join(parent_dir, certif_problem.yaml_file) if certif_problem.yaml_file else None
 
@@ -350,12 +336,9 @@ def _run_orchestrator(certif_problem, network, title_run_full):
         ]
         if saved_config and os.path.exists(saved_config):
             cmd += ["--config", saved_config]
-        print(f"  → chunk {chunk_idx}: samples [{chunk_start}, {chunk_end})")
         processes.append(subprocess.Popen(cmd))
 
-    print(f"Waiting for {len(processes)} subprocesses…")
     exit_codes = [p.wait() for p in processes]
-    print(f"All chunks done. Exit codes: {exit_codes}")
 
 
 def main(network: str, title_run: str, start: int = None, end: int = None, config_path: str = None, include_indices: set = None):
@@ -418,7 +401,6 @@ def main(network: str, title_run: str, start: int = None, end: int = None, confi
             finally:
                 sys.stdout = original_stdout
                 sys.stderr = original_stderr
-        print(f"Log saved → {log_path}")
     finally:
         if not is_worker:
             _done, _pairs = find_processed_indices(Path(results_dir))
@@ -441,12 +423,8 @@ def main_resume(run_folder: str):
     skip_indices, skip_pairs = find_processed_indices(run_folder)
     # data_indices with partial TargetedSDP results (some targets done, not all)
     partial_indices = {idx for idx, _ in skip_pairs} - skip_indices
-    print(f"Already fully processed: {len(skip_indices)} samples — {sorted(skip_indices)}")
-    print(f"Partially processed (TargetedSDP): {len(partial_indices)} samples — {sorted(partial_indices)}")
-    print(f"Done (data_index, target) pairs: {len(skip_pairs)}")
 
     existing_results = load_existing_results(run_folder)
-    print(f"Loaded {len(existing_results)} existing result rows.")
 
     certif_problem = Certification_Problem.load_from_yaml(f"{network}.yaml", config_path=str(yaml_path))
     certif_problem.benchmark = existing_results
@@ -459,7 +437,6 @@ def main_resume(run_folder: str):
     m = re.match(r"part_(\d+)_(\d+)$", run_folder.name)
     if m:
         start, end = int(m.group(1)), int(m.group(2))
-        print(f"Chunk resume detected: samples [{start}, {end})")
 
     start_time = datetime.datetime.now()
 
@@ -479,7 +456,6 @@ def main_resume(run_folder: str):
             finally:
                 sys.stdout = original_stdout
                 sys.stderr = original_stderr
-        print(f"Resume log saved → {log_path}")
     finally:
         new_fully_done, new_pairs = find_processed_indices(run_folder)
         new_indices = (new_fully_done - skip_indices) | {idx for idx, _ in new_pairs - skip_pairs}
@@ -503,7 +479,6 @@ if __name__ == "__main__":
                         help="Explicit list of data_indexes to process (e.g. --indices 3 7 42)")
     args = parser.parse_args()
 
-    print("Number of CPU : ", mp.cpu_count())
 
     if args.resume:
         main_resume(args.resume)

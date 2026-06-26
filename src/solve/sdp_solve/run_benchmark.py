@@ -72,7 +72,7 @@ def compute_number_RLT(self) -> int:
     Returns:
         int: Number of RLT constraints.
     """
-    nb_RLT = 0
+    n_rlt = 0
     for layer in range(1, self.K+1 if self.LAST_LAYER else self.K):
         for neuron_next in range(self.n[layer]):
             if (layer, neuron_next) in self.stable_inactives_neurons:
@@ -83,7 +83,7 @@ def compute_number_RLT(self) -> int:
             ):
                 
                 continue
-            nb_cstr = int(self.RLT_prop * self.n[layer - 1])
+            n_cstr = int(self.RLT_prop * self.n[layer - 1])
             indexes_pruned = [
                 j
                 for j in range(self.n[layer - 1])
@@ -91,20 +91,20 @@ def compute_number_RLT(self) -> int:
                 or (layer - 1, j) in self.stable_actives_neurons
             ]
             neurons_with_great_weights = get_m_indexes_of_higher_values_in_list(
-                np.abs(self.W[layer - 1][neuron_next]), nb_cstr, indexes_pruned
+                np.abs(self.W[layer - 1][neuron_next]), n_cstr, indexes_pruned
             )
-            nb_RLT += len(neurons_with_great_weights)
-    return nb_RLT
+            n_rlt += len(neurons_with_great_weights)
+    return n_rlt
 
-def adapt_number_RLT(self, max_nb_RLT : int = 5e5):
+def adapt_number_RLT(self, max_n_rlt : int = 5e5):
     
     if "RLT" not in self.cuts:
         logger_mosek.debug("RLT not activated, skipping adaptation of number of RLT constraints.")
         return
-    nb_RLT = self.compute_number_RLT()
-    logger_mosek.debug(f"RLT : Current number of RLT constraints to be added : {nb_RLT}")
-    if nb_RLT > max_nb_RLT:
-        new_RLT_prop = round(self.RLT_prop * max_nb_RLT / nb_RLT, 2)
+    n_rlt = self.compute_number_RLT()
+    logger_mosek.debug(f"RLT : Current number of RLT constraints to be added : {n_rlt}")
+    if n_rlt > max_n_rlt:
+        new_RLT_prop = round(self.RLT_prop * max_n_rlt / n_rlt, 2)
         logger_mosek.debug(f"RLT: Adapt number of RLT constraints from {self.RLT_prop} to {new_RLT_prop}")
         self.RLT_prop = new_RLT_prop
 
@@ -134,21 +134,7 @@ def print_dual_variable_to_file_for_cb_solver(list_cstr, file_cb):
 
 def concat_dataframes_with_missing_columns(df1, df2):
     """
-    Concatène deux DataFrames en gérant les colonnes manquantes.
-    Si une colonne existe dans un DataFrame mais pas dans l'autre,
-    elle est ajoutée avec des valeurs None pour les lignes correspondantes.
-
-    Parameters:
-    -----------
-    df1 : pandas.DataFrame or None
-        Premier DataFrame à concaténer
-    df2 : pandas.DataFrame or None
-        Second DataFrame à concaténer
-
-    Returns:
-    --------
-    pandas.DataFrame
-        Le DataFrame résultant de la concaténation des deux DataFrames d'entrée
+    Concatenate two DataFrames, filling missing columns with None.
     """
     if df1 is None and df2 is None:
         return pd.DataFrame()
@@ -156,27 +142,21 @@ def concat_dataframes_with_missing_columns(df1, df2):
         return df2.copy()
     if df2 is None:
         return df1.copy()
-    
-    # Créer des copies pour éviter de modifier les originaux
+
     df1_copy = df1.copy()
     df2_copy = df2.copy()
 
-    # Obtenir l'ensemble de toutes les colonnes des deux DataFrames
     all_columns = set(df1_copy.columns).union(set(df2_copy.columns))
 
-    # Ajouter les colonnes manquantes à df1 avec des valeurs None
     for col in all_columns - set(df1_copy.columns):
         df1_copy[col] = None
 
-    # Ajouter les colonnes manquantes à df2 avec des valeurs None
     for col in all_columns - set(df2_copy.columns):
         df2_copy[col] = None
 
-    # Assurer que les deux DataFrames ont les mêmes colonnes et dans le même ordre
     df1_copy = df1_copy[sorted(all_columns)]
     df2_copy = df2_copy[sorted(all_columns)]
 
-    # Concaténer les deux DataFrames
     result_df = pd.concat([df1_copy, df2_copy], ignore_index=True)
 
     return result_df
@@ -184,28 +164,13 @@ def concat_dataframes_with_missing_columns(df1, df2):
 
 def replace_none_with_false(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
     """
-    Remplace toutes les valeurs None (ou NaN) d'une colonne spécifique par False.
-
-    Parameters:
-    -----------
-    df : pandas.DataFrame
-        Le DataFrame à modifier
-    column_name : str
-        Le nom de la colonne dans laquelle remplacer les valeurs None par False
-
-    Returns:
-    --------
-    pandas.DataFrame
-        Le DataFrame avec les valeurs None remplacées par False dans la colonne spécifiée
+    Replace None/NaN values in a specific column with False.
     """
-    # Créer une copie du DataFrame pour éviter de modifier l'original
     df_copy = df.copy()
 
-    # Vérifier si la colonne existe dans le DataFrame
     if column_name not in df_copy.columns:
-        raise ValueError(f"La colonne '{column_name}' n'existe pas dans le DataFrame")
+        raise ValueError(f"Column '{column_name}' not found in DataFrame")
 
-    # Remplacer les valeurs None/NaN par False dans la colonne spécifiée
     df_copy[column_name] = df_copy[column_name].fillna(False)
 
     return df_copy
@@ -213,17 +178,7 @@ def replace_none_with_false(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
 
 def check_cuts(row):
     """
-    Vérifie si la valeur de la colonne 'cuts' est égale à 1.
-
-    Parameters:
-    -----------
-    row : pandas.Series
-        Une ligne du DataFrame
-
-    Returns:
-    --------
-    bool
-        True si la valeur de 'cuts' est égale à 1, sinon False
+    Build a string representation of active cuts from a result row.
     """
     cuts_str = ""
     if row["Tij"]:
@@ -248,17 +203,7 @@ def check_cuts(row):
 
 def add_cuts_to_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Ajoute une colonne 'cuts' au DataFrame en fonction des colonnes existantes.
-
-    Parameters:
-    -----------
-    df : pandas.DataFrame
-        Le DataFrame à modifier
-
-    Returns:
-    --------
-    pandas.DataFrame
-        Le DataFrame avec la nouvelle colonne 'cuts'
+    Ensure all cut columns exist in the DataFrame (fill missing ones with False).
     """
     for cut in all_possible_cuts:
         if cut not in df.columns:

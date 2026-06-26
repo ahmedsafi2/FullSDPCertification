@@ -53,7 +53,6 @@ class Solver:
         use_active_neurons: bool = False,
         **kwargs,
     ):
-        print(f"Initializing {self.__class__.__name__}...")
         self.network = network.cpu()  
         self.K = network.K
         self.n = network.n
@@ -129,8 +128,6 @@ class Solver:
             top_indices = np.argsort(col_norms)[-n_keep:]
             self.kept_input_neurons = set(top_indices.tolist())
             self.pruned_input_neurons = set(range(int(self.n[0]))) - self.kept_input_neurons
-            print(f"INPUT_IN_VARIABLES: keeping {n_keep}/{self.n[0]} input neurons "
-                  f"(proportion={self.input_proportion:.2f})")
 
         self.use_inactive_neurons = use_inactive_neurons
         self.use_active_neurons = use_active_neurons
@@ -206,8 +203,6 @@ class Solver:
         try:
             validated_config = FullCertificationConfig(**raw_config)
         except ValidationError as e:
-            print(f"Erreur de validation du fichier YAML :\n{e}")
-            print("raw config:", raw_config)
             raise
 
         return dict(

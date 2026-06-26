@@ -68,7 +68,7 @@ class ConstraintsClassic(CommonConstraints):
                 ].elements,
                 dict=dict1,
                 value=value,
-                nb_index=self.indexes_variables.max_index,
+                n_index=self.indexes_variables.max_index,
                 dividing_non_diag=True,
             )
         else:
@@ -79,7 +79,7 @@ class ConstraintsClassic(CommonConstraints):
                 dict1=dict1,
                 dict2=dict2,
                 value=value,
-                nb_index=self.indexes_variables.max_index,
+                n_index=self.indexes_variables.max_index,
                 dividing_non_diag=True,
             )
 
@@ -99,9 +99,7 @@ class ConstraintsClassic(CommonConstraints):
             num_matrix = self.list_cstr[ind_cstr]["num_matrix"]
             value = self.list_cstr[ind_cstr]["value"]
             if self.verbose :
-                print(
-                    f"Adding to task constraint {name} with num matrix: {num_matrix.size} , i= {i.size}, j = {j.size}, value = {value.size}"
-                )
+                pass
             assert (
                 len(num_matrix) == len(i) == len(j) == len(value)
             ), "The length of num_matrix, i, j, and value must be the same."
