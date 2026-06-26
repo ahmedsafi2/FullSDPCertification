@@ -1,11 +1,9 @@
 import mosek
 
 
-def objective_Lan(self):
+def objective_targeted(self):
    
-    print("Adding objective function for Lan")
     if self.LAST_LAYER:
-        print("LAST LAYER IN Lan")
         self.handler.Objective.add_linear_variable(
             "z",
             1,
@@ -39,7 +37,7 @@ def objective_Lan(self):
         )
 
 
-def objective_Md(self):
+def objective_untargeted(self):
     if not self.use_active_neurons:
         assert self.keep_penultimate_actives or self.LAST_LAYER, "keep_penultimate_actives must be True for Md objective function"
     print("Making objective ...")
@@ -92,16 +90,7 @@ def objective_Md(self):
                     continue
                 elif (self.K - 1, i) in self.stable_actives_neurons:
                     raise ValueError("This objective has not been implemented yet.")
-                    print(f"ERROR : stable active neuron at layer K-1 = {self.K-1} in objective")
-                    # self.handler.Objective.add_quad_variable_bounding(
-                    #     value=self.W[self.K - 1][j][i],
-                    #     layer=self.K - 1,
-                    #     neuron=i,
-                    #     class_label=j,
-                    #     alpha_1=self.alpha_1,
-                    #     alpha_2=self.alpha_2,
-                    #     type="lower",
-                    # )
+
                 else:
                     self.handler.Objective.add_quad_variable(
                         var1="beta",
@@ -112,35 +101,4 @@ def objective_Md(self):
                         value=-self.W[self.K - 1][j][i],
                         front_of_matrix2=False,
                     )
-
-
-def objective_Mzbar(self):
-    if self.LAST_LAYER:
-        self.handler.Objective.add_linear_variable(
-            "z",
-            1,
-            layer=self.K,
-            neuron=self.ytrue,
-        )
-        self.handler.Objective.add_linear_variable(
-            "zbar",
-            -1,
-        )
-    else:
-        for i in range(self.n[self.K - 1]):
-            if (self.K - 1, i) in self.stable_inactives_neurons:
-                continue
-            self.handler.Objective.add_linear_variable(
-                "z",
-                self.W[self.K - 1][self.ytrue][i],
-                layer=self.K - 1,
-                neuron=i,
-            )
-
-        self.handler.Objective.add_constant(
-            value=self.b[self.K - 1][self.ytrue]
-        )
-
-        self.handler.Objective.add_linear_variable("zbar", -1)
-
 

@@ -11,7 +11,7 @@ from .variable_elements import (
     add_dict_linear_to_elements,
     add_dict_quad_to_elements,
 )
-from .variables_call import VariablesCall, LayersValues
+from .sdp_variable_mapper import  SDPVariableMapper , NeuronLinearization 
 from .constraints import CommonConstraints
 from .objective import Objective
 
@@ -32,7 +32,7 @@ __all__ = [
     "add_dict_linear_to_elements",
     "add_dict_quad_to_elements",
     # Base
-    "VariablesCall",
+    " SDPVariableMapper ",
     "LayersValues",
     "CommonConstraints",
     "Objective",

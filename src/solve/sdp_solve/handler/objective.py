@@ -9,7 +9,7 @@ from .indexes_matrices import (
 from .indexes_variables import (
     Indexes_Variables_for_Mosek_Solver,
 )
-from .variables_call import VariablesCall
+from .sdp_variable_mapper import  SDPVariableMapper 
 from .variable_elements import ElementsinConstraintsObjectives
 from fastsdp_tools import deduplicate_and_sum
 
@@ -21,27 +21,13 @@ import time
 logger_mosek = logging.getLogger("Mosek_logger")
 
 
-class Objective(VariablesCall):
-    """
-    Class to handle the current constraint.
-    """
-
+class Objective( SDPVariableMapper ):
     def __init__(
         self,
         indexes_matrices: Indexes_Matrixes_for_Mosek_Solver,
         indexes_variables: Indexes_Variables_for_Mosek_Solver,
         **kwargs,
     ):
-        """
-        Initialize the CurrentConstraint class.
-
-        Parameters
-        ----------
-        task: mosek.Task
-            The MOSEK task.
-        index: int
-            The index of the constraint.
-        """
         super().__init__(
             indexes_matrices=indexes_matrices,
             indexes_variables=indexes_variables,
@@ -54,9 +40,6 @@ class Objective(VariablesCall):
         self.constant = 0
 
     def format_obj(self):
-        """
-        Format the constraint to be added to the task : adds values of parameters for the same variables.
-        """
         i, j, num_matrix, val = self.elements.decode_key_vec()
 
         self.i = i
@@ -65,18 +48,13 @@ class Objective(VariablesCall):
         self.value = val
 
     def add_constant(self, value: float):
-        """
-        Add a constant to the constraint.
-        """
         self.constant += value
 
     def add_var(self, **kwargs):
         raise NotImplementedError("This method should be implemented in the subclass.")
 
     def reinitialize(self, verbose : bool):
-        """
-        Reinitialize the current objective.
-        """
+
         self.elements = ElementsinConstraintsObjectives(
             self.indexes_variables.max_index,
         )

@@ -32,10 +32,6 @@ dict_type_bounds = {
 
 
 class ConstraintsFusion(CommonConstraints):
-    """
-    Class to handle the current constraint.
-    """
-
     def __init__(
         self,
         indexes_matrices: Indexes_Matrixes_for_Mosek_Solver,
@@ -90,21 +86,13 @@ class ConstraintsFusion(CommonConstraints):
             )
 
     def add_to_task(self):
-        """
-        Add the constraint to the task.
-        """
+
         logger_mosek.info(f"Adding {self.list_cstr} constraints to the task...")
         if self.verbose : 
             print(f"CALLBACK : Number of constraints : {len(self.list_cstr)}")
         time_start = time.time()
         for ind_cstr in range(len(self.list_cstr)):
-            
-            # if ind_cstr % 10 == 0:
-            #     print(f"CALLBACK : Adding constraint {ind_cstr}/{len(self.list_cstr)}")
-            #     time_stop = time.time()
-            #     print(
-            #         f"Current time to add constraints : {time_stop - time_start:.2f}s"
-            #     )
+
             res = sort_lists_by_first(
                 self.list_cstr[ind_cstr]["num_matrix"],
                 self.list_cstr[ind_cstr]["i"],
@@ -112,8 +100,7 @@ class ConstraintsFusion(CommonConstraints):
                 self.list_cstr[ind_cstr]["value"],
             )
 
-            # Group elements by num_matrix: one dense matrix per PSD variable
-            # (res[0] is already sorted by num_matrix after sort_lists_by_first)
+
             unique_matrices, group_starts = np.unique(res[0], return_index=True)
             group_ends = np.append(group_starts[1:], len(res[0]))
 
@@ -152,12 +139,5 @@ class ConstraintsFusion(CommonConstraints):
                 )
 
     def add_model(self, model: mosek.fusion.Model):
-        """
-        Add model to the objective.
 
-        Parameters
-        ----------
-        model: mosek.fusion.Model
-            The MOSEK model.
-        """
         self.model = model

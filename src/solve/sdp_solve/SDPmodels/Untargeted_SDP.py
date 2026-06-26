@@ -13,9 +13,9 @@ from fastsdp_tools.utils import infinity, add_functions_to_class
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
 
-from ..mosek_generic_solver import SDPSolver
+from ..sdp_generic_solver import SDPSolver
 from networks import ReLUNN
-from .certification_problem_objective import objective_Md
+from .certification_problem_objective import objective_untargeted
 from .certification_problem_constraints_bounds import (
     quad_bounds,
     McCormick_inter_layers,
@@ -24,7 +24,7 @@ from .certification_problem_constraints_bounds import (
     is_front_of_matrix,
 )
 from .certification_problem_constraints_forward_pass import (
-    ReLU_constraint_Lan,
+    ReLU_quadratic_constraint,
     ReLU_constraint_stable_active_relaxation,
     ReLU_triangularization,
     last_layer_linear_equality
@@ -53,8 +53,8 @@ logger_mosek = logging.getLogger("Mosek_logger")
 
 
 @add_functions_to_class(
-    objective_Md,
-    ReLU_constraint_Lan,
+    objective_untargeted,
+    ReLU_quadratic_constraint,
     ReLU_constraint_stable_active_relaxation,
     quad_bounds,
     discrete_betas,
@@ -89,12 +89,10 @@ class UntargetedSDP(SDPSolver):
         print("ytargets in UntargetedSDP:", self.ytargets)
 
     def add_objective(self):
-        self.objective_Md()
+        self.objective_untargeted()
 
     def add_constraints(self, cuts: List = []):
-        """
-        Add constraints to the task.
-        """
+
         self._cut_constraint_counts = {}
         self.handler.Constraints._skipped_count = 0
 
@@ -110,7 +108,7 @@ class UntargetedSDP(SDPSolver):
         # RELU + BOUNDS (baseline)
         logger_mosek.debug("Adding ReLU constraints...")
         _n = _snap()
-        self.ReLU_constraint_Lan()
+        self.ReLU_quadratic_constraint()
         logger_mosek.debug("ReLU constraints added.")
         self._cut_constraint_counts["baseline_relu"] = _snap() - _n
 
@@ -152,7 +150,7 @@ class UntargetedSDP(SDPSolver):
             self.add_RLT_constraints(p=self.RLT_prop)
         self._cut_constraint_counts["RLT"] = _snap() - _n
 
-        # Finalisation (first_term, décomposition chordale, last_layer)
+
         _n = _snap()
         self.first_term_equal_zero()
         if self.MATRIX_BY_LAYERS:

@@ -82,7 +82,7 @@ def ReLU_constraint_stable_active_relaxation(
         self.handler.Constraints.add_bound(bound_type=mosek.boundkey.lo, bound=0)
 
 
-def ReLU_constraint_Lan(
+def ReLU_quadratic_constraint(
     self, relu_quadratic_random : bool = False
 ):
   
@@ -185,7 +185,6 @@ def ReLU_constraint_Lan(
                 
 
             else:
-                # print("Adding normal ReLU constraint for layer", k, "neuron", j)
                 if self.handler.Constraints.new_constraint(
                     f"ReLU - z_{k,j} * (z{k,j} - W_{k,j} z_{k-1} - b_{k,j}) = 0", label = "same_for_data"
                 ):
@@ -305,7 +304,7 @@ def last_layer_linear_equality(self):
     """
     Add z_{K,j} = W_K z_{K-1} + b_K for each output neuron j.
     Mandatory when LAST_LAYER=True: the last layer is linear (no ReLU), so
-    this equality is never added by ReLU_constraint_Lan and must be explicit.
+    this equality is never added by ReLU_quadratic_constraint and must be explicit.
     z_K  → front_of_matrix=False (last element of last chordal group)
     z_{K-1} → front_of_matrix=True  (first element of last chordal group)
     """

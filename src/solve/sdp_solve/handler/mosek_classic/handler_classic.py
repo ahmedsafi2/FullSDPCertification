@@ -57,10 +57,6 @@ logger_mosek = logging.getLogger("Mosek_logger")
     print_num_variables,
 )
 class MosekClassicHandler:
-    """
-    Class to handle the constraints for the MOSEK solver.
-    """
-
     def __init__(self, **kwargs):
         """
         Initialize the ConstraintHandler class.
@@ -86,7 +82,7 @@ class MosekClassicHandler:
         LAST_LAYER: bool
             Whether the last layer is included in the matrix of the z variables or not.
         """
-        print("Initializing MosekClassicHandler")
+        print("Initializing MosekClassicHandler...")
         self.MATRIX_BY_LAYERS = kwargs.get("MATRIX_BY_LAYERS", False)
 
         self.LAST_LAYER = kwargs.get("LAST_LAYER", False)
@@ -100,7 +96,6 @@ class MosekClassicHandler:
         self.K = kwargs.get("K", None)
 
         self.folder_name = kwargs.pop("folder_name", None)
-        print("\n \n folder name dans handler: ", self.folder_name)
         self.name = kwargs.pop("name", None)
 
         self.epsilon = kwargs.pop("epsilon", None)
@@ -128,10 +123,6 @@ class MosekClassicHandler:
         )
 
     def initiate_env(self, verbose: bool = False):
-        """
-        Initialize the task and env of MOSEK solver.
-        Add log stream to the task."
-        """
         logger_mosek.info("Initializing MOSEK solver")
         self.verbose = verbose
         if self.verbose:
@@ -140,8 +131,6 @@ class MosekClassicHandler:
         self.task = self.env.Task(0, 0)
         self.env.__enter__()  
         self.task.__enter__()  
-        if self.verbose:
-            print("Adding callback to the task")
 
         usercallback = makeUserCallback(maxtime=20000, task=self.task)
         self.task.set_InfoCallback(usercallback)
@@ -154,58 +143,31 @@ class MosekClassicHandler:
         self.Objective.reinitialize(verbose)
         self.Constraints.add_task(self.task)
         self.Constraints.reinitialize(verbose)
-        return self  # Pour permettre le chaînage des méthodes
+        return self 
 
     def adjust_solver_parameters(self, **parameters):
-        """
-        Adjust the parameters of the MOSEK solver.
-        Parameters
-        ----------
-        parameters: dict
-            The parameters to adjust.
-        """
-        print("Adjusting MOSEK solver parameters")
+
+        self.task.putdouparam(mosek.dparam.intpnt_tol_rel_gap, 1e-3)  
+        self.task.putdouparam(mosek.dparam.intpnt_tol_pfeas, 1e-3)    
+        self.task.putdouparam(mosek.dparam.intpnt_tol_dfeas, 1e-3)    
         
-        # ===== TOLÉRANCES STRICTES pour réduire le gap primal-dual =====
-        # Réduire le gap relatif entre primal et dual
-        self.task.putdouparam(mosek.dparam.intpnt_tol_rel_gap, 1e-3)  # 1e-6 → 1e-8 : plus strict
-        
-        # Faisabilité primale et duale plus stricte
-        self.task.putdouparam(mosek.dparam.intpnt_tol_pfeas, 1e-3)    # Gap primal plus petit
-        self.task.putdouparam(mosek.dparam.intpnt_tol_dfeas, 1e-3)    # Gap dual plus petit
-        
-        # ===== AUGMENTER LES ITÉRATIONS =====
-        # Par défaut ~300, vous pouvez l'augmenter pour forcer la convergence
         self.task.putintparam(mosek.iparam.intpnt_max_iterations, 400)
-        
-        # ===== SCALING (pour les problèmes mal conditionnés) =====
-        # Aide à réduire les problèmes numériques
-        # self.task.putintparam(mosek.iparam.intpnt_scaling, mosek.scalingtype.free)
-        
-        # ===== THREADS =====
+
         num_threads = int(os.environ.get("SLURM_CPUS_PER_TASK", 4))
         self.task.putintparam(mosek.iparam.num_threads, num_threads)
 
-        # ===== TIME LIMIT =====
         if self.solver_time_limit is not None:
             self.task.putdouparam(mosek.dparam.optimizer_max_time, float(self.solver_time_limit))
-            print(f"MOSEK time limit set to {self.solver_time_limit}s")
 
-        # ===== OPTIONS OPTIONNELLES COMMENTÉES =====
-        # Décommenter si vous avez des problèmes numériques :      
-        # self.task.putintparam(mosek.iparam.presolve_use, mosek.presolvemode.off)
-        # self.task.putdouparam(mosek.dparam.optimizer_max_time, 3600)  # Limite temps à 3600s
 
     @count_calls(
         "init_variables"
-    )  # Create an attribute init_variable to count the number of calls of this function
+    )  
     def add_matrix_variable(self, name: str, dim: int):
         """
         Add a matrix variable of dimension dim to the task.
         """
         logger_mosek.debug(f"Adding a variable matrix {name} of dimension %s", dim)
-        if self.verbose:
-            print("Adding a variable matrix %s of dimension %s", name, dim)
         if any(
             d["name"] == name for d in self.indexes_matrices.current_matrices_variables
         ):
@@ -214,8 +176,6 @@ class MosekClassicHandler:
             )
             return
         else:
-            if self.verbose:
-                print(f"Adding a variable matrix {name} of dimension %s", dim)
             logger_mosek.debug(f"Variable matrix {name} added.")
             self.indexes_matrices.current_matrices_variables.append(
                 {"name": name, "dim": dim, "value": Matrices_Solutions()}
@@ -230,14 +190,6 @@ class MosekClassicHandler:
         self.task.appendvars(dim)
 
     def initialize_constraints(self):
-        """
-        Initialize the number of constraints.
-
-        Parameters
-        ----------
-        num_constraints: int
-            The number of constraints to initialize.
-        """
         logger_mosek.info(
             f"Initializing {self.Constraints.current_num_constraint} constraints"
         )
@@ -245,29 +197,15 @@ class MosekClassicHandler:
         self.final_number_constraints = self.Constraints.current_num_constraint
 
     def cleanup_mosek(self):
-        """Ferme proprement l'environnement et la tâche MOSEK."""
         logger_mosek.info("Cleaning up MOSEK environment and task \n \n \n")
         if self.task:
-            self.task.__exit__(None, None, None)  # Équivalent à sortir du bloc "with"
+            self.task.__exit__(None, None, None) 
             self.task = None
         if self.env:
-            self.env.__exit__(None, None, None)  # Équivalent à sortir du bloc "with"
+            self.env.__exit__(None, None, None)  
             self.env = None
 
     def is_feasible(self, variables_matrices, precision: float = 1e-6) -> bool:
-        """
-        Check if the constraint is feasible.
-
-        Parameters
-        ----------
-        variables_matrices: List[float]
-            The value of the variable z.
-
-        Returns
-        -------
-        bool
-            True if the constraint is feasible, False otherwise.
-        """
         for constraint in self.Constraints.list_cstr:
             try:
                 val = 0
@@ -311,20 +249,6 @@ class MosekClassicHandler:
         return True
 
     def value_solution(self, variables_matrices):
-        """
-        Compute the value of the solution.
-
-        Parameters
-        ----------
-        variables_matrices: List[float]
-            The value of the variable z.
-
-        Returns
-        -------
-        float
-            The value of the solution.
-        """
-
         try:
             val = self.Objective.constant
             for index in range(len(self.Objective.list_indexes_matrixes)):
@@ -345,15 +269,9 @@ class MosekClassicHandler:
             return None
 
     def define_objective_sense(self):
-        """
-        Define the objective sense.
-        """
         self.task.putobjsense(mosek.objsense.minimize)
 
     def optimize(self):
-        """
-        Optimize the task.
-        """
         logger_mosek.info("Optimizing the task")
         self.rescode = self.task.optimize()
 
@@ -383,9 +301,6 @@ class MosekClassicHandler:
                 f"{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_classic.ptf"
             )
         )
-        # self.task.writedata(
-        #     get_project_path(f"{self.folder_name}/{self.name}_{cuts_str}_classic.ptf")
-        # )
         logger_mosek.info(
             f"Results written to {get_project_path(f'{self.folder_name}/{self.name}/{self.name}_{cuts_str}_ind={data_index}_ytarget={ytarget}_RLT={RLT_prop}_classic.ptf')}"
         )
@@ -400,35 +315,22 @@ class MosekClassicHandler:
             self.task.set_Stream(mosek.streamtype.log, mosek_to_logger)
 
     def get_solution_status(self):
-        """
-        Get the status of the optimization.
-        """
         self.status = self.task.getsolsta(mosek.soltype.itr)
         return self.status
 
     def get_num_iterations(self):
-        """
-        Get the number of iterations of the optimization.
-        """
         num_iterations = self.task.getintinf(mosek.iinfitem.intpnt_iter)
         return num_iterations
 
     def get_solution(self, **kwargs):
-        """
-        Get the solution of the optimization.
-        """
         ind_solution = kwargs.get("ind_solution", None)
         dim = kwargs.get("dim", None)
         mat = self.task.getbarxj(mosek.soltype.itr, ind_solution)
         return self.reconstruct_matrix(dim, mat)
 
     def get_dual_variables(self):
-        """
-        Get the dual variables of the optimization.
-        """
         dual_variables = self.task.gety(mosek.soltype.itr)
 
-        # Check solution status
         prosta = self.task.getprosta(mosek.soltype.itr)
         solsta = self.task.getsolsta(mosek.soltype.itr)
 

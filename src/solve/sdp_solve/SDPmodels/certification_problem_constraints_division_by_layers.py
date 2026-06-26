@@ -38,7 +38,6 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
 
     # ---  Quadratic constraints ---
     if not only_linear_constraints:
-        print("Adding rec matrices quadratic constraint")
         for k in repetitive_layers:
             for j in range(self.n[k]):
                 if (k, j) in self.stable_inactives_neurons and not self.use_inactive_neurons:
@@ -69,9 +68,3 @@ def matrix_by_layers_rec(self, only_linear_constraints: bool = False):
                     )
                     self.handler.Constraints.add_bound(bound_type=mosek.boundkey.fx, bound=0)
                     sum_cstr += 1
-
-    print(
-        f"Number of constraints for the matrix by layers: {sum_cstr} "
-        f"for {self.K} layers, {self.n} neurons, "
-        f"boundary layers: {repetitive_layers}"
-    )

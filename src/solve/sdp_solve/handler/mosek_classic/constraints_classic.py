@@ -26,10 +26,7 @@ dict_type_bounds = {
 
 
 class ConstraintsClassic(CommonConstraints):
-    """
-    Class to handle the current constraint.
-    """
-
+    
     def __init__(
         self,
         indexes_matrices: Indexes_Matrixes_for_Mosek_Solver,
@@ -87,21 +84,12 @@ class ConstraintsClassic(CommonConstraints):
             )
 
     def add_task(self, task: mosek.Task):
-        """
-        Add the task to the constraint.
-
-        Parameters
-        ----------
-        task: mosek.Task
-            The MOSEK task.
-        """
         self.task = task
 
     def add_to_task(self):
         """
-        Add the constraint to the task.
+        Add all constraints to the task.
         """
-        print(f"CALLBACK : Number of constraints : {len(self.list_cstr)}")
         logger_mosek.info(f"Adding {len(self.list_cstr)} constraints to the task...")
         for ind_cstr in range(len(self.list_cstr)):
             name = self.list_cstr[ind_cstr]["name"]

@@ -5,7 +5,7 @@ from auto_LiRPA import BoundedModule, BoundedTensor
 from auto_LiRPA.perturbations import PerturbationLpNorm
 import time
 
-from fastsdp_tools import round_list_depth_2, change_to_zero_negative_values
+from fastsdp_tools import round_list_depth_2
 
 logger = logging.getLogger(__name__)
 
@@ -13,126 +13,147 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 
-def compute_bounds_data_new(network, x, epsilon, n, K, method: str = "IBP", norm : str = "Linf"):
+
+def compute_bounds_data_crown(
+    self,
+    method="alpha-beta-crown",
+):
     """
-    Compute the  L and U
-
-    Args:
-        method (str): The method to compute the bounds (CROWN, IBP, Linear, etc.).
+    Compute pre-activation bounds using alpha-beta-CROWN (modern API)
     """
-    logger.debug(f"Computing bounds with method: {method} ...")
-    print("epsilon : ", epsilon)
-    L = [[-np.inf] * n[k] for k in range(K + 1)]
-    U = [[np.inf] * n[k] for k in range(K + 1)]
 
-    if method == "GREAT_BOUNDS":
-        L[0] = [max(L[0][j], 0) for j in range(len(L[0]))]
-        return
+    network = self.network.to(device).eval()
 
-    if not torch.is_tensor(x):
-        x = torch.Tensor(x)
+    if not torch.is_tensor(self.x):
+        self.x = torch.tensor(self.x, dtype=torch.float32)
 
-    x = x.type(torch.float).view(-1).unsqueeze(0).to(device)
-    print("x device : ", x.device)
-    print("x shape : ", x.shape)
+    x = self.x.view(1, -1).to(device)
+    zeros = torch.zeros_like(x)
 
-    network = network.to(device)
-    print("network device : ", next(network.parameters()).device)
-    network.eval()
-    print("network is none : ", network is None)
+    bounded_model = BoundedModule(
+        network,
+        zeros,
+        bound_opts={"conv_mode": "patches"}
+    ).to(device)
 
-    zeros = torch.zeros_like(x).to(device)
-    print("zeros device : ", zeros.device)
-
-    logger.debug("creating BoundedModule ...")
-    try:
-
-        print("About to create BoundedModule on device:", device)
-        print("network device before BoundedModule:", next(network.parameters()).device)
-        print("zeros device before BoundedModule:", zeros.device)
-        bounded_model = BoundedModule(
-            network,
-            zeros,
-            bound_opts={"conv_mode": "patches"},
-        )
-        print("created BoundedModule")
-    except Exception as e:
-        raise Exception("Error creating BoundedModule:", e)
-
-
-    bounded_model.eval()
-    logger.debug("bounded_model device : ", next(bounded_model.parameters()).device)
-
-    if norm == "Linf":
-        logger.debug("Using Linf norm for perturbation.")
-        ptb = PerturbationLpNorm(norm=np.inf, eps=epsilon)
-    elif norm == "L2":
-        logger.debug("pertubation L2 used")
-        ptb = PerturbationLpNorm(norm=2, eps=epsilon)
-        #ptb = PerturbationLpNorm(norm=np.inf, eps=epsilon**2)  # comparer les deux versions
+    if self.norm == "Linf":
+        ptb = PerturbationLpNorm(norm=np.inf, eps=self.epsilon)
+    elif self.norm == "L2":
+        ptb = PerturbationLpNorm(norm=2, eps=self.epsilon)
     else:
-        raise NotImplementedError(f"Norm {norm} not implemented.")
-    bounded_image = BoundedTensor(x, ptb)
-    
-    use_grad = method.lower() in ["alpha-crown", "beta-crown", "CROWN-Optimized"]
-    if use_grad:
-        lb, ub, aux = bounded_model.compute_bounds(x=(bounded_image,), method=method, return_A = True)
-        intermediate_bounds = aux["intermediate_bounds"]
+        raise ValueError("Norm not supported")
+
+    bounded_x = BoundedTensor(x, ptb)
+
+    use_crown = method.lower() in ["alpha-beta-crown", "beta-crown", "crown-optimized"]
+
+    if use_crown:
+        print("Step 1: Computing initial bounds with IBP...")
+        with torch.no_grad():
+            lb_ibp, ub_ibp = bounded_model.compute_bounds(
+                x=(bounded_x,),
+                method="IBP",
+                bound_lower=True,
+                bound_upper=True,
+            )
+        
+        
+        print("Step 2: Optimizing bounds with CROWN...")
+        lb, ub = bounded_model.compute_bounds(
+            x=(bounded_x,),
+            method="CROWN-Optimized",
+            bound_lower=True,
+            bound_upper=True,
+        )
+        
+        
+        if ub is None:
+            print("Warning: CROWN didn't compute upper bounds, using IBP bounds")
+            ub = ub_ibp
+        if lb is None:
+            print("Warning: CROWN didn't compute lower bounds, using IBP bounds")
+            lb = lb_ibp
+            
     else:
         with torch.no_grad():
-            lb, ub = bounded_model.compute_bounds(x=(bounded_image,), method=method)
-            intermediate_bounds = bounded_model.save_intermediate()   # Version save_intermediate depreciee
-    print("Intermediate bounds : ", intermediate_bounds)
+            lb, ub = bounded_model.compute_bounds(
+                x=(bounded_x,),
+                method="IBP",
+                bound_lower=True,
+                bound_upper=True,
+            )
+ 
+    preact_bounds = {}
+    
+    print("\n--- Extracting intermediate bounds ---")
+    
+    k = 0
+    L = []
+    U = []
+    for _, node in enumerate(bounded_model.nodes()):
+        node_type = type(node).__name__
 
-    for name, (lb, ub) in intermediate_bounds.items():
-        print(name)
+        required_types = ['Input', 'Linear']
+        assert k>0 or 'Input' in node_type, f"Expected Input node at index 0, got {node_type}"
+        if any(el in node_type for el in required_types):
+            
+            if hasattr(node, 'lower') and hasattr(node, 'upper'):
+                lower = node.lower
+                upper = node.upper
+                
+                if lower is not None and upper is not None:
+                    lower_cpu = lower.squeeze().detach().cpu()
+                    upper_cpu = upper.squeeze().detach().cpu()
+                    # if k == 0:
+                    #     lower_cpu = torch.clamp(lower_cpu, min=0)
+                    preact_bounds[k] = (lower_cpu, upper_cpu)
+                    
+                    L.append(lower_cpu.tolist())
+                    U.append(upper_cpu.tolist())
+                
+                elif lower is not None and upper is None:
+                    layer_relu_before = node.inputs[0]
+                    layer_linear_before = layer_relu_before.inputs[0]
+                    layer_before_upper = layer_linear_before.upper
+                    layer_before_lower = layer_linear_before.lower  
+                    device_ = layer_before_upper.device
+                    dtype = layer_before_upper.dtype
+                    
+                    W_pos = torch.clamp(torch.tensor(self.W[k-1], device=device_, dtype=dtype), min=0)
+                    W_neg = torch.clamp(torch.tensor(self.W[k-1], device=device_, dtype=dtype), max=0)
+                    bias = torch.tensor(self.b[k-1], device=device_, dtype=dtype).unsqueeze(dim=1)
+                    estimated_upper = W_pos @ torch.transpose(layer_before_upper, 0, 1) + W_neg @ torch.transpose(layer_before_lower, 0, 1) + bias
+
+                    preact_bounds[k] = (
+                        lower.squeeze().detach().cpu(),
+                        estimated_upper.squeeze().detach().cpu()
+                    )
+                    L.append(lower.squeeze().detach().cpu().tolist())  
+                    U.append(estimated_upper.squeeze().detach().cpu().tolist())
 
 
-    intermediate_bounds_list = list(intermediate_bounds.keys())
-
-    logger.debug("Intermediate bounds list : ", intermediate_bounds_list)
-
-    layers_name = {}
-    layers_name[intermediate_bounds_list[0]] = 0
-
-    logger.debug("Preparing to create bounds...")
-    print('Intermediate_bounds_list : ', intermediate_bounds_list )
-    for k in range(1, K + 1):
-        print(f"Adding layer for k = {k}, num_layer = {1 + (k - 1) * 2}")
-        layers_name[intermediate_bounds_list[1 + (k - 1) * 2]] = k    ### !!!!  Before *3 because of the dropout layer  !!!!
-    logger.debug("Layers name mapping : ", layers_name)
-
-    logger.debug("Intermediate bounds list final values : ", intermediate_bounds_list[-1])
-    layers_name[intermediate_bounds_list[-1]] = K
-
-    for layer_name, (min_tensor, max_tensor) in intermediate_bounds.items():
-
-        if layer_name not in layers_name:
-            print(f"Layer {layer_name} not found in layers_name mapping.")
-            print(f"  Min: {min_tensor.squeeze().shape}")
-            print(f"  Max: {max_tensor.squeeze().shape} \n")
-            continue
-        print(f"{layer_name}:")
-        print(f"  Min: {min_tensor.squeeze().shape}")
-        print(f"  Max: {max_tensor.squeeze().shape} \n")
-        if layers_name[layer_name] == 0:
-            # For the first layer, we set the lower bound to 0
-            min_tensor = torch.clamp(min_tensor, min=0).view(-1)
-            max_tensor = max_tensor.view(-1)
+        if 'Relu' in node_type or 'Input' in node_type:
+            k += 1
 
 
-        L[layers_name[layer_name]] = (
-            min_tensor.squeeze().detach().cpu().numpy().tolist()
-        )
-        U[layers_name[layer_name]] = (
-            max_tensor.squeeze().detach().cpu().numpy().tolist()
-        )
+    print(f"\n--- Summary ---")
+    print(f"Total nodes with bounds: {len(preact_bounds)}")
+    print(f"Output bounds: lb shape = {lb.shape}, ub shape = {ub.shape}")
+    print(f"Output range: [{lb.min():.4f}, {ub.max():.4f}]")
 
-    L = round_list_depth_2(L)
-    U = round_list_depth_2(U)
+    if preact_bounds:
+        print("\n--- PRE-ACTIVATION BOUNDS ---")
+        for k, (l, u) in preact_bounds.items():
+            print(f"Layer {k:2d} | lower: [{l.min():.4f}, {l.max():.4f}], upper: [{u.min():.4f}, {u.max():.4f}]")
+    else:
+        print("\n !! Warning: No intermediate bounds extracted!")
+        
+    self.L = L
+    self.U = U
 
+    self.compute_bounds_time = None
 
-    return L, U
+    return
 
 def compute_bounds_data(
     network, x, epsilon, n, K,
@@ -150,7 +171,6 @@ def compute_bounds_data(
                       Ignored (forced to 1) for deterministic methods (IBP, etc.).
     """
     logger.debug(f"Computing bounds with method: {method}, n_runs={n_runs} ...")
-    print("epsilon : ", epsilon)
 
     if method == "GREAT_BOUNDS":
         L = [[-np.inf] * n[k] for k in range(K + 1)]
@@ -162,8 +182,6 @@ def compute_bounds_data(
         x = torch.Tensor(x)
 
     x = x.type(torch.float).view(-1).unsqueeze(0).to(device)
-    print("x device : ", x.device)
-    print("x shape : ", x.shape)
 
     network = network.to(device)
     network.eval()
@@ -178,16 +196,15 @@ def compute_bounds_data(
     bounded_image = BoundedTensor(x, ptb)
 
     is_crown = method == "alpha-CROWN"
-    # Non-CROWN methods are deterministic: a single run suffices
+    
     actual_n_runs = n_runs if is_crown else 1
 
     best_L = None
     best_U = None
 
     for run_idx in range(actual_n_runs):
-        print(f"CALLBACK [CROWN bounds] Run {run_idx + 1}/{actual_n_runs}")
-
-        # New BoundedModule each run → fresh random alpha initialisation
+        
+        
         try:
             bounded_model = BoundedModule(
                 network,
@@ -199,10 +216,10 @@ def compute_bounds_data(
         bounded_model.eval()
 
         if is_crown:
-            lb, ub = bounded_model.compute_bounds(x=(bounded_image,), method=method)
+            _, _ = bounded_model.compute_bounds(x=(bounded_image,), method=method)
         else:
             with torch.no_grad():
-                lb, ub = bounded_model.compute_bounds(x=(bounded_image,), method=method)
+                _, _ = bounded_model.compute_bounds(x=(bounded_image,), method=method)
 
         intermediate_bounds = bounded_model.save_intermediate()
 
@@ -229,7 +246,7 @@ def compute_bounds_data(
         if best_L is None:
             best_L, best_U = L_run, U_run
         else:
-            # Tighter bounds: higher lower bound, lower upper bound
+            
             best_L = [
                 [max(best_L[k][j], L_run[k][j]) for j in range(n[k])]
                 for k in range(K + 1)
@@ -243,7 +260,7 @@ def compute_bounds_data(
             total_L = sum(sum(best_L[k]) for k in range(K + 1))
             print(f"  Run {run_idx + 1}: cumulative best L sum = {total_L:.4f}")
 
-    # Round only after accumulating the best over all runs
+
     best_L = round_list_depth_2(best_L)
     best_U = round_list_depth_2(best_U)
 
@@ -275,7 +292,7 @@ def compute_bounds_(self, method: str = "IBP"):
         self.U = U
 
     end_compute_bd_time = time.time()
-    print("compute bounds time créé dans : ", self.__class__.__name__)
+    
     self.compute_bounds_time = end_compute_bd_time - start_compute_bd_time
 
 
@@ -286,11 +303,9 @@ def check_stability_neurons(
     Check the stability of neurons in the network.
     """
     logger.debug("Checking stability of neurons ...")
-    logger.debug("stable use_active_neurons: ", use_active_neurons)
-    logger.debug("stable use_inactive_neurons: ", use_inactive_neurons)
+    
     self.stable_inactives_neurons = []
     self.stable_actives_neurons = []
-    # Check if the neurons are stable
     for k in range(1, self.K):
         
         for j in range(self.n[k]):
@@ -332,13 +347,7 @@ def prune_adversarial_targets(self):
 
 
 def compute_IBP(self):
-    """
-    Calcule les bornes pré-activation (l, u) pour chaque couche
-    via IBP en norme infinie (L∞).
-    
-    Retourne :
-        bounds = [(l1, u1), (l2, u2), ..., (lL, uL)]
-    """
+
     lb = self.x - self.epsilon
     ub = self.x + self.epsilon
 
@@ -362,5 +371,3 @@ def compute_IBP(self):
     self.L = L
     self.U = U
     
-    for k in range(self.K+1):
-        print(f"Layer {k}, L = {L[k]}, U = {U[k]}")

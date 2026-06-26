@@ -1,8 +1,6 @@
 import os
 import sys
 import pandas as pd
-import numpy as np
-import argparse
 import subprocess
 
 # CONSTANTS
@@ -70,7 +68,7 @@ def change_to_zero_negative_values(L, dim: int = 2):
 
 def exists_two_similar_pairs_in_three_lists(L, T, S):
     vu = set()
-    for i, (num, t, s) in enumerate(zip(L, T, S)):
+    for _, (num, t, s) in enumerate(zip(L, T, S)):
         if (num, t, s) in vu:
             return (True, num, t, s)
         vu.add((num, t, s))
@@ -206,25 +204,32 @@ def add_row_from_dict(df, row_dict):
     return pd.concat([df, new_row_df], ignore_index=True)
 
 
-# def get_git_root():
-#     """Trouve et retourne le chemin racine du repository git"""
-#     current_path = os.path.abspath(".")
 
-#     # Remonte jusqu'à trouver le dossier .git ou la racine du système
-#     while current_path != os.path.dirname(
-#         current_path
-#     ):  # Arrête à la racine du système
-#         if os.path.exists(os.path.join(current_path, ".git")):
-#             return current_path
-#         current_path = os.path.dirname(current_path)
+def _append_csv(path: str, row_df: pd.DataFrame) -> None:
+    """Append row_df to path, creating the file if needed.
 
-#     # Si on ne trouve pas de dossier .git, on peut fallback sur une autre méthode
-#     # Par exemple, utiliser le nom du dossier racine du projet
-#     import inspect
-
-#     return os.path.dirname(
-#         os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-#     )
+    Fast path (O(1)): when the file already exists and has the same column set,
+    append the row without reading the existing data.
+    Slow path (O(N)): when schemas differ (e.g. first presolve row vs. result row),
+    read the full file, concat, and rewrite so all columns are preserved.
+    """
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        row_df.to_csv(path, index=False)
+        return
+    try:
+        existing_cols = pd.read_csv(path, nrows=0).columns.tolist()
+    except (pd.errors.EmptyDataError, pd.errors.ParserError):
+        row_df.to_csv(path, index=False)
+        return
+    if set(existing_cols) == set(row_df.columns.tolist()):
+        row_df[existing_cols].to_csv(path, mode='a', header=False, index=False)
+    else:
+        try:
+            existing = pd.read_csv(path)
+            merged = pd.concat([existing, row_df], ignore_index=True)
+        except (pd.errors.EmptyDataError, pd.errors.ParserError):
+            merged = row_df
+        merged.to_csv(path, index=False)
 
 
 def get_git_root():

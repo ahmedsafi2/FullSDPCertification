@@ -113,7 +113,6 @@ if __name__ == "__main__":
 
     attack = config["adversarial_attack"]
 
-    print("CONFIG : ", config)
     epsilon_to_test = config.get("epsilon_test", config["epsilon"])
 
     batch_size = config["batch_size"]
@@ -137,20 +136,20 @@ if __name__ == "__main__":
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=2,  # Parallélisation
-        pin_memory=True,  # Plus rapide pour GPU
+        num_workers=2,
+        pin_memory=True, 
     )
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
-        shuffle=False,  # Pas besoin de mélanger pour test
+        shuffle=False,
         num_workers=2,
         pin_memory=True,
     )
     robust_datas_loader = DataLoader(
         robust_to_test_dataset,
         batch_size=batch_size,
-        shuffle=False,  # Pas besoin de mélanger pour test
+        shuffle=False,  
         num_workers=2,
         pin_memory=True,
     )

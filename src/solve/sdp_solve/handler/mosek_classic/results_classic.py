@@ -35,13 +35,12 @@ def add_all_infos_optimal_values_to_dic(self, cuts: List):
 
     gap = abs(self.dual_obj_value - self.primal_obj_value)
     if gap > 0.01 * max(1.0, abs(self.dual_obj_value)):
-        print(f"CALLBACK : ⚠ Gap primal-dual persistant ({gap:.3e}) → déclenchement du diagnostic Slater")
-        logger_mosek.warning("Gap primal-dual persistant (%.3e) → diagnostic Slater", gap)
+        print(f"Dual-primal gap = ({gap:.3e}) - Slater diagnostic")
         try:
             self.diagnose_infeasibility()
         except Exception as e:
-            logger_mosek.warning("Diagnostic Slater échoué : %s", e)
-            print(f"CALLBACK : Diagnostic Slater échoué : {e}")
+            logger_mosek.warning("Slater diagnostic failed : %s", e)
+            print(f"Slater diagnostic failed : {e}")
 
     self.compute_solutions(cuts, print_sol = False)
     dic_sol = {"optimal_value": self.optimal_value}
@@ -68,25 +67,12 @@ def reconstruct_matrix(size, tab_triang):
 
 
 def is_status_optimal(self):
-    """
-    Check if the status of the solver is optimal.
 
-    Returns
-    -------
-    bool
-        True if the status is optimal, False otherwise.
-    """
     return self.status == mosek.solsta.optimal
 
 
 def is_status_infeasible(self):
-    """
-    Check if the status of the solver is infeasible.
-    Returns
-    -------
-    bool
-        True if the status is infeasible, False otherwise.
-    """
+
     return (
         self.status == mosek.solsta.dual_infeas_cer
         or self.status == mosek.solsta.prim_infeas_cer
@@ -94,11 +80,5 @@ def is_status_infeasible(self):
 
 
 def is_status_unknown(self):
-    """
-    Check if the status of the solver is unknown.
-    Returns
-    -------
-    bool
-        True if the status is unknown, False otherwise.
-    """
+
     return self.status == mosek.solsta.unknown

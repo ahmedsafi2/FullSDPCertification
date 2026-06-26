@@ -41,7 +41,7 @@ def get_results_width_model(self, cuts: List, verbose: bool = False):
         "data_index": self.data_index,
         "label": self.ytrue,
         "label_predicted": self.label_predicted,
-        "target": self.ytarget if "Lan" in self.__class__.__name__ else None,
+        "target": self.ytarget if "Targeted" in self.__class__.__name__ else None,
         "epsilon": self.epsilon,
         "MATRIX_BY_LAYERS": str(self.MATRIX_BY_LAYERS),
         "LAST_LAYER": self.LAST_LAYER,
@@ -87,7 +87,7 @@ def get_results(self, cuts: List, verbose: bool = False):
         "data_index": self.data_index,
         "label": self.ytrue,
         "label_predicted": self.label_predicted,
-        "target": self.ytarget if "Lan" in self.__class__.__name__ else None,
+        "target": self.ytarget if "Targeted" in self.__class__.__name__ else None,
         "epsilon": self.epsilon,
         "status": status,
         "iterations": num_iterations,
@@ -107,22 +107,18 @@ def get_results(self, cuts: List, verbose: bool = False):
         dic_benchmark.update({"RLT_prop": self.RLT_prop})
 
     if self.handler.is_status_optimal():
-        print("CALLBACK : optimal status")
         dic_info_optimal_values = self.handler.add_all_infos_optimal_values_to_dic(
             cuts
         )
         dic_benchmark.update(dic_info_optimal_values)
-        print("CALLBACK : dic_info_optimal_values: ", dic_info_optimal_values)
 
     elif self.handler.is_status_infeasible():
-        print ("CALLBACK : infeasible status")
         if verbose:
             logger_mosek.debug("Primal or dual infeasibility certificate found.\n")
-        print("CALLBACK : Déclenchement du diagnostic (contraintes contradictoires)")
         try:
             self.handler.diagnose_infeasibility()
         except Exception as e:
-            print(f"CALLBACK : Diagnostic échoué : {e}")
+            print(f"CALLBACK: Diagnostic failed: {e}")
         self.handler.get_dual_variables()
         cuts_str = compute_cuts_str(cuts)
         dual_path = get_project_path(
@@ -134,31 +130,25 @@ def get_results(self, cuts: List, verbose: bool = False):
             print_dual_variable_to_file_for_cb_solver(
                 list_cstr=self.handler.Constraints.list_cstr, file_cb=file_cb
             )
-        print(f"CALLBACK : Variables duales sauvegardées dans {dual_path}")
     elif self.handler.is_status_unknown():
         if self.handler.is_time_limit():
-            print("CALLBACK : time limit reached")
             logger_mosek.warning("MOSEK terminated: time limit reached")
             dic_benchmark["status"] = "time_limit"
         else:
-            print("CALLBACK : unknown status")
             logger_mosek.debug("Unknown solution status")
         try:
             dic_info_optimal_values = self.handler.add_all_infos_optimal_values_to_dic(
                 cuts,
             )
-            print("CALLBACK : dic_info_optimal_values: ", dic_info_optimal_values)
             dic_benchmark.update(dic_info_optimal_values)
         except Exception as e:
             print("ERROR in get_results : ", e)
             logger_mosek.critical("ERROR IN GETTING SOLUTIONS: %s", e)
             pass
     else:
-        print ("CALLBACK : other status: ")
         if verbose:
             logger_mosek.debug("Other solution status")
 
-    print("dic benchmark keys : ", dic_benchmark)
     if self.benchmark_dataframe is None:
         logger_mosek.debug("self.benchmark is None ")
         self.benchmark_dataframe = pd.DataFrame(dic_benchmark, index=[0])
@@ -167,5 +157,4 @@ def get_results(self, cuts: List, verbose: bool = False):
         self.benchmark_dataframe = add_row_from_dict(
             self.benchmark_dataframe, dic_benchmark
         )
-    print("benchmark_dataframe   : ", self.benchmark_dataframe)
     _append_row_to_results_csv(self, dic_benchmark)

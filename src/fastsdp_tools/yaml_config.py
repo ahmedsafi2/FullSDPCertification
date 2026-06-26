@@ -164,22 +164,22 @@ class SDPSolverConfig(BaseModel):
     LAST_LAYER: bool = (
         False
     )
-    use_fusion: bool = False  # Whether to use the fusion API for MOSEK (deprecated: use solver="mosek_fusion")
-    solver: str = "mosek_classic"  # Backend solver : "mosek_classic" | "mosek_fusion"
+    use_fusion: bool = False 
+    solver: str = "mosek_classic" 
     @validator("solver")
     def validate_solver(cls, v, values):
         if v not in ["mosek_classic", "mosek_fusion"]:
             raise ValueError(f"solver must be one of 'mosek_classic', 'mosek_fusion', got '{v}'")
         return v
-    cp_solver: str = "MOSEK"  # CVXPY backend : "MOSEK", "SCS", "CLARABEL", "CVXOPT", ...
-    cp_solver_kwargs: Optional[dict] = None  # Kwargs given to cp.Problem.solve()
-    use_callback: bool = False  # Whether to use the callback for MOSEK
+    cp_solver: str = "MOSEK"  
+    cp_solver_kwargs: Optional[dict] = None  
+    use_callback: bool = False 
     use_active_neurons: Optional[bool] = (
-        False  # Whether to use active neurons in the certification problem as variables
+        False  
     )
-    ultimate_layer_use_active_neurons: Optional[int] = 1e5 # Whether to use active neurons in the ultimate layer in the certification problem as variables, if use_active_neurons is True. 0 = no ultimate layer active neurons, 1 = only ultimate layer active neurons, 2 = all active neurons
+    ultimate_layer_use_active_neurons: Optional[int] = 1e5 
     use_inactive_neurons: Optional[bool] = (
-        False  # Whether to use inactive neurons in the certification problem as variables
+        False  
     )
     keep_penultimate_actives : Optional[bool] = False
     @validator("keep_penultimate_actives")
@@ -190,34 +190,13 @@ class SDPSolverConfig(BaseModel):
     bounds_file: Optional[str] = None
     L: Optional[List[float]] = None
     U: Optional[List[float]] = None
-    bounds_method: str = "alpha-CROWN"  # Method to compute bounds, options: "IBP", "alpha-CROWN", "GREAT_BOUNDS", "from_file"
-    bounds_n_runs: int = 1  # Number of independent alpha-CROWN runs; best-of-N is kept (max L, min U). Ignored for non-CROWN methods.
+    bounds_method: str = "alpha-CROWN" 
+    bounds_n_runs: int = 1 
     write_model : Optional[bool] = False
-    INPUT_IN_VARIABLES: Union[bool, float] = True  # If False/0.0, z_0 removed from SDP; if 0<p<1, keep top p*n_0 input neurons by W_1 column norm
+    INPUT_IN_VARIABLES: Union[bool, float] = True 
     solver_time_limit: Optional[int] = 7200  
 
 
-class GurobiSolverConfig(BaseModel):
-    certification_model_type: str
-
-    @validator("certification_model_type")
-    def validate_sdp_model_name(cls, v, values):
-        if v not in ["LanQuad", "MdQuad", "MzbarQuad", "ClassicLP", "LPBoundLayer"]:
-            raise ValueError(
-                f"Model name {v} must be one of 'LanQuad', 'MdQuad', 'MzbarQuad','ClassicLP', 'LPBoundLayer."
-            )
-        return v
-
-    LAST_LAYER: bool = (
-        False  # Whether to use the last layer of the network (logits) as variables
-    )
-    use_active_neurons: Optional[bool] = (
-        False  # Whether to use active neurons in the certification problem as variables
-    )
-    use_inactive_neurons: Optional[bool] = (
-        False  # Whether to use inactive neurons in the certification problem as variables
-    )
-    bounds_method: str = "IBP"
 
 
 class NetworkConfig(BaseModel):
@@ -237,7 +216,7 @@ class FullCertificationConfig(BaseModel):
     input_ball: InputBallConfig
     data: Union[DataConfig, DatasetConfig]
     network: NetworkConfig
-    models: Optional[List[Union[SDPSolverConfig, GurobiSolverConfig]]] = None
+    models: Optional[List[Union[SDPSolverConfig]]] = None
     divide_run: int = 1
     @validator('models')
     def process_bounds(cls, v, values):

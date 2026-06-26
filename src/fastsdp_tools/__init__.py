@@ -34,7 +34,8 @@ from .utils import (
     parse_string_list,
     deduplicate_and_sum,
     divide_list_by,
-    summing_values_two_dicts
+    summing_values_two_dicts,
+    _append_csv, 
 )
 
 __all__ = [
@@ -66,4 +67,5 @@ __all__ = [
     "deduplicate_and_sum",
     "divide_list_by",
     "summing_values_two_dicts",
+    "_append_csv"
 ]

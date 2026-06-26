@@ -1,15 +1,11 @@
 import logging
 import re
-import numpy as np
 import yaml
 import sys
 import os
 from pathlib import Path
-import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from solve.generic_solver import Solver
-from solve import LayersValues
 import solve
 from fastsdp_tools import FullCertificationConfig
 from pydantic import BaseModel
@@ -18,7 +14,7 @@ import datetime
 import shutil
 import argparse
 import multiprocessing as mp
-from fastsdp_tools import create_folder_benchmark, get_project_path
+from fastsdp_tools import get_project_path
 from fastsdp_tools.resume_utils import find_run_yaml, find_processed_indices, load_existing_results, log_run_history
 from solve.sdp_solve import concat_dataframes_with_missing_columns
 
@@ -55,23 +51,18 @@ class Certification_Problem:
         self.norm = norm
         self.dataset = dataset
         self.models = kwargs.get("models", [])
-        print("Models in certification problem:", self.models)
 
         self.network_name = kwargs.get("network_name", network.name)
         self.dataset_name = kwargs.get("dataset_name")
         self.yaml_file = kwargs.get("yaml_file", None)
         self._config_path = kwargs.get("config_path", None)
         self.divide_run = kwargs.get("divide_run", 1)
-        print("Data name in certification problem:", self.dataset_name)
-
-        print("dataset in certification problem:", self.dataset)
 
         self.title = f"{self.network_name}-{self.epsilon}"
         os.makedirs(get_project_path(f"results/benchmark/{self.title}"), exist_ok=True)
 
         self.benchmark = None
 
-        print("Certification Problem initialized !")
 
     @classmethod
     def load_from_yaml(cls, yaml_file, config_path: str = None):
@@ -98,22 +89,19 @@ class Certification_Problem:
         print("Loading epsilon ...")
         with open(actual_path, "r") as file:
             config = yaml.safe_load(file)
-            print("CONFIG  inf CERTIFICATION PROBLEM:     ", config)
             epsilon = config["input_ball"]["epsilon"]
             norm = config["input_ball"]["norm"]
-            print(f"Epsilon: {epsilon}, Norm: {norm}")
 
         path_network = config["network"]["path"]
         logger.debug("path network : ", path_network)
         network = ReLUNN.from_pth(get_project_path(path_network), bb_beta_crown=False)
 
         if network is not None:
-            print("Network loaded successfully.")
+            pass
         else:
             print("Failed to load network.")
             return None
         validated_config = FullCertificationConfig(**config)
-        print("Data name from config:", validated_config.data.name)
         return cls(
             network,
             epsilon,
@@ -141,13 +129,7 @@ class Certification_Problem:
         If include_indices is provided, only samples whose index is in the set are processed.
         """
         model_class = getattr(solve, solver_config.certification_model_type)
-        print(
-            f"Running certification with solver: {solver_config.certification_model_type}"
-        )
 
-        print("SOLVER CONFIG:", solver_config)
-      
-      
         dataloader = DataLoader(self.dataset, batch_size=1, shuffle=False)
 
         stable_actives_study = pd.DataFrame(
@@ -159,8 +141,6 @@ class Certification_Problem:
                 "Number_targets",
             ]
         )
-        width_model_study = pd.DataFrame()
-        coefficient_values = {k : [] for k in range(1, self.network.K + 1)}
 
         if solver_config.bounds_method == "from_file":
                 bounds_path = solver_config.bounds_file
@@ -179,13 +159,11 @@ class Certification_Problem:
                 print(f"Skipping sample {i} (already processed).")
                 continue
 
-            x = x.view(-1)  # Ensure x is a 2D tensor
+            x = x.view(-1) 
             print(
-                f"STUDY : Running certification for sample {i + 1} of label {ytrue.item()}"
+                f"Running certification for sample {i + 1} of label {ytrue.item()}"
             )
-            print("x device : ", x.device)
             x = x.to(next(self.network.parameters()).device)
-            print("x device : ", x.device)
             y_pred =self.network.label(x)
             logger.debug("ytrue:", ytrue)
 
@@ -204,8 +182,7 @@ class Certification_Problem:
                         for k in range(self.network.K + 1)]
                 solver_config.L = L
                 solver_config.U = U
-                print("Bounds loaded from file : ", solver_config.bounds_file)
-
+          
             dict_infos = dict(solver_config)
             dict_infos.pop("certification_model_type")
             logger.debug("dict_infos:", dict_infos)
@@ -270,9 +247,7 @@ class Certification_Problem:
                 nb_stable_inactives_layer_k = len([(n, j) for (n, j) in model_instance.stable_inactives_neurons if n == k])
                 dict_stability[f"Stable_Actives_Layer_{k}"] = nb_stable_actives_layer_k
                 dict_stability[f"Stable_Inactives_Layer_{k}"] = nb_stable_inactives_layer_k
-                print(
-                    f"STUDY : Layer {k} - Stable actives neurons: {nb_stable_actives_layer_k} - Stable inactives neurons: {nb_stable_inactives_layer_k}"
-                )
+
             for k in range(self.network.K + 1):
                 for j in range(self.network.n[k]):
                     dict_stability[f"LB_Layer_{k}_Neuron_{j}"] = model_instance.L[k][j]
@@ -297,9 +272,6 @@ class Certification_Problem:
         
 
     def solve(self, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None, skip_pairs: set = None, resume: bool = False, include_indices: set = None) -> None:
-        print("Starting certification problem solving ...", flush=True)
-        print("self.models:", self.models, flush=True)
-
         if not resume:
             self.benchmark = pd.DataFrame()
 
@@ -319,10 +291,7 @@ class Certification_Problem:
             if not (os.path.exists(dst) and os.path.samefile(src, dst)):
                 shutil.copyfile(src, dst)
 
-        for i, model_config in enumerate(self.models):
-
-            print("Solving with model:", model_config.certification_model_type, flush=True)
-            print("model dict :", model_config, flush=True)
+        for model_config in self.models:
             self.run(model_config, title_run, start=start, end=end, skip_indices=skip_indices, skip_pairs=skip_pairs, include_indices=include_indices)
 
 
@@ -485,7 +454,7 @@ def main_resume(run_folder: str):
     results_base = get_project_path(f"results/benchmark/{certif_problem.title}")
     title_run = str(run_folder.relative_to(results_base))
 
-    # Restore start/end range when resuming a divided-run chunk (folder = part_X_Y)
+    
     start, end = None, None
     m = re.match(r"part_(\d+)_(\d+)$", run_folder.name)
     if m:

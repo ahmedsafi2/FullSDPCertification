@@ -73,10 +73,6 @@ class LoggerWriter:
     print_num_variables,
 )
 class MosekFusionHandler:
-    """
-    Class to handle the constraints for the MOSEK solver.
-    """
-
     def __init__(self, **kwargs):
         """
         Initialize the ConstraintHandler class.
@@ -125,12 +121,7 @@ class MosekFusionHandler:
         self.stable_actives_neurons = kwargs.get("stable_actives_neurons", None)
 
         self.indexes_matrices = Indexes_Mosek_Solver(**kwargs)
-        self.indexes_variables = self.indexes_matrices  # même objet fusionné
-
-        # print(
-        #     "\n \n \n INDEXES \n \n \n : ",
-        # )
-        # self.print_index_variables_matrices()
+        self.indexes_variables = self.indexes_matrices  
 
         self.final_number_constraints = None
 
@@ -171,38 +162,22 @@ class MosekFusionHandler:
             The parameters to adjust.
         """
 
-        # ===== TOLÉRANCES STRICTES pour réduire le gap primal-dual =====
-        # Réduire le gap relatif entre primal et dual (était 1e-3, c'est trop lâche !)
-        self.model.setSolverParam("intpntTolRelGap", 1e-8)  # 1e-3 → 1e-8
+        self.model.setSolverParam("intpntTolRelGap", 1e-8)  
         
-        # Faisabilité primale et duale plus stricte
-        self.model.setSolverParam("intpntTolPfeas", 1e-8)   # 1e-3 → 1e-8
-        self.model.setSolverParam("intpntTolDfeas", 1e-8)   # 1e-3 → 1e-8
+        self.model.setSolverParam("intpntTolPfeas", 1e-8)   
+        self.model.setSolverParam("intpntTolDfeas", 1e-8)   
 
-        # ===== TEMPS MAX =====
-        # Limiter le temps de calcul à 3600 secondes (1h)
         self.model.setSolverParam("optimizerMaxTime", 3600.0)
 
-        # ===== ITÉRATIONS MAX =====
-        # Augmenter le nombre d'itérations pour convergence forcée
         self.model.setSolverParam("intpntMaxIterations", 300)
 
-        # ===== THREADS =====
-        # Nombre de threads (augmenter si vous avez CPU disponible)
         self.model.setSolverParam("numThreads", 4)
 
-        # ===== AUTRES PARAMÈTRES =====
-        # Write solutions of the optimization problem
         self.model.setSolverParam("ptfWriteSolutions", "on")
         
-        # ===== OPTIONS OPTIONNELLES COMMENTÉES =====
-        # Décommenter si vous avez des problèmes numériques :
-        # self.model.setSolverParam("presolveUse", "off")
-        # self.model.setSolverParam("optimizer", "dualSimplex")
-
     @count_calls(
         "init_variables"
-    )  # Create an attribute init_variable to count the number of calls of this function
+    )  
     def add_matrix_variable(self, name: str, dim: int):
         """
         Add a matrix variable of dimension dim.
@@ -215,8 +190,6 @@ class MosekFusionHandler:
                 f"Variable matrix {name} already exists. Skipping addition."
             )
         else:
-            if verbose :
-                print(f"Adding a variable matrix {name} of dimension %s", dim)
             logger_mosek.debug(f"Variable matrix {name} added.")
             self.indexes_matrices.current_matrices_variables.append(
                 {"name": name, "dim": dim, "value": Matrices_Solutions()}
@@ -225,64 +198,35 @@ class MosekFusionHandler:
 
     def add_vector_variable(self, name: str, dim: int):
         """
-        Add a vector variable of dimension dim."""
+        Add a vector variable of dimension dim.
+        """
         logger_mosek.info(f"Adding a vector variable {name} of dimension %s", dim)
         self.vector_variables.append(dim)
         x = self.model.variable(name, dim, Domain.unbounded())
-        # x = self.model.variable(name, dim, Domain.inRange(lower_bound, upper_bound))
-        # x = self.model.variable(name, n, Domain.binary())
+
 
     def initialize_constraints(self):
-        """
-        Initialize the number of constraints.
-
-        Parameters
-        ----------
-        num_constraints: int
-            The number of constraints to initialize.
-        """
         logger_mosek.info(
             f"Initializing {self.Constraints.current_num_constraint} constraints"
         )
-        # No need to initialize the number of constraints here with the fusion API
         self.final_number_constraints = self.Constraints.current_num_constraint
 
     def cleanup_mosek(self):
-        """Close MOSEK environment en model."""
         logger_mosek.info("Cleaning up MOSEK environment and model \n \n \n")
         if hasattr(self, 'model') and self.model:
             self.model.__exit__(None, None, None)
 
     def add_constraints(self):
-        """
-        Add constraints to the model.
-        """
         raise NotImplementedError(
             "The method add_constraints is not implemented in the base class."
         )
 
     def add_objective(self):
-        """
-        Add the objective function to the model.
-        """
         raise NotImplementedError(
             "The method add_objective is not implemented in the base class."
         )
 
     def is_feasible(self, variables_matrices, precision: float = 1e-6) -> bool:
-        """
-        Check if the constraint is feasible.
-
-        Parameters
-        ----------
-        variables_matrices: List[float]
-            The value of the variable z.
-
-        Returns
-        -------
-        bool
-            True if the constraint is feasible, False otherwise.
-        """
         for constraint in self.Constraints.list_cstr:
             #print("Adding constraint : ", constraint["name"])
             try:
@@ -328,20 +272,6 @@ class MosekFusionHandler:
         return True
 
     def value_solution(self, variables_matrices):
-        """
-        Compute the value of the solution.
-
-        Parameters
-        ----------
-        variables_matrices: List[float]
-            The value of the variable z.
-
-        Returns
-        -------
-        float
-            The value of the solution.
-        """
-
         try:
             val = self.Objective.constant
             for index in range(len(self.Objective.list_indexes_matrixes)):
@@ -362,24 +292,15 @@ class MosekFusionHandler:
             return None
 
     def define_objective_sense(self):
-        """
-        Define the objective sense : necessary for the classic MOSEK api (definition of the sense separately from the objective).
-        """
         pass
 
     def optimize(self):
-        """
-        Optimize the task.
-        """
         self.callback = makeUserCallback(model=self.model, maxtime=20000)
         self.model.setDataCallbackHandler(self.callback)
         logger_mosek.info("Optimizing the model")
         self.model.solve()
 
     def write_model(self, cuts: List = [], RLT_prop : float = 0.0, data_index : int = None, ytarget : int = None):
-        """
-        Write the results of the optimization to a file.
-        """
         logger_mosek.info("Writing results to file...")
         cuts_str = compute_cuts_str(cuts)
 
@@ -398,10 +319,6 @@ class MosekFusionHandler:
         )
 
     def print_solver_info(self, verbose: bool = False):
-        """
-        Print the information of the solver.
-        """
-
         def mosek_to_logger(msg):
             msg = msg.rstrip("\n")
             if msg:  # Évite les messages vides
@@ -411,28 +328,20 @@ class MosekFusionHandler:
             self.model.setLogHandler(LoggerWriter())
 
     def get_solution_status(self):
-        """
-        Get the status of the optimization.
-        """
+
         self.problem_status = self.model.getProblemStatus()
         self.solution_status = self.model.getPrimalSolutionStatus()
         logger_mosek.debug("Solution status: %s", self)
         return self.solution_status
 
     def get_num_iterations(self):
-        """
-        Get the number of iterations of the optimization.
-        """
+
         num_iterations = self.model.getSolverIntInfo("intpntIter")
         return num_iterations
 
     def get_solution(self, **kwargs):
-        """
-        Get the solution of the optimization.
-        """
+
         name_solution = kwargs.get("name_solution", None)
-        
-        print("name solution : ", name_solution)
         psd_var = self.model.getVariable(name_solution)
         dim = kwargs.get("dim", None)
         return psd_var.level().reshape((dim, dim))

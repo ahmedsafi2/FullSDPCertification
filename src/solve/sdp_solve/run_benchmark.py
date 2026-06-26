@@ -62,9 +62,8 @@ def create_all_cuts_to_test(self):
                     self.cuts_to_test.append(list(combo))
         else:
             self.cuts_to_test = [self.cuts]
-    print(
-        f"Number of cuts to test: {len(self.cuts_to_test)}\nCuts to test: {self.cuts_to_test}"
-    )
+
+
 
 
 def compute_number_RLT(self) -> int:

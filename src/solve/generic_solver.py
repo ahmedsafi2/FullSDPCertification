@@ -14,8 +14,6 @@ from bounds import (
     check_stability_neurons,
     prune_adversarial_targets,
     compute_IBP,
-)
-from bounds_crown import (
     compute_bounds_data_crown
 )
 from fastsdp_tools import (
@@ -56,11 +54,10 @@ class Solver:
         **kwargs,
     ):
         print(f"Initializing {self.__class__.__name__}...")
-        self.network = network.cpu()  # MOSEK runs on CPU; keep network on CPU to match self.x
+        self.network = network.cpu()  
         self.K = network.K
         self.n = network.n
-        # self.W = round_list_depth_3(network.W, decimal = 12)  ### remettre à 6 par defaut
-        # self.b = round_list_depth_2(network.b, decimal = 12)   ### remettre à 6 par defaut
+        
         self.W = network.W
         self.b = network.b
 
@@ -83,10 +80,7 @@ class Solver:
 
         self.ytarget = kwargs.get("ytarget", None)
 
-        print("Creating list of ytargets...")
-        print("K : ", self.K)
-        print("self.n : ", self.n)
-        if "Lan" in self.__class__.__name__ and self.ytarget is not None:
+        if "Targeted" in self.__class__.__name__ and self.ytarget is not None:
             self.ytargets = [self.ytarget]
         else:
             self.ytargets = [j for j in range(self.n[self.K]) if j != self.ytrue]
@@ -97,9 +91,7 @@ class Solver:
         self.keep_penultimate_actives = kwargs.get("keep_penultimate_actives", None)
         self.ultimate_layer_use_active_neurons = kwargs.get("ultimate_layer_use_active_neurons", self.K+1)
         logger.debug("COEFF : self ultimate_layer_use_active_neurons : ", self.ultimate_layer_use_active_neurons)
-        print("Getting to compute bounds...")
-     
-        
+
         if L is None or U is None:
             self.compute_bounds_(
                 method=self.bounds_method,
@@ -110,18 +102,6 @@ class Solver:
             self.compute_bounds_time = 0
 
             
-        ### BORNES (A COMMENTER APRES TEST)
-        # self.U = round_list_depth_2(self.U, decimal = 3)
-        # self.L = round_list_depth_2(self.L, decimal = 3)
-        #####
-
-        print(
-            "STUDY : use active neurons: ",
-            use_active_neurons,
-            "use inactive neurons: ",
-            use_inactive_neurons,
-        )
-
         self.L = [np.array(self.L[k]) for k in range(self.K + 1)]
         self.U = [np.array(self.U[k]) for k in range(self.K + 1)]
 
@@ -164,24 +144,16 @@ class Solver:
 
         logger.debug("COEFF  after checking stable inactive neurons:", self.stable_inactives_neurons)
 
-        # print('STUDY in generic solver: stable inactive neurons: ', self.stable_inactives_neurons)
-        # print('STUDY in generic solver: stable active neurons: ', self.stable_actives_neurons)
-        # for k in range(len(self.L)):
-        #     for j in range(len(self.L[k])):
-        #         self.L[k][j] -= 1
-        #         self.U[k][j] += 1
-
         self.U_above_zero = change_to_zero_negative_values(
             self.U, dim=2
-        )  # ATTENTION U N'EST PAS PRECIS : POUR EVITER CAS DES NEURONES STABLES INACTIFS
+        )  
         self.L_above_zero = change_to_zero_negative_values(
             self.L, dim=2
-        )  # ATTENTION : CECI POSERA UN PROBLEME POUR LES CONTRAINTES TRIANGULAIRES
+        )  
 
         self.LAST_LAYER = kwargs.get("LAST_LAYER", False)
         self.prune_adversarial_targets()
 
-        # Initialize other parameters of the run
         self.is_robust = None
         self.best_adversarial_examples = None
         self.verbose = verbose
@@ -222,9 +194,6 @@ class Solver:
                     logger.debug(f"Neuron {j} in layer {k} is stable active with U = {self.U[k][j]} and L = {self.L[k][j]}")
                 else:
                     logger.debug(f"Neuron {j} in layer {k} is unstable with U = {self.U[k][j]} and L = {self.L[k][j]}")
-
-
-        #self.ytargets = [0,1]
 
         self.is_trivially_solved = self.ytargets == []
         logger.debug("is trivially solved: ", self.is_trivially_solved)

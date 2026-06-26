@@ -23,10 +23,6 @@ logger_mosek = logging.getLogger("Mosek_logger")
 
 
 class ObjectiveFusion(Objective):
-    """
-    Class to handle the current constraint.
-    """
-
     def __init__(
         self,
         indexes_matrices: Indexes_Matrixes_for_Mosek_Solver,
@@ -71,15 +67,12 @@ class ObjectiveFusion(Objective):
         self.list_indexes_variables_j.append(indice_j)
         self.list_values.append(
             value
-        )  # FUSION API IS TAKING CARE OF THE DIAGONAL ELEMENTS  
+        )  
 
     def add_var(
         self, dict1: numba.typed.Dict, value: float, dict2: numba.typed.Dict = None
     ):
-        """
-        Add a variable to the current constraint.
-        ----------
-        """
+
         if dict2 is None:
             add_dict_linear_to_elements(
                 elements=self.elements.elements,
@@ -100,20 +93,9 @@ class ObjectiveFusion(Objective):
 
 
     def add_model(self, model: mosek.fusion.Model):
-        """
-        Add model to the objective.
-
-        Parameters
-        ----------
-        model: mosek.fusion.Model
-            The MOSEK model.
-        """
         self.model = model
 
     def add_to_task(self):
-        """
-        Add objective to the task.
-        """
         logging.info("Adding objective to the task")
         self.format_obj()
 
@@ -131,7 +113,6 @@ class ObjectiveFusion(Objective):
             name = self.indexes_matrices.get_name_matrix(num_matrix)
             var = self.model.getVariable(name)
 
-            # print(f"shape M : {M.numColumns}, {M.numRows}")
             M_matrix = Matrix.dense(M)
             expression = Expr.add(
                 expression,

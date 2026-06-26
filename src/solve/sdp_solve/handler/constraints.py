@@ -11,7 +11,7 @@ from fastsdp_tools import infinity, deduplicate_and_sum, get_project_path
 
 from .indexes_matrices import Indexes_Matrixes_for_Mosek_Solver
 from .indexes_variables import Indexes_Variables_for_Mosek_Solver
-from .variables_call import VariablesCall
+from .sdp_variable_mapper import  SDPVariableMapper 
 from .variable_elements import (
     ElementsinConstraintsObjectives,
     add_dict_linear_to_elements,
@@ -21,11 +21,7 @@ import matplotlib.pyplot as plt
 logger_mosek = logging.getLogger("Mosek_logger")
 
 
-class CommonConstraints(VariablesCall):
-    """
-    Common functions for handling constraints in MOSEK.
-    """
-
+class CommonConstraints( SDPVariableMapper ):
     def __init__(
         self,
         indexes_matrices: Indexes_Matrixes_for_Mosek_Solver,
@@ -54,9 +50,6 @@ class CommonConstraints(VariablesCall):
         self._skipped_count = 0
 
     def add_constant(self, value: float):
-        """
-        Add a constant to the constraint.
-        """
         self.list_cstr[self.current_num_constraint]["constant"] += value
 
     def add_var(self, **kwargs):
@@ -70,7 +63,6 @@ class CommonConstraints(VariablesCall):
             raise ValueError("No current constraint. Please create a new one.")
         else:
             name = self.list_cstr[self.current_num_constraint]["name"]
-            # print("Validating current constraint name : ", name)
             if self.list_cstr[self.current_num_constraint]["bound_type"] is None:
                 raise ValueError(
                     "No bound type for the current constraint. Please set a bound type."
@@ -159,21 +151,12 @@ class CommonConstraints(VariablesCall):
             ub = self.list_cstr[self.current_num_constraint]["ub"]
             lb = self.list_cstr[self.current_num_constraint]["lb"]
             bound_type = self.list_cstr[self.current_num_constraint]["bound_type"]
-            # print(
-            #     f"Current constraint {name} : {elements};     bound : {bound_type}; ub : {ub}; lb : {lb}\n"
-            # )
+            print(
+                f"Current constraint {name} : {elements};     bound : {bound_type}; ub : {ub}; lb : {lb}\n"
+            )
 
     def add_bound(self, bound_type: mosek.boundkey, bound: float):
-        """
-        Add a bound to the constraint.
 
-        Parameters
-        ----------
-        bound_type: str
-            The type of the bound (lower or upper).
-        **kwargs: Dict
-            The keyword arguments for the bound : lb, ub
-        """
         self.list_cstr[self.current_num_constraint]["bound_type"] = bound_type
         if bound_type == mosek.boundkey.fx:
             self.list_cstr[self.current_num_constraint]["lb"] = (
@@ -198,8 +181,6 @@ class CommonConstraints(VariablesCall):
         """
         Format the constraint to be added to the task : adds values of parameters for the same variables.
         """
-        # if self.verbose:
-        #     print("STUDY : Formatting constraint", self.current_num_constraint)
 
         i, j, num_matrix, val = self.list_cstr[self.current_num_constraint][
             "elements"
@@ -215,38 +196,9 @@ class CommonConstraints(VariablesCall):
         if self.verbose:
             pass
 
-        # print(f"Formatted constraint {name} ")
-        # print("i : ", i)
-        # print("j : ", j)
-        # print("num matrix : ", num_matrix)
-        # print("value : ", val)
-      
-            
-        # i_ = np.array(self.list_cstr[self.current_num_constraint]["i"])
-        # j_ = np.array(self.list_cstr[self.current_num_constraint]["j"])
-        # num_matrix = np.array(self.list_cstr[self.current_num_constraint]["num_matrix"])
-        # val = np.array(self.list_cstr[self.current_num_constraint]["value"])
-
-        # i = np.where(i_ > j_, i_, j_)
-        # j = np.where(i_ > j_, j_, i_)
-        # keys = np.stack((i, j, num_matrix), axis=-1)
-        # unique_keys, inverse = np.unique(keys, axis=0, return_inverse=True)
-
-        # values = np.bincount(inverse, weights=val)
-        # i, j, num_matrix = unique_keys.T
-
-        # self.list_cstr[self.current_num_constraint]["i"] = i
-        # self.list_cstr[self.current_num_constraint]["j"] = j
-        # self.list_cstr[self.current_num_constraint]["num_matrix"] = num_matrix
-        # self.list_cstr[self.current_num_constraint]["value"] = values
-        # print(
-        #     f"Formatted constraint {self.current_num_constraint} : {self.list_cstr[self.current_num_constraint]}"
-        # )
 
     def __str__(self):
-        """
-        String representation of the Constraints class.
-        """
+
         line = "Constraints : \n"
         for i in range(len(self.list_cstr)):
             line += f"Constraint {i} : {self.list_cstr[i]}\n \n"
@@ -254,9 +206,7 @@ class CommonConstraints(VariablesCall):
         return line
 
     def new_constraint(self, name: str, label: str = "to_change"):
-        """
-        Create a new constraint.
-        """
+
         if self.current_num_constraint != -1:
             self.check_current_constraint()
 
@@ -265,7 +215,6 @@ class CommonConstraints(VariablesCall):
             f"Got {label} instead."
         )
 
-        # print("Creating new constraint : ", name)
         logger_mosek.info("Creating new constraint")
         if name in self.cstr_names:
             existing = next(c for c in self.list_cstr if c["name"] == name)
@@ -279,9 +228,7 @@ class CommonConstraints(VariablesCall):
             )
             self._skipped_count += 1
             return True
-        # else :
-        #     print(f"CALLBACK Adding constraint {name}.")
-
+        
         self.current_num_constraint += 1
         self.cstr_names.add(name)
 
@@ -299,18 +246,11 @@ class CommonConstraints(VariablesCall):
                 "label": label,
             }
         )
-        # print(f"Creating new constraint {self.current_num_constraint} : {name}")
+        
         return False
 
     def first_term_equal_zero(self, num_matrices):
-        """
-        Set the first term of the constraint to zero.
 
-        Parameters
-        ----------
-        num_matrices: int
-            The number of matrices.
-        """
         logger_mosek.info("Setting the first term of the matrix to zero")
 
         for num_matrix in range(num_matrices):
@@ -320,7 +260,6 @@ class CommonConstraints(VariablesCall):
                 label="same_for_data",
             ):
                 continue
-            # print(f"Adding constraint matrix {name_matrix}[1]=0")
             self.list_cstr[self.current_num_constraint]["elements"].add(
                 i=0, j=0, num_matrix=num_matrix, value=1.0
             )
@@ -333,7 +272,7 @@ class CommonConstraints(VariablesCall):
         logger_mosek.info("Ending constraints")
         self.current_num_constraint += 1
         print(
-            "CALLBACK : Ending constraints. Total number of constraints : ",
+            "Ending constraints. Total number of constraints : ",
             len(self.list_cstr),
         )
 
@@ -456,21 +395,13 @@ class CommonConstraints(VariablesCall):
                 same_for_data += 1
             elif cst["label"] == "to_change":
                 to_change += 1
-            else:
-                if verbose:
-                    print(
-                        "CALLBACK CONSTRAINT : a constraint with label : ", cst["label"]
-                    )
-        if verbose:
-            print(
-                f"CALLBACK CONSTRAINT  BEFORE FILTERING : same_for_data = {same_for_data};  to_change = {to_change}"
-            )
+
+
         self.list_cstr = list(
             filter(lambda d: d["label"] == "same_for_data", self.list_cstr)
         )
         self.cstr_names = set(d["name"] for d in self.list_cstr if d["name"])
 
-        # self.list_cstr = []
         if len(self.list_cstr) > 0:
             nb_relus = 0
             nb_rlt = 0
@@ -482,16 +413,6 @@ class CommonConstraints(VariablesCall):
                     nb_rlt += 1
                 else:
                     others += 1
-            if verbose:
-                print(
-                    f"CALLBACK CONSTRAINT after filter : nb_relus = {nb_relus},  nb_rlt = {nb_rlt}, others : {others}"
-                )
 
-        if verbose:
-            print(
-                f"CALLBACK : Nombre de contraintes apres filter : ", len(self.list_cstr)
-            )
-        # print("CALLBACK constraints after filter : ", [cst["name"] for cst in self.list_cstr])
-        # print("CALLBACK cstr_names after filter : ", self.cstr_names)
 
         self.current_num_constraint = len(self.list_cstr) - 1

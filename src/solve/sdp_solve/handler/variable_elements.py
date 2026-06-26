@@ -9,9 +9,7 @@ big_M_cst = 13
 @numba.njit
 def _get_key_quad_(i, j, num_matrix, nb_index, M: int = big_M_cst):
     key = (i + 1) * nb_index * M + (j + 1) * M + num_matrix
-    # print(
-    #     f"ANALYSING GET QUAD from i,j,num_m: i : {i}, j : {j}, num_matrix : {num_matrix}, nb_index : {nb_index}, nb_matrix : {M} : KEY = {key}"
-    # )
+
     return (i + 1) * nb_index * M + (j + 1) * M + num_matrix
 
 
@@ -20,23 +18,19 @@ def _get_quad_indices_from_key(index, nb_index, M: int = big_M_cst):
     i = (index // (nb_index * M)) - 1
     j = ((index // M) % nb_index) - 1
     num_matrix = index % M
-    # print(
-    #     f"ANALYSING GET QUAD from key: key : {index}, nb_index : {nb_index}, nb_matrix : {M} :    i = {i}, j = {j}, num_matrix = {num_matrix}"
-    # )
+
     return i, j, num_matrix
 
 
 @numba.njit
 def _get_key_linear_(i, num_matrix, M: int = big_M_cst):
-    # key = (i + 1) * M + num_matrix
+
     return (i + 1) * M + num_matrix
 
 
 @numba.njit
 def _get_linear_indices_from_key(key: int, M: int = big_M_cst):
-    """
-    Get the layer and neuron from the key.
-    """
+
     i = (key // M) - 1
     num_matrix = key % M
     return i, num_matrix
@@ -44,18 +38,13 @@ def _get_linear_indices_from_key(key: int, M: int = big_M_cst):
 
 @numba.njit
 def _get_key_from_layer_neuron_(layer: int, neuron: int, M: int = big_M_cst):
-    """
-    Get the index from layer and neuron.
-    """
-    # key = (neuron + 1) * M + layer
+
     return (neuron + 1) * M + layer
 
 
 @numba.njit
 def _get_layer_neuron_from_key_(key: int, M: int = big_M_cst):
-    """
-    Get the layer and neuron from the key.
-    """
+
     layer = key % M
     neuron = (key // M) - 1
     return layer, neuron
@@ -111,9 +100,8 @@ def _decode_elements_numba_co(elements_dict, nb_index):
 
 class ElementsinConstraintsObjectives:
     """
-    Class to handle a variable in a constraint in MOSEK.
+    Class to handle a variable in a constraint or objective.
     """
-
     def __init__(self, nb_index: int):
         self.nb_index = nb_index
         self.elements = Dict.empty(
@@ -159,9 +147,6 @@ def _add_ni(
     equivalent_neurons_substract: numba.typed.Dict,
     M: int = big_M_cst,
 ):
-    """
-    Add an equivalent neuron to the list.
-    """
     index_equivalent = _get_key_linear_(i, num_matrix, M)
     if index_equivalent in equivalent_neurons_substract:
         equivalent_neurons_substract[index_equivalent] += value
@@ -185,7 +170,7 @@ class Equivalent_Neurons_Index:
         """
 
         key = _get_key_from_layer_neuron_(layer=layer, neuron=neuron, M=self.M)
-        #print(f"Creating dict for neuron {neuron} at layer {layer} with key {key}")
+        
         assert key not in self.equivalent_neurons, f"Index {key} already exists."
 
         self.equivalent_neurons[key] = {"constant" : 0.0}
@@ -234,7 +219,7 @@ class Equivalent_Neurons_Index:
     ):
         key = _get_key_from_layer_neuron_(layer=layer, neuron=neuron, M=self.M)
         assert key in self.equivalent_neurons, f"Index {key} does not exist."
-        #print(f"layer = {layer}, neuron = {neuron}, i = {i}, num_matrix = {num_matrix}, value = {value}, front_of_matrix = {front_of_matrix}, key = {key}")
+        
         front_of_matrix = kwargs.get("front_of_matrix", None)
         if front_of_matrix is not None : 
             self.add_unstable_neuron(front_of_matrix,i,num_matrix,value,key)
@@ -244,25 +229,19 @@ class Equivalent_Neurons_Index:
         
 
     def add_constant(self, layer: int, neuron: int, value: float):
-        """
-        Add a constant to the equivalent neurons.
-        """
+
         index = self.get_index(layer, neuron)
         assert index in self.equivalent_neurons, f"Index {index} does not exist."
         self.equivalent_neurons[index]["constant"] += value
 
     def get_constant(self, layer: int, neuron: int):
-        """
-        Get the constant for a given key.
-        """
+
         index = self.get_index(layer, neuron)
         assert index in self.equivalent_neurons, f"Index {index} does not exist."
         return self.equivalent_neurons[index]["constant"]
 
     def get_equivalent(self, layer: int, neuron: int, front_of_matrix: bool = None, decomposed_in_front_and_back_matrix : bool = False):
-        """
-        Get the equivalent neurons for a given key.
-        """
+
        
         index = self.get_index(layer, neuron)
         assert index in self.equivalent_neurons, f"Index {index} does not exist."
@@ -282,10 +261,7 @@ class Equivalent_Neurons_Index:
 
 
 def _add_from_key(class_label: int, i: int, num_matrix: int, dict: numba.typed.Dict):
-    """
-    Add a value to the dictionary for a given key.
-    The dict is already specific to the class_label. dict = self.equivalent_indexs_betas[class_label]
-    """
+
     index = _get_key_linear_(i, num_matrix, big_M_cst)
     if index in dict:
         raise ValueError(f"Class label {class_label} already exists in the dictionary index = {index}.")
@@ -294,9 +270,7 @@ def _add_from_key(class_label: int, i: int, num_matrix: int, dict: numba.typed.D
 
 
 class Equivalent_Betas_Index:
-    """
-    Class to handle the equivalent betas.
-    """
+
 
     def __init__(self, ytargets: list = None):
 
@@ -309,9 +283,7 @@ class Equivalent_Betas_Index:
         }
 
     def add(self, class_label: int, i: int, num_matrix: int):
-        """
-        Add an equivalent beta index.
-        """
+
         assert (
             class_label in self.equivalent_indexes_betas
         ), f"Class label {class_label} not found in equivalent betas."
@@ -323,9 +295,7 @@ class Equivalent_Betas_Index:
         )
 
     def get_equivalent(self, class_label: int):
-        """
-        Get the equivalent beta index for a given class label.
-        """
+
         if class_label in self.equivalent_indexes_betas:
             return self.equivalent_indexes_betas[class_label]
         else:
@@ -344,9 +314,6 @@ class Equivalent_Betas_Index:
 def add_dict_linear_to_elements(
     elements: numba.typed.Dict, dict: numba.typed.Dict, value: float, nb_index: int, dividing_non_diag: bool = True
 ):
-    """
-    Add a value to the elements dictionary for a given key.
-    """
     for key in dict.keys():
         i, num_matrix = _get_linear_indices_from_key(key)
         key_in_element = _get_key_quad_(
@@ -377,9 +344,6 @@ def add_dict_quad_to_elements(
     nb_index: int,
     dividing_non_diag: bool = True,
 ):
-    """
-    Add a value to the elements dictionary for a given key.
-    """
     for key1 in dict1.keys():
         i1, num_matrix1 = _get_linear_indices_from_key(key1)
 

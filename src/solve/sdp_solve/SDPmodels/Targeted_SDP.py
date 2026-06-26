@@ -11,9 +11,9 @@ from typing import List
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
 
-from ..mosek_generic_solver import SDPSolver
+from ..sdp_generic_solver import SDPSolver
 from networks import ReLUNN
-from .certification_problem_objective import objective_Lan
+from .certification_problem_objective import objective_targeted
 from .certification_problem_constraints_bounds import (
     quad_bounds,
     McCormick_inter_layers,
@@ -22,7 +22,7 @@ from .certification_problem_constraints_bounds import (
     is_front_of_matrix,
 )
 from .certification_problem_constraints_forward_pass import (
-    ReLU_constraint_Lan,
+    ReLU_quadratic_constraint,
     ReLU_constraint_stable_active_relaxation,
     ReLU_triangularization,
     last_layer_linear_equality
@@ -36,8 +36,8 @@ logger_mosek = logging.getLogger("Mosek_logger")
 
 
 @add_functions_to_class(
-    objective_Lan,
-    ReLU_constraint_Lan,
+    objective_targeted,
+    ReLU_quadratic_constraint,
     ReLU_constraint_stable_active_relaxation,
     quad_bounds,
     ReLU_triangularization,
@@ -52,7 +52,6 @@ logger_mosek = logging.getLogger("Mosek_logger")
 )
 class TargetedSDP(SDPSolver):
     def __init__(self, **kwargs):
-        # print("kwargs in TargetedSDP: ", kwargs)
         super().__init__(certification_model_type="TargetedSDP", **kwargs)
 
         logger_mosek.debug("beginning TargetedSDP init")
@@ -67,22 +66,15 @@ class TargetedSDP(SDPSolver):
         elif not self.is_trivially_solved:
             self.ytarget = np.random.choice(self.possible_targets)
 
-        print("Neurones stables actives: ", self.stable_actives_neurons)
-        print("Neurones stables inactives: ", self.stable_inactives_neurons)
-
         logger_mosek.debug(f"Bounds for the network :  {self.L} and {self.U}")
         logger_mosek.debug("ending TargetedSDP init")
 
     def add_objective(self):
-        """
-        Add the objective to the Objective class.
-        """
-        self.objective_Lan()
+
+        self.objective_targeted()
 
     def add_constraints(self, cuts: List = []):
-        """
-        Add constraints to the task.
-        """
+
         self._cut_constraint_counts = {}
         self.handler.Constraints._skipped_count = 0
 
@@ -90,7 +82,7 @@ class TargetedSDP(SDPSolver):
             return len(self.handler.Constraints.list_cstr) + self.handler.Constraints._skipped_count
 
         _n = _snap()
-        self.ReLU_constraint_Lan()
+        self.ReLU_quadratic_constraint()
         self._cut_constraint_counts["baseline_relu"] = _snap() - _n
 
         _n = _snap()

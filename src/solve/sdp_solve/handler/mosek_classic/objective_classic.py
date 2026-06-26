@@ -26,10 +26,6 @@ logger_mosek = logging.getLogger("Mosek_logger")
 
 
 class ObjectiveClassic(Objective):
-    """
-    Class to handle the current constraint.
-    """
-
     def __init__(
         self,
         indexes_matrices: Indexes_Matrixes_for_Mosek_Solver,
@@ -80,32 +76,16 @@ class ObjectiveClassic(Objective):
             )
 
     def add_task(self, task: mosek.Task):
-        """
-        Add the task to the current constraint.
 
-        Parameters
-        ----------
-        task: mosek.Task
-            The MOSEK task.
-        """
         self.task = task
 
     def add_to_task(self):
-        """
-        Add objective to the task.
-        """
+
         logging.info("Adding Objective to the task")
         if self.verbose :
             print("Adding Objective to the task ...")
         self.format_obj()
-        if self.verbose :
-            print(
-                f"Objective elements: {self.elements.elements}, num_matrix: {self.num_matrix}, i: {self.i}, j: {self.j}, value: {self.value}"
-            )
-            print("Objective size  : ", len(self.elements.elements))
-            print(
-                f"Objective i : {self.i.size}, j : {self.j.size}, num_matrix : {self.num_matrix.size}, value : {self.value.size}"
-            )
+
         self.task.putbarcblocktriplet(
             self.num_matrix,
             self.i,

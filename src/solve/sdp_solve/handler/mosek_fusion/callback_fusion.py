@@ -57,7 +57,6 @@ def makeUserCallback(model, maxtime):
             pass
 
         if opttime >= maxtime:
-            # mosek is spending too much time. Terminate it.
             print("Callback : Too much time, terminating.")
             return 1
         return 0

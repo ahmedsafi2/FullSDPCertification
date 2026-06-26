@@ -14,8 +14,6 @@ def load_dataset(yaml_file):
     """
     with open(yaml_file, "r") as file:
         config = yaml.safe_load(file)
-        print("config : ", config)
-
         path = get_project_path(config["data"]["path"].replace("\\", "/"))
         try:
             dataset = torch.load(path, weights_only=False)

@@ -96,7 +96,7 @@ def McCormick_inter_layers(self, k: int, neuron_prev: int, neuron_next : int):
     """
     Add 3 McCormick constraints for the inter-layer connections from the paper Lan.
     """
-    # *************** Constraint (12b) in Lan **********************
+    # *************** Constraint (12b) in( (Lan, 2022) **********************
 
     if self.handler.Constraints.L[k - 1][neuron_prev] < 0 and (k-1) > 0:
         lb_prev = 0

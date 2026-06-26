@@ -120,7 +120,7 @@ def makeUserCallback(maxtime, task):
         opttime = 0.0
 
         code = callback_codes[caller]
-        print("CODE ?  : ", code)
+        
         if caller == mosek.callbackcode.begin_optimizer:
             print("CALLBACK : Starting optimizer")
         elif caller == mosek.callbackcode.end_optimizer:

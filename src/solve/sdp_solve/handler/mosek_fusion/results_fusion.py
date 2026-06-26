@@ -23,8 +23,8 @@ def add_all_infos_optimal_values_to_dic(self, cuts: List, verbose: bool = False)
     print("Optimal solution found with objective value: ", self.primal_obj_value)
     self.dual_obj_value = self.model.dualObjValue()
     logger_mosek.info("Dual objective value: %s", self.dual_obj_value)
-    print("PRIMAL-DUAL : primal = ", self.primal_obj_value, " dual = ", self.dual_obj_value)
-    self.optimal_value = self.primal_obj_value  # Pas de constante hors du model ici
+    
+    self.optimal_value = self.primal_obj_value  
     print(
         f"Optimal value (no added constant, already written in model): {self.optimal_value} : with cuts {cuts}"
     )
@@ -32,14 +32,13 @@ def add_all_infos_optimal_values_to_dic(self, cuts: List, verbose: bool = False)
 
     gap = abs(self.dual_obj_value - self.primal_obj_value)
     if gap > 0.01 * max(1.0, abs(self.dual_obj_value)):
-        print(f"⚠ Gap primal-dual persistant ({gap:.3e}) → déclenchement du diagnostic Slater")
-        logger_mosek.warning("Gap primal-dual persistant (%.3e) → diagnostic Slater", gap)
+        print(f"Primal-Dual gap ({gap:.3e}) - Slater diagnostic")
+        
         try:
             self.diagnose_infeasibility()
         except Exception as e:
-            logger_mosek.warning("Diagnostic Slater échoué : %s", e)
+            logger_mosek.warning("Slater diagnostic failed : %s", e)
 
-    # self.compute_solutions(cuts, verbose)
     if self.indexes_matrices.BETAS_Z:
         self.save_beta_values_fusion(cuts)
     dic_sol = {"optimal_value": self.optimal_value}
@@ -49,26 +48,10 @@ def add_all_infos_optimal_values_to_dic(self, cuts: List, verbose: bool = False)
 
 
 def is_status_optimal(self):
-    """
-    Check if the status of the solver is optimal.
-
-    Returns
-    -------
-    bool
-        True if the status is optimal, False otherwise.
-    """
     return self.model.getPrimalSolutionStatus() == mosek.fusion.SolutionStatus.Optimal
 
 
 def is_status_infeasible(self):
-    """
-    Check if the status of the solver is infeasible.
-
-    Returns
-    -------
-    bool
-        True if the status is infeasible, False otherwise.
-    """
     return (
         self.model.getProblemStatus() == mosek.fusion.ProblemStatus.PrimalInfeasible
         or self.model.getProblemStatus() == mosek.fusion.ProblemStatus.DualInfeasible
@@ -76,26 +59,12 @@ def is_status_infeasible(self):
 
 
 def is_status_unknown(self):
-    """
-    Check if the status of the solver is unknown.
-
-    Returns
-    -------
-    bool
-        True if the status is unknown, False otherwise.
-    """
     return self.model.getPrimalSolutionStatus() == mosek.fusion.SolutionStatus.Unknown
 
 
 def save_beta_values_fusion(self, cuts: List):
     """
-    Extrait les valeurs β_j depuis le modèle Fusion et les sauvegarde dans betas_{cuts_str}.txt.
-
-    Équivalent de save_beta_values (API classic) mais utilise model.getVariable().level()
-    au lieu de task.getbarxj(), car l'API Fusion n'expose pas directement les barx.
-
-    La valeur de β_j est X[0, index_variable_beta(j)] dans la dernière matrice PSD
-    (ligne 0 = variable constante 1, donc X[0, i] = β_j · 1 = β_j).
+    Extract betas solutions values and save them in a file.
     """
     cuts_str = compute_cuts_str(cuts)
     model_dir = get_project_path(f"{self.folder_name}/{self.name}")
@@ -131,4 +100,3 @@ def save_beta_values_fusion(self, cuts: List):
     out_path = os.path.join(model_dir, f"betas_{cuts_str}.txt")
     with open(out_path, "w") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"CALLBACK : Valeurs beta sauvegardées dans {out_path}")

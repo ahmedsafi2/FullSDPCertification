@@ -13,7 +13,7 @@ def get_results_trivially_solved(self):
         "data_index": self.data_index,
         "label": self.ytrue,
         "label_predicted": self.label_predicted,
-        "target": self.ytarget if "Lan" in self.__class__.__name__ else None,
+        "target": self.ytarget if "Targeted" in self.__class__.__name__ else None,
         "epsilon": self.epsilon,
         "status": "trivially_solved",
         "iterations": 0,
@@ -28,7 +28,7 @@ def get_results_trivially_solved(self):
     }
     if self.__class__.__name__=="TargetedSDP" or self.__class__.__name__=="UntargetedSDP":
         dic_benchmark["MATRIX_BY_LAYERS"] = self.MATRIX_BY_LAYERS
-    print("dic benchmark keys : ", dic_benchmark)
+
     if self.benchmark_dataframe is None:
         self.benchmark_dataframe = pd.DataFrame(dic_benchmark, index=[0])
     else:
