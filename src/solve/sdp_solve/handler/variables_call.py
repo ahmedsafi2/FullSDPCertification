@@ -804,7 +804,7 @@ class VariablesCall:
         bound_type: str = "one_variable",
         bound_strategy: dict = None,
     ):
-        assert bound_type in ["one_variable", "composed", "random"]
+        assert mccormick_type in ["one_variable", "composed", "random"]
         assert bound_sense in ["lower", "upper"]
 
         assert (layer_prev, neuron_prev) in self.stable_actives_neurons
@@ -842,9 +842,9 @@ class VariablesCall:
                     # Comportement aléatoire original
                     bound_type_ = random.choice(["one_variable", "composed"])
                 else:
-                    bound_type_ = bound_type
+                    mccormick_type = mccormick_type
 
-                if bound_type_ == "composed":
+                if mccormick_type == "composed":
                     coeff_next_, cst_ = self.add_z_quad_bound_composed(layer1, neuron1, front_of_matrix_prev,
                                                                        weight, coeff1, U_next, bound_sense)
                 else:

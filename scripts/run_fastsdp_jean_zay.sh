@@ -116,14 +116,42 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 # MODE NORMAL
 # ─────────────────────────────────────────────────────────────────────────────
+# Extraction des flags --start/--end (peuvent apparaître n'importe où après les
+# arguments positionnels), le reste alimente NETWORK_NAME / NAME_RUN / EPSILON.
+CLI_START=""
+CLI_END=""
+POSITIONAL=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --start)
+            CLI_START="$2"
+            shift 2
+            ;;
+        --end)
+            CLI_END="$2"
+            shift 2
+            ;;
+        *)
+            POSITIONAL+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- "${POSITIONAL[@]}"
+
 NETWORK_NAME=$1
 NAME_RUN=$2
 EPSILON=$3
 
 if [ -z "$NETWORK_NAME" ] || [ -z "$NAME_RUN" ]; then
   echo "Erreur: paramètres manquants."
-  echo "Usage: bash run_fastsdp_jean_zay.sh <NETWORK_NAME> <NAME_RUN> [EPSILON]"
+  echo "Usage: bash run_fastsdp_jean_zay.sh <NETWORK_NAME> <NAME_RUN> [EPSILON] [--start N] [--end M]"
   echo "       bash run_fastsdp_jean_zay.sh --resume <chemin_dossier>"
+  exit 1
+fi
+
+if { [ -n "$CLI_START" ] && [ -z "$CLI_END" ]; } || { [ -z "$CLI_START" ] && [ -n "$CLI_END" ]; }; then
+  log_error "--start et --end doivent être fournis ensemble."
   exit 1
 fi
 
@@ -159,7 +187,15 @@ log_success "Synchronisation terminée."
 YAML_PATH="$LOCAL_PROJECT_DIR/config/${NETWORK_NAME}.yaml"
 DIVIDE_RUN=$(python -c "import yaml; c=yaml.safe_load(open('$YAML_PATH')); print(c.get('divide_run', 1))" 2>/dev/null || echo 1)
 
-if [ "$DIVIDE_RUN" -gt 1 ]; then
+if [ -n "$CLI_START" ] && [ -n "$CLI_END" ]; then
+    # --start/--end explicites en ligne de commande : un seul job, on bypasse
+    # le découpage automatique via divide_run.
+    log_info "Plage explicite demandée : samples [$CLI_START, $CLI_END)"
+    REMOTE_COMMAND="cd $REMOTE_PROJECT_DIR && sbatch --export=NETWORK_NAME=$NETWORK_NAME,NAME_RUN=$NAME_RUN,EPSILON=$EPSILON,START=$CLI_START,END=$CLI_END scripts/run_fastsdp_job.slurm"
+    log_info "Soumission du job SLURM à Jean-Zay..."
+    ssh_jz "$REMOTE_COMMAND"
+    log_success "Job soumis à Jean-Zay."
+elif [ "$DIVIDE_RUN" -gt 1 ]; then
     NUM_SAMPLES=$(python -c "import yaml; c=yaml.safe_load(open('$YAML_PATH')); print(c['data']['num_samples'])")
     DATE_PREFIX=$(date +%Y_%m_%d_%Hh%M_%Ss)
     NAME_RUN_FULL="${DATE_PREFIX}_${NAME_RUN}"

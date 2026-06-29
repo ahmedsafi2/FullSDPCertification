@@ -6,7 +6,7 @@ data :
 
 input_ball:
   norm : "Linf"
-  epsilon : 0.5 #0.1
+  epsilon : 1
 
 divide_run : 1
 
@@ -71,17 +71,13 @@ models :
     #ultimate_layer_use_active_neurons: 5 # Whether to use active neurons in the ultimate layer in the certification problem as variables
     use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables
     keep_penultimate_actives : true # Whether to keep the penultimate layer active neurons in the certification problem
-    bounds_file: "data\\bounds\\blob_4x10-0.5_linf.csv"  # Folder where precomputed bounds are stored
+    bounds_file: "data/bounds/blob_4x10-0.5_linf.csv"  # Folder where precomputed bounds are stored
     bounds_method: "from_file"   #"alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
-    bounds_n_runs : 10
-  #  relu_quadratic_random: true
-
-
-  ## Number of runs to compute bounds, useful when the method is non-deterministic (e.g., alpha-CROWN with random alpha initialization)
+    bounds_n_runs : 10 # Number of runs to compute bounds, useful when the method is non-deterministic (e.g., alpha-CROWN with random alpha initialization)
    # solver_time_limit : 10 # Time limit for MOSEK in seconds, set to None for no limit
   
   # # SDPt
-  # - certification_model_name : "LanSDP"
+  # - certification_model_type : "TargetedSDP"
   #   solver: "mosek_fusion"
   #   # cp_solver: "SCS"
   #   # cp_solver_kwargs:
@@ -104,7 +100,7 @@ models :
 
 
 
-  # - certification_model_name : "MdQuad"
+  # - certification_model_type : "MdQuad"
   #   LAST_LAYER: false
   #   use_active_neurons: true # Whether to use active neurons in the certification problem as variables
   #   use_inactive_neurons : false # Whether to use inactive neurons in the certification problem as variables

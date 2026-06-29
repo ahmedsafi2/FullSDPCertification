@@ -2,12 +2,12 @@
 Tests des invariants mathématiques de FastSDPCertification.
 
 Invariants vérifiés (voir CLAUDE.md §"Invariants théoriques") :
-  1. Monotonicity des coupes (MdSDP)  : val(∅) ≤ val(triang) ≤ val(triang + RLT)
-  2. Monotonicity des coupes (LanSDP) : val(∅) ≤ val(RLT)
-     (LanSDP inclut toujours la triangularisation — les coupes s'ajoutent par-dessus)
-  3. SDPu ≤ SDPt : val(MdSDP, triang) ≤ val(LanSDP_j) pour chaque target j
-  4. SDPu ≤ min_j SDPt : val(MdSDP) ≤ min_j val(LanSDP_j)
-  5. Relaxation chordale : val(LanSDP, MATRIX_BY_LAYERS=True) ≤ val(LanSDP, MATRIX_BY_LAYERS=False)
+  1. Monotonicity des coupes (UntargetedSDP)  : val(∅) ≤ val(triang) ≤ val(triang + RLT)
+  2. Monotonicity des coupes (TargetedSDP) : val(∅) ≤ val(RLT)
+     (TargetedSDP inclut toujours la triangularisation — les coupes s'ajoutent par-dessus)
+  3. SDPu ≤ SDPt : val(UntargetedSDP, triang) ≤ val(TargetedSDP_j) pour chaque target j
+  4. SDPu ≤ min_j SDPt : val(UntargetedSDP) ≤ min_j val(TargetedSDP_j)
+  5. Relaxation chordale : val(TargetedSDP, MATRIX_BY_LAYERS=True) ≤ val(TargetedSDP, MATRIX_BY_LAYERS=False)
 
 Réseau de test : blob_4x10 — K=5, n=[2,10,10,10,10,3], epsilon=0.5, Linf.
 Bornes pré-calculées (alpha-CROWN) chargées depuis data/bounds/blob_4x10-0.5_linf.csv.
@@ -32,8 +32,8 @@ import pytest
 import torch
 
 from networks.network import ReLUNN
-from solve.sdp_solve.SDPmodels.Lan_SDP import LanSDP
-from solve.sdp_solve.SDPmodels.Md import MdSDP
+from solve.sdp_solve.SDPmodels.Targeted_SDP import TargetedSDP
+from solve.sdp_solve.SDPmodels.Untargeted_SDP import UntargetedSDP
 from fastsdp_tools import get_project_path
 
 # Tolérance numérique : les SDP peuvent avoir un gap primal-dual résiduel
@@ -156,9 +156,9 @@ def _base_kwargs(inst: dict) -> dict:
     )
 
 
-def _lan(inst: dict, ytarget: int, cuts: list, matrix_by_layers: bool = True, tag: str = "") -> LanSDP:
+def _lan(inst: dict, ytarget: int, cuts: list, matrix_by_layers: bool = True, tag: str = "") -> TargetedSDP:
     folder = os.path.join(inst["folder"], "lan" + tag)
-    return LanSDP(
+    return TargetedSDP(
         ytarget=ytarget,
         cuts=cuts,
         MATRIX_BY_LAYERS=matrix_by_layers,
@@ -167,9 +167,9 @@ def _lan(inst: dict, ytarget: int, cuts: list, matrix_by_layers: bool = True, ta
     )
 
 
-def _md(inst: dict, cuts: list, tag: str = "") -> MdSDP:
+def _md(inst: dict, cuts: list, tag: str = "") -> UntargetedSDP:
     folder = os.path.join(inst["folder"], "md" + tag)
-    return MdSDP(
+    return UntargetedSDP(
         cuts=cuts,
         MATRIX_BY_LAYERS=True,
         folder_name=folder,
@@ -198,46 +198,46 @@ def _require(val: float | None, label: str) -> float:
 
 
 # ──────────────────────────────────────────────────────────────────
-# 1. Monotonicity des coupes — MdSDP
+# 1. Monotonicity des coupes — UntargetedSDP
 # ──────────────────────────────────────────────────────────────────
 
-class TestMonotoniciteMdSDP:
+class TestMonotoniciteUntargetedSDP:
     """
     Ajouter des coupes ne peut qu'augmenter (ou laisser égale) la valeur optimale.
     Invariant théorique : violation = bug certain (CLAUDE.md).
     """
 
     def test_triangularization_ameliore_baseline(self, instance):
-        v0 = _require(_solve(_md(instance, cuts=[], tag="_mono0")), "MdSDP(∅)")
-        v1 = _require(_solve(_md(instance, cuts=["triangularization"], tag="_mono1")), "MdSDP(triang)")
+        v0 = _require(_solve(_md(instance, cuts=[], tag="_mono0")), "UntargetedSDP(∅)")
+        v1 = _require(_solve(_md(instance, cuts=["triangularization"], tag="_mono1")), "UntargetedSDP(triang)")
         assert v1 >= v0 - ATOL, (
-            f"Monotonicity violée : MdSDP(triang)={v1:.6f} < MdSDP(∅)={v0:.6f}"
+            f"Monotonicity violée : UntargetedSDP(triang)={v1:.6f} < UntargetedSDP(∅)={v0:.6f}"
         )
 
     def test_rlt_ameliore_triangularization(self, instance):
-        v1 = _require(_solve(_md(instance, cuts=["triangularization"], tag="_rlt1")), "MdSDP(triang)")
-        v2 = _require(_solve(_md(instance, cuts=["triangularization", "RLT"], tag="_rlt2")), "MdSDP(triang+RLT)")
+        v1 = _require(_solve(_md(instance, cuts=["triangularization"], tag="_rlt1")), "UntargetedSDP(triang)")
+        v2 = _require(_solve(_md(instance, cuts=["triangularization", "RLT"], tag="_rlt2")), "UntargetedSDP(triang+RLT)")
         assert v2 >= v1 - ATOL, (
-            f"Monotonicity violée : MdSDP(triang+RLT)={v2:.6f} < MdSDP(triang)={v1:.6f}"
+            f"Monotonicity violée : UntargetedSDP(triang+RLT)={v2:.6f} < UntargetedSDP(triang)={v1:.6f}"
         )
 
 
 # ──────────────────────────────────────────────────────────────────
-# 2. Monotonicity des coupes — LanSDP
+# 2. Monotonicity des coupes — TargetedSDP
 # ──────────────────────────────────────────────────────────────────
 
-class TestMonotoniciteLanSDP:
+class TestMonotoniciteTargetedSDP:
     """
-    LanSDP inclut toujours la triangularisation.
+    TargetedSDP inclut toujours la triangularisation.
     On vérifie que l'ajout de RLT améliore (ou laisse égale) la valeur.
     """
 
     def test_rlt_ameliore_baseline(self, instance):
         j = instance["ytargets"][0]
-        v0 = _require(_solve(_lan(instance, j, cuts=[], tag="_rlt0")), "LanSDP(∅)")
-        v1 = _require(_solve(_lan(instance, j, cuts=["RLT"], tag="_rlt1")), "LanSDP(RLT)")
+        v0 = _require(_solve(_lan(instance, j, cuts=[], tag="_rlt0")), "TargetedSDP(∅)")
+        v1 = _require(_solve(_lan(instance, j, cuts=["RLT"], tag="_rlt1")), "TargetedSDP(RLT)")
         assert v1 >= v0 - ATOL, (
-            f"Monotonicity violée : LanSDP(RLT)={v1:.6f} < LanSDP(∅)={v0:.6f}"
+            f"Monotonicity violée : TargetedSDP(RLT)={v1:.6f} < TargetedSDP(∅)={v0:.6f}"
         )
 
     def test_rlt_ameliore_tous_les_targets(self, instance):
@@ -248,7 +248,7 @@ class TestMonotoniciteLanSDP:
             if v0 is None or v1 is None:
                 continue
             assert v1 >= v0 - ATOL, (
-                f"Monotonicity violée pour j={j} : LanSDP(RLT)={v1:.6f} < LanSDP(∅)={v0:.6f}"
+                f"Monotonicity violée pour j={j} : TargetedSDP(RLT)={v1:.6f} < TargetedSDP(∅)={v0:.6f}"
             )
 
 
@@ -264,10 +264,10 @@ class TestSDPuLeqSDPt:
     """
 
     def test_sdpu_leq_sdpt_chaque_target(self, instance):
-        """MdSDP(triang) ≤ LanSDP_j pour chaque target j individuellement."""
+        """UntargetedSDP(triang) ≤ TargetedSDP_j pour chaque target j individuellement."""
         v_u = _require(
             _solve(_md(instance, cuts=["triangularization"], tag="_uleqt_u")),
-            "MdSDP(triang)"
+            "UntargetedSDP(triang)"
         )
         any_optimal = False
         for j in instance["ytargets"]:
@@ -280,13 +280,13 @@ class TestSDPuLeqSDPt:
                 f"val(SDPu)={v_u:.6f} > val(SDPt[j={j}])={v_t:.6f}"
             )
         if not any_optimal:
-            pytest.skip("Aucun LanSDP n'a atteint l'optimalité")
+            pytest.skip("Aucun TargetedSDP n'a atteint l'optimalité")
 
     def test_sdpu_leq_min_sdpt(self, instance):
         """val(SDPu) ≤ min_j val(SDPt^j)."""
         v_u = _require(
             _solve(_md(instance, cuts=["triangularization"], tag="_min_u")),
-            "MdSDP(triang)"
+            "UntargetedSDP(triang)"
         )
         vt_vals = [
             v
@@ -294,7 +294,7 @@ class TestSDPuLeqSDPt:
             if (v := _solve(_lan(instance, j, cuts=[], tag=f"_min_t{j}"))) is not None
         ]
         if not vt_vals:
-            pytest.skip("Aucun LanSDP n'a atteint l'optimalité")
+            pytest.skip("Aucun TargetedSDP n'a atteint l'optimalité")
         min_vt = min(vt_vals)
         assert v_u <= min_vt + ATOL, (
             f"SDPu ≤ min SDPt violé : "
@@ -304,13 +304,13 @@ class TestSDPuLeqSDPt:
     def test_sdpu_sans_coupes_leq_sdpt_sans_coupes(self, instance):
         """
         Sans coupes supplémentaires :
-        val(MdSDP(∅)) ≤ val(LanSDP_j(∅)) pour tout j.
-        MdSDP(∅) n'a pas de triangularisation explicite, LanSDP(∅) l'a toujours —
+        val(UntargetedSDP(∅)) ≤ val(TargetedSDP_j(∅)) pour tout j.
+        UntargetedSDP(∅) n'a pas de triangularisation explicite, TargetedSDP(∅) l'a toujours —
         l'inégalité tient a fortiori.
         """
         v_u = _require(
             _solve(_md(instance, cuts=[], tag="_nocutu")),
-            "MdSDP(∅)"
+            "UntargetedSDP(∅)"
         )
         for j in instance["ytargets"]:
             v_t = _solve(_lan(instance, j, cuts=[], tag=f"_nocut_t{j}"))
@@ -318,7 +318,7 @@ class TestSDPuLeqSDPt:
                 continue
             assert v_u <= v_t + ATOL, (
                 f"SDPu(∅) ≤ SDPt(∅) violé pour j={j} : "
-                f"val(MdSDP)={v_u:.6f} > val(LanSDP[j={j}])={v_t:.6f}"
+                f"val(UntargetedSDP)={v_u:.6f} > val(TargetedSDP[j={j}])={v_t:.6f}"
             )
 
 

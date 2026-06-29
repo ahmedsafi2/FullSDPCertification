@@ -41,7 +41,7 @@ PROPORTIONS = [False, 0.5, True]  # = [0.0, 0.5, 1.0]
 config = FullCertificationConfig.from_yaml(YAML_PATH)
 solver_cfg = config.models[0]  # seul modèle défini dans le yaml
 base_kwargs = dict(solver_cfg)
-base_kwargs.pop("certification_model_name")
+base_kwargs.pop("certification_model_type")
 
 network_path = get_project_path(config.network.path)
 network = ReLUNN.from_pth(network_path)
@@ -58,7 +58,7 @@ dataset, _ = load_dataset(
 )
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False)
 
-model_class = getattr(solve, solver_cfg.certification_model_name)
+model_class = getattr(solve, solver_cfg.certification_model_type)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def get_optimal_value(df: pd.DataFrame) -> float:

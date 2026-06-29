@@ -49,7 +49,7 @@ logger_mosek = logging.getLogger("Mosek_logger")
 class SDP_attack(SDPSolver):
     def __init__(self, **kwargs):
         print("kwargs in SDP_attack: ", kwargs)
-        super().__init__(certification_model_name="SDP_attack", **kwargs)
+        super().__init__(certification_model_type="SDP_attack", **kwargs)
         self.BETAS = False
         self.BETAS_Z = False
 

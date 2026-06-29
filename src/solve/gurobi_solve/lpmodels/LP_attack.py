@@ -29,7 +29,7 @@ class ClassicLP(GurobiSolver):
     ):
         #print("kwargs in init LP : ", kwargs)
 
-        super().__init__(certification_model_name="LP", **kwargs)
+        super().__init__(certification_model_type="LP", **kwargs)
 
 
         # self.possible_targets = [

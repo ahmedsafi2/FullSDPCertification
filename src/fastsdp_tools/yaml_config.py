@@ -110,13 +110,13 @@ class DatasetConfig(BaseModel):
 
 
 class SDPSolverConfig(BaseModel):
-    certification_model_name: str
+    certification_model_type: str
 
-    @validator("certification_model_name")
+    @validator("certification_model_type")
     def validate_sdp_model_name(cls, v, values):
-        if v not in ["LanSDP", "MdSDP", "MzbarSDP"]:
+        if v not in ["TargetedSDP", "UntargetedSDP", "MzbarSDP"]:
             raise ValueError(
-                f"SDP model name {v} must be one of 'LanSDP', 'MdSDP', or 'MzbarSDP'."
+                f"SDP model name {v} must be one of 'TargetedSDP', 'UntargetedSDP', or 'MzbarSDP'."
             )
         return v
 
@@ -205,9 +205,9 @@ class SDPSolverConfig(BaseModel):
 
 
 class GurobiSolverConfig(BaseModel):
-    certification_model_name: str
+    certification_model_type: str
 
-    @validator("certification_model_name")
+    @validator("certification_model_type")
     def validate_sdp_model_name(cls, v, values):
         if v not in ["LanQuad", "MdQuad", "MzbarQuad", "ClassicLP", "LPBoundLayer"]:
             raise ValueError(

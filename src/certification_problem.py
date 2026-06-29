@@ -83,8 +83,7 @@ class Certification_Problem:
         print("dataset in certification problem:", self.dataset)
 
         self.title = f"{self.network_name}-{self.epsilon}"
-        if not os.path.exists(get_project_path(f"results/benchmark/{self.title}")):
-            os.makedirs(get_project_path(f"results/benchmark/{self.title}"))
+        os.makedirs(get_project_path(f"results/benchmark/{self.title}"), exist_ok=True)
 
         self.benchmark = None
 
@@ -150,15 +149,16 @@ class Certification_Problem:
         """
         return f"Certification Problem with epsilon: {self.epsilon}, dataset size: {len(self.dataset)}"
 
-    def run(self, solver_config: BaseModel, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None, skip_pairs: set = None) -> None:
+    def run(self, solver_config: BaseModel, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None, skip_pairs: set = None, include_indices: set = None) -> None:
         """
         Run the certification problem.
 
         If start/end are provided, only samples with raw dataset index in [start, end) are processed.
+        If include_indices is provided, only samples whose index is in the set are processed.
         """
-        model_class = getattr(solve, solver_config.certification_model_name)
+        model_class = getattr(solve, solver_config.certification_model_type)
         print(
-            f"Running certification with solver: {solver_config.certification_model_name}"
+            f"Running certification with solver: {solver_config.certification_model_type}"
         )
 
         print("SOLVER CONFIG:", solver_config)
@@ -189,6 +189,8 @@ class Certification_Problem:
                 continue
             if end is not None and i >= end:
                 break
+            if include_indices is not None and i not in include_indices:
+                continue
             if skip_indices and i in skip_indices:
                 print(f"Skipping sample {i} (already processed).")
                 continue
@@ -243,7 +245,7 @@ class Certification_Problem:
                 print("Bounds loaded from file : ", solver_config.bounds_file)
 
             dict_infos = dict(solver_config)
-            dict_infos.pop("certification_model_name")
+            dict_infos.pop("certification_model_type")
             logger.debug("dict_infos:", dict_infos)
    
             # --- Traitement de la stratégie de bornes personnalisée ---
@@ -410,7 +412,7 @@ class Certification_Problem:
             )
             plt.close()
 
-    def solve(self, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None, skip_pairs: set = None, resume: bool = False) -> None:
+    def solve(self, title_run: str = "", start: int = None, end: int = None, skip_indices: set = None, skip_pairs: set = None, resume: bool = False, include_indices: set = None) -> None:
         print("Starting certification problem solving ...", flush=True)
         print("self.models:", self.models, flush=True)
 
@@ -435,9 +437,9 @@ class Certification_Problem:
 
         for i, model_config in enumerate(self.models):
 
-            print("Solving with model:", model_config.certification_model_name, flush=True)
+            print("Solving with model:", model_config.certification_model_type, flush=True)
             print("model dict :", model_config, flush=True)
-            self.run(model_config, title_run, start=start, end=end, skip_indices=skip_indices, skip_pairs=skip_pairs)
+            self.run(model_config, title_run, start=start, end=end, skip_indices=skip_indices, skip_pairs=skip_pairs, include_indices=include_indices)
 
 
 
@@ -503,7 +505,7 @@ def _run_orchestrator(certif_problem, network, title_run_full):
     print(f"All chunks done. Exit codes: {exit_codes}")
 
 
-def main(network: str, title_run: str, start: int = None, end: int = None, config_path: str = None):
+def main(network: str, title_run: str, start: int = None, end: int = None, config_path: str = None, include_indices: set = None):
     yaml_file = f"{network}.yaml"
     certif_problem = Certification_Problem.load_from_yaml(yaml_file, config_path=config_path)
 
@@ -555,7 +557,7 @@ def main(network: str, title_run: str, start: int = None, end: int = None, confi
             sys.stdout = _Tee(original_stdout, log_file)
             sys.stderr = _Tee(original_stderr, log_file)
             try:
-                certif_problem.solve(title_run_for_solve, start=start, end=end)
+                certif_problem.solve(title_run_for_solve, start=start, end=end, include_indices=include_indices)
             except Exception:
                 import traceback
                 traceback.print_exc()
@@ -584,10 +586,10 @@ def main_resume(run_folder: str):
     network = yaml_path.stem
 
     skip_indices, skip_pairs = find_processed_indices(run_folder)
-    # data_indices with partial LanSDP results (some targets done, not all)
+    # data_indices with partial TargetedSDP results (some targets done, not all)
     partial_indices = {idx for idx, _ in skip_pairs} - skip_indices
     print(f"Already fully processed: {len(skip_indices)} samples — {sorted(skip_indices)}")
-    print(f"Partially processed (LanSDP): {len(partial_indices)} samples — {sorted(partial_indices)}")
+    print(f"Partially processed (TargetedSDP): {len(partial_indices)} samples — {sorted(partial_indices)}")
     print(f"Done (data_index, target) pairs: {len(skip_pairs)}")
 
     existing_results = load_existing_results(run_folder)
@@ -644,6 +646,8 @@ if __name__ == "__main__":
                         help="Resume an existing run: path to the run folder")
     parser.add_argument("--config", type=str, default=None,
                         help="Worker mode: full path to yaml config (overrides config/ lookup)")
+    parser.add_argument("--indices", type=int, nargs="+", default=None,
+                        help="Explicit list of data_indexes to process (e.g. --indices 3 7 42)")
     args = parser.parse_args()
 
     print("Number of CPU : ", mp.cpu_count())
@@ -653,7 +657,8 @@ if __name__ == "__main__":
     else:
         if args.network is None:
             parser.error("network is required when not using --resume")
+        include_indices = set(args.indices) if args.indices else None
         main(network=args.network, title_run=args.title_run, start=args.start, end=args.end,
-             config_path=args.config)
+             config_path=args.config, include_indices=include_indices)
 
     

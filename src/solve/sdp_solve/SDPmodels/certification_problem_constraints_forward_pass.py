@@ -13,7 +13,7 @@ def ReLU_constraint_stable_active_relaxation(
     name: str = "",
     bound_strategy: dict = None
 ):
-    assert bound_type in ["one_variable", "composed", "random"]
+    assert mccormick_type in ["one_variable", "composed", "random"]
     assert bound_sense in ["lower", "upper"]
     assert any(
         (k - 1, i) in self.stable_actives_neurons for i in range(self.n[k - 1])
@@ -25,7 +25,7 @@ def ReLU_constraint_stable_active_relaxation(
     ):
         return
 
-    # print(f"    STUDY NEW SUBCONSTRAINT  RELU k = {k} j = {j}, bound_sense = {bound_sense}; bound_type = {bound_type}")
+    # print(f"    STUDY NEW SUBCONSTRAINT  RELU k = {k} j = {j}, bound_sense = {bound_sense}; mccormick_type = {mccormick_type}")
     self.handler.Constraints.add_quad_variable(
         var1="z",
         layer1=k,
@@ -51,7 +51,8 @@ def ReLU_constraint_stable_active_relaxation(
             continue
         elif (k - 1, i) in self.stable_actives_neurons :
             #print(f"STUDY RELU : layer = {k-1}, neuron = {i}, weight = {self.network.W[k - 1][j][i]}")
-            self.handler.Constraints.add_z_quad_active_neuron(
+
+            self.add_z_quad_active_neuron_heuristic(
                 layer_prev=k - 1,
                 neuron_prev=i,
                 layer_next=k,

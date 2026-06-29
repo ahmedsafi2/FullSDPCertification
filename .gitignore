@@ -25,3 +25,5 @@ results/
 .claude/
 *.md
 !README.md
+*idris.fr
+data/datasets/EMNIST/

@@ -15,16 +15,21 @@ def find_run_yaml(run_folder: Path) -> Path:
 def find_processed_indices(run_folder: Path) -> tuple:
     """Return (fully_done, done_pairs).
 
-    fully_done: set of data_index where target is NaN — MdSDP rows where the entire
+    fully_done: set of data_index where target is NaN — UntargetedSDP rows where the entire
                 sample is solved in one shot, so no partial state is possible.
-    done_pairs: set of (data_index, target) int tuples — LanSDP rows where each
+    done_pairs: set of (data_index, target) int tuples — TargetedSDP rows where each
                 target class is a separate SDP solve and partial completion can occur.
+
+    Rows with status "pre-solve" or "crashed" are excluded: they were written before
+    (or during) optimization and do not represent a completed solve.
     """
+    _INCOMPLETE_STATUSES = {"pre-solve", "crashed"}
     fully_done = set()
     done_pairs = set()
     for csv_path in run_folder.rglob("results.csv"):
         try:
-            df = pd.read_csv(csv_path, usecols=["data_index", "target"])
+            df = pd.read_csv(csv_path, usecols=["data_index", "target", "status"])
+            df = df[~df["status"].astype(str).isin(_INCOMPLETE_STATUSES)]
             for _, row in df.iterrows():
                 if pd.isna(row["data_index"]):
                     continue
