@@ -802,6 +802,7 @@ class VariablesCall:
         weight: float,
         bound_sense: str = "upper",
         bound_type: str = "one_variable",
+        bound_strategy: dict = None,
     ):
         assert bound_type in ["one_variable", "composed", "random"]
         assert bound_sense in ["lower", "upper"]
@@ -832,7 +833,13 @@ class VariablesCall:
                 # if (layer_next - layer1 > 2) and (layer1>0):
                 #     print(f"STUDY RELU : ", f"Product of z_{layer_next} and z_{layer1} is NOT present in the variable matrices, adding product with bounding.")
                 # Produit non présent, utilisation d'encadrement avec bornes de mccormick
-                if bound_type == "random":
+                if bound_strategy is not None:
+                    # Clé unique pour ce produit croisé spécifique
+                    strategy_key = (layer_prev, neuron_prev, layer1, neuron1)
+                    # On suit la recette. Si la clé n'est pas dans la recette, on utilise 'composed' par défaut.
+                    bound_type_ = bound_strategy.get(strategy_key, "composed")
+                elif bound_type == "random":
+                    # Comportement aléatoire original
                     bound_type_ = random.choice(["one_variable", "composed"])
                 else:
                     bound_type_ = bound_type
