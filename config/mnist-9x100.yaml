@@ -58,6 +58,8 @@ models :
     # - 0.
     all_combinations_cuts : false
     MATRIX_BY_LAYERS: true
+    l_max: 3
+    chordal_stride: 2
     LAST_LAYER: false
     use_fusion: false  # Whether to use the fusion API for MOSEK
     use_callback : false # Whether to use the callback for MOSEK
@@ -66,7 +68,8 @@ models :
     bounds_file: "data/bounds/9x100-0.026_linf.csv"  # Folder where precomputed bounds are stored
     bounds_method: "from_file"   #"alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
 
-
+    l_max: 3
+    chordal_stride: 2
   # # SDPt
   # - certification_model_name : "LanSDP"
   #   cuts : 
@@ -116,5 +119,3 @@ models :
   #   bounds_file: "data/bounds/9x100-0.026_linf.csv"  # Folder where precomputed bounds are stored
   #   bounds_method: "from_file"   #"alpha-CROWN"  # Method to compute bounds, options: "IBP", "GREAT_BOUNDS", "GREAT_BOUNDS_LIN"
   #  # solver_time_limit : 10 # Time limit for MOSEK in seconds, set to None for no limit
-
-

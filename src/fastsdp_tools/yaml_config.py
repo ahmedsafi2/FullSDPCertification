@@ -166,6 +166,8 @@ class SDPSolverConfig(BaseModel):
     LAST_LAYER: bool = (
         False  # Whether to use the last layer of the network (logits) as variables
     )
+    l_max: Optional[int] = None
+    chordal_stride: int = 1
     use_fusion: bool = False  # Whether to use the fusion API for MOSEK (deprecated: use solver="mosek_fusion")
     solver: str = "mosek_classic"  # Backend solver : "mosek_classic" | "mosek_fusion" | "cvxpy"
     @validator("solver")

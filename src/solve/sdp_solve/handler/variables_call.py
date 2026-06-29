@@ -750,29 +750,27 @@ class VariablesCall:
                                    weight, coeff1, U_next, bound_sense):
         
         v = weight * coeff1
+        L1 = self.L[layer1][neuron1]
+        U1 = self.U[layer1][neuron1]
+
         if (bound_sense == "upper" and v>=0) or (bound_sense == "lower" and v<0):
             # Adding constraint z_next * z_{layer1} <= L_{layer1} * z_next + U_{next} * z_{layer1} - L_{layer1} * U_{next}
-            if layer1 == 0: # L_layer1 is zero on all layer outputs (every variable except the one representing the input)
-                coeff_next = -v * self.L[layer1][neuron1]
-                cst        = v * self.L[layer1][neuron1] * U_next
-            else :
-                coeff_next = 0
-                cst        = 0
-           
+            coeff_next = -v * L1
+            cst        = v * L1 * U_next
+            z1_coeff   = -v * U_next
         else: 
                 # Adding constraint z_next * z_{layer1} >= U_{layer1} * z_next + U_next * z_{layer1} - U_{layer1} * U_{layer1}
-                coeff_next = -v * self.U[layer1][neuron1]
-                cst        = v * self.U[layer1][neuron1] * U_next
+                coeff_next = -v * U1
+                cst        = v * U1 * U_next
+                z1_coeff   = -v * U_next
         
         self.add_linear_variable(
             var="z",
             layer=layer1,
             neuron=neuron1,
-            value=-v * U_next,
+            value=z1_coeff,
             front_of_matrix=front_of_matrix1,
         )
-
-         
         return coeff_next, cst
     
     
