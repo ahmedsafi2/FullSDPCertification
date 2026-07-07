@@ -241,6 +241,25 @@ class FullCertificationConfig(BaseModel):
     network: NetworkConfig
     models: Optional[List[Union[SDPSolverConfig, GurobiSolverConfig]]] = None
     divide_run: int = 1
+
+    @model_validator(mode="before")
+    def normalize_model_names(cls, values):
+        models = values.get("models") if isinstance(values, dict) else None
+        if not models:
+            return values
+
+        normalized_models = []
+        for model in models:
+            if isinstance(model, dict) and "certification_model_type" not in model:
+                if "certification_model_name" in model:
+                    model = dict(model)
+                    model["certification_model_type"] = model["certification_model_name"]
+            normalized_models.append(model)
+
+        values = dict(values)
+        values["models"] = normalized_models
+        return values
+
     @validator('models')
     def process_bounds(cls, v, values):
         input_ball = values.get("input_ball")

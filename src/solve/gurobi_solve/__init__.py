@@ -11,6 +11,7 @@ from fastsdp_tools.utils import get_project_path
 
 logger_gurobi = logging.getLogger("Gurobi_logger")
 logger_gurobi.setLevel(logging.DEBUG)
+os.makedirs(get_project_path("results"), exist_ok=True)
 handler = logging.FileHandler(get_project_path("results/Gurobi_logger.log"))
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)

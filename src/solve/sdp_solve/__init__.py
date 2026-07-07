@@ -14,6 +14,7 @@ from run_benchmark import concat_dataframes_with_missing_columns
 logger_mosek = logging.getLogger("Mosek_logger")
 logger_mosek.setLevel(logging.DEBUG)
 logger_mosek.propagate = False
+os.makedirs(get_project_path("results"), exist_ok=True)
 handler = logging.FileHandler(get_project_path("results/Mosek_logger.log"))
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)

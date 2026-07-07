@@ -6,6 +6,7 @@ from fastsdp_tools import get_project_path
 
 logger_cb = logging.getLogger("Conic_bundle_logger")
 logger_cb.setLevel(logging.INFO)
+os.makedirs(get_project_path("results"), exist_ok=True)
 handler = logging.FileHandler(get_project_path("results/Conic_bundle_logger.log"))
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
