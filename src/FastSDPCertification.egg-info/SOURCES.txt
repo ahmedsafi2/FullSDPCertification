@@ -86,6 +86,7 @@ src/solve/sdp_solve/SDPmodels/certification_problem_constraints_forward_pass.py
 src/solve/sdp_solve/SDPmodels/certification_problem_constraints_rlt.py
 src/solve/sdp_solve/SDPmodels/certification_problem_constraints_sdp.py
 src/solve/sdp_solve/SDPmodels/certification_problem_objective.py
+src/solve/sdp_solve/SDPmodels/certification_problem_relaxed_relu_heuristic.py
 src/solve/sdp_solve/SDPmodels/krelu.py
 src/solve/sdp_solve/handler/__init__.py
 src/solve/sdp_solve/handler/common_handler_functions.py
