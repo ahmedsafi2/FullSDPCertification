@@ -27,3 +27,6 @@ results/
 !README.md
 *idris.fr
 data/datasets/EMNIST/
+all_product_yamls
+scripts\rename_certification_model_name.py
+scripts\rename_mdsdp_to_mzbarsdp.py
