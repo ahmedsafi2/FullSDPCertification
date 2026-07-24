@@ -8,7 +8,7 @@ input_ball:
   norm : "Linf"
   epsilon : 1
 
-divide_run : 1
+divide_run : 5
 
 network :
   name : "blob_nn_4x10"
