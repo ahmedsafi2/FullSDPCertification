@@ -484,8 +484,15 @@ def _run_orchestrator(certif_problem, network, title_run_full):
 
 
 def main(network: str, title_run: str, start: int = None, end: int = None, config_path: str = None, include_indices: set = None):
-    yaml_file = f"{network}.yaml"
-    certif_problem = Certification_Problem.load_from_yaml(yaml_file, config_path=config_path)
+    if config_path:
+        # When a specific config is provided, its basename should be used for logging/copying.
+        # The `network` argument is still needed for other things (e.g. orchestrator),
+        # but the primary config identifier is the file from --config.
+        yaml_file_arg = Path(config_path).name
+    else:
+        # Fallback to the old behavior: network name determines the config.
+        yaml_file_arg = f"{network}.yaml"
+    certif_problem = Certification_Problem.load_from_yaml(yaml_file_arg, config_path=config_path)
 
     is_worker = start is not None and end is not None
 

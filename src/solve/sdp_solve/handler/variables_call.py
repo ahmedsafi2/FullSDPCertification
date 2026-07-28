@@ -846,9 +846,10 @@ class VariablesCall:
                 #     print(f"STUDY RELU : ", f"Product of z_{layer_next} and z_{layer1} is NOT present in the variable matrices, adding product with bounding.")
                 # Produit non présent, utilisation d'encadrement avec bornes de mccormick
                 if mccormick_type == "custom":
+                    strategy_key = (layer_prev, neuron_prev, layer_next, neuron_next)
+                    resolved_type = self.bound_strategy.get(strategy_key, "one_variable") if self.bound_strategy else "one_variable"
                     if strategy_key == (0, 0, 1, 0):
                         print(f"[CUSTOM HIT] {strategy_key} -> {resolved_type}")
-                    strategy_key = (layer_prev, neuron_prev, layer_next, neuron_next)
                     resolved_type = self.bound_strategy.get(strategy_key, "one_variable") if self.bound_strategy else "one_variable"
                 elif mccormick_type == "random":
                     mccormick_type = random.choice(["one_variable", "composed"])   # comportement 'RANDOM' inchangé, y compris son bug de shadowing existant
