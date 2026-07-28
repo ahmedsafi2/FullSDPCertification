@@ -192,12 +192,16 @@ class SDPSolverConfig(BaseModel):
     bounds_file: Optional[str] = None
     L: Optional[List[float]] = None
     U: Optional[List[float]] = None
+
+
+    
     bounds_method: str = "alpha-CROWN"  # Method to compute bounds, options: "IBP", "alpha-CROWN", "GREAT_BOUNDS", "from_file"
     bounds_n_runs: int = 1  # Number of independent alpha-CROWN runs; best-of-N is kept (max L, min U). Ignored for non-CROWN methods.
     write_model : Optional[bool] = False
     INPUT_IN_VARIABLES: Union[bool, float] = True  # If False/0.0, z_0 removed from SDP; if 0<p<1, keep top p*n_0 input neurons by W_1 column norm
     solver_time_limit: Optional[int] = 7200  # Time limit in seconds for MOSEK solver (None = no limit)
-
+    relu_relaxation_type: str = "all"   # "all" = comportement actuel (RANDOM), "custom" = bound_strategy
+    bound_strategy: Optional[dict] = None
 
 class GurobiSolverConfig(BaseModel):
     certification_model_type: str

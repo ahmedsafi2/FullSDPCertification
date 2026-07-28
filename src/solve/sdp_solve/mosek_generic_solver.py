@@ -105,6 +105,9 @@ class SDPSolver(Solver):
         self.all_combinations_cuts = kwargs.get("all_combinations_cuts", False)
         self.create_all_cuts_to_test()
         self.RLT_props = kwargs.get("RLT_props")
+        self.relu_relaxation_type = kwargs.get("relu_relaxation_type", "all")
+        raw = kwargs.get("bound_strategy")
+        self.bound_strategy = {tuple(p["key"]): p["type"] for p in raw.values()} if raw else None
 
         # Résolution use_fusion (ancien param) vs solver (nouveau param)
         if use_fusion and solver == "mosek_classic":
@@ -185,6 +188,8 @@ class SDPSolver(Solver):
             kept_input_neurons=self.kept_input_neurons,
             pruned_input_neurons=self.pruned_input_neurons,
             solver_time_limit=self.solver_time_limit,
+            relu_relaxation_type=self.relu_relaxation_type,
+            bound_strategy=self.bound_strategy,
         )
 
     def initiate_solver(self):

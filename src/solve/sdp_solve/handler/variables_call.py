@@ -339,6 +339,19 @@ class VariablesCall:
         self.INPUT_IN_VARIABLES = kwargs.get("INPUT_IN_VARIABLES", True)
         self.kept_input_neurons = kwargs.get("kept_input_neurons", set(range(int(self.n[0]))))
         self.pruned_input_neurons = kwargs.get("pruned_input_neurons", set())
+        self.relu_relaxation_type = kwargs.get("relu_relaxation_type", "all")
+        raw_bound_strategy = kwargs.get("bound_strategy")
+        if not raw_bound_strategy:
+            self.bound_strategy = None
+        elif isinstance(next(iter(raw_bound_strategy.values())), dict):
+            # Raw YAML shape: {"product_0": {"key": [l, u, k, j], "type": "..."}, ...}
+            self.bound_strategy = {tuple(p["key"]): p["type"] for p in raw_bound_strategy.values()}
+        else:
+            # Already normalized to {(l, u, k, j): type} by an earlier pass over
+            # this same kwargs (VariablesCall.__init__ runs once per object that
+            # inherits from it - Objective and Constraints are separate objects
+            # both built from the same underlying config).
+            self.bound_strategy = raw_bound_strategy
         assert self.LAST_LAYER is not None, "LAST_LAYER must be specified."
         assert self.BETAS is not None, "BETAS must be specified."
 
@@ -750,20 +763,18 @@ class VariablesCall:
                                    weight, coeff1, U_next, bound_sense):
         
         v = weight * coeff1
+        L1 = self.L[layer1][neuron1]
+        U1 = self.U[layer1][neuron1]
+
         if (bound_sense == "upper" and v>=0) or (bound_sense == "lower" and v<0):
             # Adding constraint z_next * z_{layer1} <= L_{layer1} * z_next + U_{next} * z_{layer1} - L_{layer1} * U_{next}
-            if layer1 == 0: # L_layer1 is zero on all layer outputs (every variable except the one representing the input)
-                coeff_next = -v * self.L[layer1][neuron1]
-                cst        = v * self.L[layer1][neuron1] * U_next
-            else :
-                coeff_next = 0
-                cst        = 0
-           
-        else: 
-                # Adding constraint z_next * z_{layer1} >= U_{layer1} * z_next + U_next * z_{layer1} - U_{layer1} * U_{layer1}
-                coeff_next = -v * self.U[layer1][neuron1]
-                cst        = v * self.U[layer1][neuron1] * U_next
-        
+            coeff_next = -v * L1
+            cst        = v * L1 * U_next
+        else:
+            # Adding constraint z_next * z_{layer1} >= U_{layer1} * z_next + U_next * z_{layer1} - U_{layer1} * U_{layer1}
+            coeff_next = -v * U1
+            cst        = v * U1 * U_next
+
         self.add_linear_variable(
             var="z",
             layer=layer1,
@@ -805,7 +816,7 @@ class VariablesCall:
         bound_sense: str = "upper",
         mccormick_type: str = "one_variable",
     ):
-        assert mccormick_type in ["one_variable", "composed", "random"]
+        assert mccormick_type in ["one_variable", "composed", "random","custom"]
         assert bound_sense in ["lower", "upper"]
 
         assert (layer_prev, neuron_prev) in self.stable_actives_neurons
@@ -834,10 +845,16 @@ class VariablesCall:
                 # if (layer_next - layer1 > 2) and (layer1>0):
                 #     print(f"STUDY RELU : ", f"Product of z_{layer_next} and z_{layer1} is NOT present in the variable matrices, adding product with bounding.")
                 # Produit non présent, utilisation d'encadrement avec bornes de mccormick
-                if mccormick_type == "random":
-                    mccormick_type = random.choice(["one_variable", "composed"])
+                if mccormick_type == "custom":
+                    if strategy_key == (0, 0, 1, 0):
+                        print(f"[CUSTOM HIT] {strategy_key} -> {resolved_type}")
+                    strategy_key = (layer_prev, neuron_prev, layer_next, neuron_next)
+                    resolved_type = self.bound_strategy.get(strategy_key, "one_variable") if self.bound_strategy else "one_variable"
+                elif mccormick_type == "random":
+                    mccormick_type = random.choice(["one_variable", "composed"])   # comportement 'RANDOM' inchangé, y compris son bug de shadowing existant
+                    resolved_type = mccormick_type
                 else:
-                    mccormick_type = mccormick_type
+                    resolved_type = mccormick_type
 
                 if mccormick_type == "composed":
                     coeff_next_, cst_ = self.add_z_quad_bound_composed(layer1, neuron1, front_of_matrix_prev,
