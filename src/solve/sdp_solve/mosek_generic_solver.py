@@ -106,6 +106,8 @@ class SDPSolver(Solver):
         self.create_all_cuts_to_test()
         self.RLT_props = kwargs.get("RLT_props")
         self.relu_relaxation_type = kwargs.get("relu_relaxation_type", "all")
+        self.bound_type_method = kwargs.get("bound_type_method", "tree")
+        self.bound_type_gain_threshold = kwargs.get("bound_type_gain_threshold", 0.0)
         raw = kwargs.get("bound_strategy")
         self.bound_strategy = {tuple(p["key"]): p["type"] for p in raw.values()} if raw else None
 
@@ -190,6 +192,8 @@ class SDPSolver(Solver):
             solver_time_limit=self.solver_time_limit,
             relu_relaxation_type=self.relu_relaxation_type,
             bound_strategy=self.bound_strategy,
+            bound_type_method=self.bound_type_method,
+            bound_type_gain_threshold=self.bound_type_gain_threshold,
         )
 
     def initiate_solver(self):

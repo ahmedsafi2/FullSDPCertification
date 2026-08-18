@@ -449,7 +449,7 @@ def _run_orchestrator(certif_problem, network, title_run_full):
 
     if certif_problem.yaml_file is not None:
         shutil.copyfile(
-            get_project_path(f"config/{certif_problem.yaml_file}"),
+            certif_problem._config_path or get_project_path(f"config/{certif_problem.yaml_file}"),
             os.path.join(parent_dir, certif_problem.yaml_file),
         )
 
@@ -530,7 +530,7 @@ def main(network: str, title_run: str, start: int = None, end: int = None, confi
         )
         if not os.path.exists(parent_yaml):
             shutil.copyfile(
-                get_project_path(f"config/{certif_problem.yaml_file}"),
+                certif_problem._config_path or get_project_path(f"config/{certif_problem.yaml_file}"),
                 parent_yaml,
             )
 

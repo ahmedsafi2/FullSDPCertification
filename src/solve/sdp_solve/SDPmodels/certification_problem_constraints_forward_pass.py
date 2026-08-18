@@ -9,7 +9,7 @@ logger_mosek = logging.getLogger("Mosek_logger")
 def ReLU_constraint_stable_active_relaxation(
     self, k, j, bound_sense: str = "upper", mccormick_type: str = "composed", name = ""
 ):
-    assert mccormick_type in ["one_variable", "composed", "random","custom"]
+    assert mccormick_type in ["one_variable", "composed", "random", "custom", "auto"]
     assert bound_sense in ["lower", "upper"]
     assert any(
         (k - 1, i) in self.stable_actives_neurons for i in range(self.n[k - 1])
@@ -167,9 +167,13 @@ def ReLU_constraint_Lan(
                 any((k - 1, i) in self.stable_actives_neurons for i in range(self.n[k - 1]))):
                 # The constraint cannot be added as it links products of variables from different matrices : a relaxation is needed
                 # print("STUDY COEFF Relaxation of ReLU constraint for layer", k, "neuron", j)
-                if getattr(self, "relu_relaxation_type", "all") == "custom" and self.bound_strategy:
+                relaxation_type = getattr(self, "relu_relaxation_type", "all")
+                if relaxation_type == "custom" and self.bound_strategy:
                     self.ReLU_constraint_stable_active_relaxation(k, j, bound_sense="upper", mccormick_type="custom")
                     self.ReLU_constraint_stable_active_relaxation(k, j, bound_sense="lower", mccormick_type="custom")
+                elif relaxation_type == "auto":
+                    self.ReLU_constraint_stable_active_relaxation(k, j, bound_sense="upper", mccormick_type="auto")
+                    self.ReLU_constraint_stable_active_relaxation(k, j, bound_sense="lower", mccormick_type="auto")
                 else:
                     self.quadratic_constraint_heuristic(k, j, heuristic_choice='RANDOM')
                 

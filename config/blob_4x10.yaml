@@ -25,6 +25,7 @@ network :
 models :
   - certification_model_type : "UntargetedSDP"
     write_model: true
+    relu_relaxation_type: "auto"
     solveur: "mosek_fusion"
     cp_solver : "SCS"
     cuts : 
@@ -41,6 +42,9 @@ models :
     # - [0,1]
     # - [1,2,3]
     # - [3,4,5,6]
+    relu_relaxation_type: "auto"  # decide composed/one_variable live via the trained gain-tree (predict_bound_type)
+    # bound_type_method: "tree"        # default; no .joblib needed
+    # bound_type_gain_threshold: 0.0   # min predicted gain to pick "composed"
     LAST_LAYER: false
     INPUT_IN_VARIABLES : true
     use_fusion: true  # Whether to use the fusion API for MOSEK
