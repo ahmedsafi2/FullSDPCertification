@@ -25,7 +25,6 @@ from numba.typed import Dict
 logger_mosek = logging.getLogger("Mosek_logger")
 
 from fastsdp_tools import summing_values_two_dicts, change_to_zero_negative_values
-from fastsdp_tools.bound_type_predictor import predict_bound_type
 
 
 def get_only_one_variable_kwargs(index: int = 1, **kwargs):
@@ -341,10 +340,6 @@ class VariablesCall:
         self.kept_input_neurons = kwargs.get("kept_input_neurons", set(range(int(self.n[0]))))
         self.pruned_input_neurons = kwargs.get("pruned_input_neurons", set())
         self.relu_relaxation_type = kwargs.get("relu_relaxation_type", "all")
-        # mccormick_type="auto" : méthode de prédiction (arbre par défaut) et seuil
-        # de gain au-delà duquel "composed" est choisi. Voir predict_bound_type.
-        self.bound_type_method = kwargs.get("bound_type_method", "tree")
-        self.bound_type_gain_threshold = kwargs.get("bound_type_gain_threshold", 0.0)
         raw_bound_strategy = kwargs.get("bound_strategy")
         if not raw_bound_strategy:
             self.bound_strategy = None
@@ -810,104 +805,88 @@ class VariablesCall:
         
 
     def add_z_quad_active_neuron(
-        self,
-        layer_prev: int,
-        neuron_prev: int,
-        layer_next: int,
-        neuron_next: int,
-        front_of_matrix_prev: bool,
-        front_of_matrix_next: bool,
-        weight: float,
-        bound_sense: str = "upper",
-        mccormick_type: str = "one_variable",
-    ):
-        assert mccormick_type in ["one_variable", "composed", "random", "custom", "auto"]
-        assert bound_sense in ["lower", "upper"]
+            self,
+            layer_prev: int,
+            neuron_prev: int,
+            layer_next: int,
+            neuron_next: int,
+            front_of_matrix_prev: bool,
+            front_of_matrix_next: bool,
+            weight: float,
+            bound_sense: str = "upper",
+            mccormick_type: str = "one_variable",
+        ):
+            assert mccormick_type in ["one_variable", "composed", "random", "custom", "auto"]
+            assert bound_sense in ["lower", "upper"]
 
-        assert (layer_prev, neuron_prev) in self.stable_actives_neurons
-        equivalent_values_neurons, constant = self.layers_values.get_equivalent_values(
-            layer_prev, neuron_prev
-        )
+            assert (layer_prev, neuron_prev) in self.stable_actives_neurons
+            equivalent_values_neurons, constant = self.layers_values.get_equivalent_values(
+                layer_prev, neuron_prev
+            )
 
-        U_next = float(self.U[layer_next][neuron_next])
-        coeff_next = 0.0  # accumulated coefficient for z_{layer_next}
-        cst = 0.0         # accumulated constant
+            U_next = float(self.U[layer_next][neuron_next])
+            coeff_next = 0.0  # accumulated coefficient for z_{layer_next}
+            cst = 0.0         # accumulated constant
 
-        for (layer1, neuron1), coeff1 in equivalent_values_neurons.items():
-            # Vérification que le produit quadratique z_next * z_{layer1} est présent dans les matrices variables
-            groups_layer1 = {g for g, _ in self.indexes_matrices._layer_to_groups.get(layer1, [])}
-            groups_layer_next = {g for g, _ in self.indexes_matrices._layer_to_groups.get(layer_next, [])}
+            for (layer1, neuron1), coeff1 in equivalent_values_neurons.items():
+                # Vérification que le produit quadratique z_next * z_{layer1} est présent dans les matrices variables
+                groups_layer1 = {g for g, _ in self.indexes_matrices._layer_to_groups.get(layer1, [])}
+                groups_layer_next = {g for g, _ in self.indexes_matrices._layer_to_groups.get(layer_next, [])}
 
-            if groups_layer1 & groups_layer_next: # Produit présent, pas d'encadrement à faire
-                if layer_next - layer1 > 2:
-                    logger_mosek.debug(f"RELU : ", f"Product of z_{layer_next} and z_{layer1} is PRESENT in the variable matrices, adding product without bounding.")
-                decomposed1, front1 = self.verify_variable_z(layer1, neuron1, None)
-                dict_layer1 = self.equivalent_neurons.get_equivalent(layer1, neuron1, front1, decomposed1)
-                decomposed_next, front_next = self.verify_variable_z(layer_next, neuron_next, front_of_matrix_next)
-                dict_layer_next = self.equivalent_neurons.get_equivalent(layer_next, neuron_next, front_next, decomposed_next)
-                self.add_var(dict1=dict_layer1, dict2=dict_layer_next, value=-weight * coeff1)
-            else:
-                # if (layer_next - layer1 > 2) and (layer1>0):
-                #     print(f"STUDY RELU : ", f"Product of z_{layer_next} and z_{layer1} is NOT present in the variable matrices, adding product with bounding.")
-                # Produit non présent, utilisation d'encadrement avec bornes de mccormick
-                if mccormick_type == "custom":
-                    strategy_key = (layer_prev, neuron_prev, layer_next, neuron_next)
-                    resolved_type = self.bound_strategy.get(strategy_key, "one_variable") if self.bound_strategy else "one_variable"
-                    if strategy_key == (0, 0, 1, 0):
-                        print(f"[CUSTOM HIT] {strategy_key} -> {resolved_type}")
-                elif mccormick_type == "random":
-                    mccormick_type = random.choice(["one_variable", "composed"])   # comportement 'RANDOM' inchangé, y compris son bug de shadowing existant
-                    resolved_type = mccormick_type
-                elif mccormick_type == "auto":
-                    # Décision automatique, "au fur et à mesure" : dès que L/U des 2
-                    # neurones du produit z_{layer1,neuron1} * z_{layer_next,neuron_next}
-                    # sont connus, on les passe à l'arbre entraîné hors ligne. On ne
-                    # choisit "composed" que si le gain prédit est strictement positif
-                    # (> bound_type_gain_threshold) ; sinon on retombe sur "one_variable".
-                    resolved_type = predict_bound_type(
-                        l=layer1, u_idx=neuron1, k=layer_next, j_idx=neuron_next,
-                        LB_neuron1=float(self.L[layer1][neuron1]),
-                        UB_neuron1=float(self.U[layer1][neuron1]),
-                        LB_neuron2=float(self.L[layer_next][neuron_next]),
-                        UB_neuron2=U_next,
-                        method=self.bound_type_method,
-                        gain_threshold=self.bound_type_gain_threshold,
-                        fallback="one_variable",
-                    )
+                if groups_layer1 & groups_layer_next: # Produit présent, pas d'encadrement à faire
+                    if layer_next - layer1 > 2:
+                        logger_mosek.debug(f"RELU : ", f"Product of z_{layer_next} and z_{layer1} is PRESENT in the variable matrices, adding product without bounding.")
+                    decomposed1, front1 = self.verify_variable_z(layer1, neuron1, None)
+                    dict_layer1 = self.equivalent_neurons.get_equivalent(layer1, neuron1, front1, decomposed1)
+                    decomposed_next, front_next = self.verify_variable_z(layer_next, neuron_next, front_of_matrix_next)
+                    dict_layer_next = self.equivalent_neurons.get_equivalent(layer_next, neuron_next, front_next, decomposed_next)
+                    self.add_var(dict1=dict_layer1, dict2=dict_layer_next, value=-weight * coeff1)
                 else:
-                    resolved_type = mccormick_type
+                    # if (layer_next - layer1 > 2) and (layer1>0):
+                    #     print(f"STUDY RELU : ", f"Product of z_{layer_next} and z_{layer1} is NOT present in the variable matrices, adding product with bounding.")
+                    # Produit non présent, utilisation d'encadrement avec bornes de mccormick
+                    if mccormick_type == "custom":
+                        strategy_key = (layer_prev, neuron_prev, layer_next, neuron_next)
+                        resolved_type = self.bound_strategy.get(strategy_key, "one_variable") if self.bound_strategy else "one_variable"
+                    elif mccormick_type == "auto":
+                        # Décision produit par produit via le modèle ML (arbre/RBF) entraîné
+                        # hors ligne dans le notebook combo_visualisation (section 11).
+                        from fastsdp_tools.bound_type_predictor import predict_bound_type
 
-                if resolved_type == "composed":
-                    coeff_next_, cst_ = self.add_z_quad_bound_composed(layer1, neuron1, front_of_matrix_prev,
-                                                                       weight, coeff1, U_next, bound_sense)
-                else:
-                    coeff_next_, cst_ = self.add_z_quad_bound_one_variable(layer1, neuron1, weight, coeff1, bound_sense)
+                        resolved_type = predict_bound_type(
+                            l=layer_prev, u_idx=neuron_prev, k=layer_next, j_idx=neuron_next,
+                            LB_neuron1=float(self.L[layer_prev][neuron_prev]),
+                            UB_neuron1=float(self.U[layer_prev][neuron_prev]),
+                            LB_neuron2=float(self.L[layer_next][neuron_next]),
+                            UB_neuron2=float(self.U[layer_next][neuron_next]),
+                            method="tree",
+                        )
+                    elif mccormick_type == "random":
+                        mccormick_type = random.choice(["one_variable", "composed"])   # comportement 'RANDOM' inchangé, y compris son bug de shadowing existant (ne re-tire qu'une fois par appel, pas par produit)
+                        resolved_type = mccormick_type
+                    else:
+                        resolved_type = mccormick_type
 
-                coeff_next += coeff_next_
-                cst        += cst_
-        
+                    if resolved_type == "composed":
+                        coeff_next_, cst_ = self.add_z_quad_bound_composed(layer1, neuron1, front_of_matrix_prev,
+                                                                        weight, coeff1, U_next, bound_sense)
+                    else:
+                        coeff_next_, cst_ = self.add_z_quad_bound_one_variable(layer1, neuron1, weight, coeff1, bound_sense)
+
+                    coeff_next += coeff_next_
+                    cst        += cst_
             
-        if coeff_next != 0:
-            self.add_linear_variable(
-                var="z",
-                layer=layer_next,
-                neuron=neuron_next,
-                value=coeff_next,
-                front_of_matrix=front_of_matrix_next,
-            )
-        if cst != 0:
-            self.add_constant(cst)
-
-        # Linear term from the constant part of the stable-active decomposition
-        if weight * constant != 0:
-            self.add_linear_variable(
-                var="z",
-                layer=layer_next,
-                neuron=neuron_next,
-                value=-weight * constant,
-                front_of_matrix=front_of_matrix_next,
-            )
-
+                
+            if coeff_next != 0:
+                self.add_linear_variable(
+                    var="z",
+                    layer=layer_next,
+                    neuron=neuron_next,
+                    value=coeff_next,
+                    front_of_matrix=front_of_matrix_next,
+                )
+            if cst != 0:
+                self.add_constant(cst)
 
    
     # def add_linear_variable(self, var: str, value: float, **kwargs):
